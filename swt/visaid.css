@@ -1,0 +1,32 @@
+body {
+    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+    font-size: small;
+    background-color: #dadada;
+}
+div.top {
+    font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
+    font-size: large;
+    padding: 15px;
+    margin-bottom: 10px;
+    background-color: white;
+}
+span.proj {
+    color:  #6d57db;
+}
+div.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+div.item {
+    background-color: #b8c5bf;
+    padding: 15px;
+    border-radius: 10px 10px 10px 10px;
+    box-shadow: 2px 2px 2px 0 #38383f7a,
+                -1px -1px 1px 0 #e2e2e2;
+}
+img {
+    width: 240px;
+    border: 2px solid black;
+    margin-top: 2px;
+}
