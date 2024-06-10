@@ -30,7 +30,8 @@ hardcoded_output_file = "./batch.csv"
 #hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/batch_2024-05-06_x131/wipr_ams2_pbcore"
 #hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/batch_2024-05-07_unknowns_x1018/wipr_ams2_xml"
 #hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/batch_2024-05-07_orr_green_x2578/wipr_ams2_pbcore"
-hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/wipr_ams2_pbcore"
+#hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/wipr_ams2_pbcore"
+hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/shipment_WVIA_34451_34609/ams2_pbcore"
 
 notebook_mode = True
 
@@ -84,6 +85,14 @@ def tablify( pbcore_dir:str ):
         # Get the root element of the XML tree
         # This should be a `pbcoreDescriptionDocument`.
         root = tree.getroot()
+
+        root_tag = root.tag
+        root_tag_no_ns = root_tag.split('}')[-1] if '}' in root_tag else root_tag
+        if root_tag_no_ns != "pbcoreDescriptionDocument":
+            print("Warning: The root element is:", root_tag_no_ns)
+            print("Skipping", fn)
+            continue
+         
 
         # get all the values we want
         # (If an element is missing, assign empty string to the variable)
@@ -610,7 +619,8 @@ def filterproj2( asstdf ):
     #cols = ["asset_id", "sonyci_id", "media_type", "asset_type"]
     cols = ["asset_id", "sonyci_id", "media_type", "asset_type", "level_of_user_access", "organization", "producing_organization", "single_date", "consolidated_title"]
 
-    # for WIRP project
+    # A good informative set of columns.
+    # originally for the for WIPR project
     cols = ["asset_id", "sonyci_id", "asset_type", "level_of_user_access", "broadcast_date", "created_date", "consolidated_title", "proxy_duration"]
 
     # apply projection
