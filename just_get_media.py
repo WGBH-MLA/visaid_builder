@@ -18,7 +18,8 @@ from drawer.media_availability import check_avail, make_avail, remove_media
 #batch_def_path = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/batch_2024-05-07_unknowns_x1018/WIPR_GUIDS_2024-05-07_unknowns_batch_ams2_cids.csv"
 #batch_def_path = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/complete_sonyci_set.csv"
 
-batch_def_path = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/wipr_complete_media_batch_2024-05-10.csv"
+#batch_def_path = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/wipr_complete_media_batch_2024-05-10.csv"
+batch_def_path = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/WIPR_complete_additions_2024-05-28.csv"
 
 #batch_def_path = "C:/Users/owen_king/kitchen/stovetop/challenge_2_pbd/full_media_batch.csv"
 #batch_def_path = "C:/Users/owen_king/kitchen/stovetop/shipment_34080_34125_NC_PBS/batch_def.csv"
