@@ -90,7 +90,7 @@ def extract_stills(video_path:str,
     container = av.open(video_path)
     video_stream = next((s for s in container.streams if s.type == 'video'), None)
     if video_stream is None:
-        raise Exception("No video stream found in {}".format(vfilename) ) 
+        raise Exception("No video stream found in {}".format(video_path) ) 
 
     # get technical stats on the video stream; assumes FPS is constant
     fps = video_stream.average_rate.numerator / video_stream.average_rate.denominator
