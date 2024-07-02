@@ -22,12 +22,12 @@ import swt.process_swt
 
 # Batch config filename is hard-coded (for now).
 # This is the only line that needs to be changed per run.
-batch_conf_path = "./stovetop/shipment_34080_34125_NC_PBS/batchconf_sample.json"
-#batch_conf_path = "./stovetop/challenge_2_pbd/batchconf_1.json"
+batch_conf_path = "./stovetop/challenge_2_pbd/batchconf_1.json"
+#batch_conf_path = "./stovetop/shipments/Cascade_34524/batchconf.json"
 
 
 ########################################################
-# Set batch-specific parameters
+# Set batch-specific parameters based on values in conf file
 with open(batch_conf_path, "r") as conffile:
     conf = json.load(conffile)
 
@@ -129,6 +129,7 @@ slates_dir = artifacts_dir + "/" + "slates"
 visaids_dir = artifacts_dir + "/" + "visaids"
 
 # Checks to make sure these directories exist
+# If directories do not exist, then create them
 for dirpath in [mmif_dir, 
                 artifacts_dir, 
                 slates_dir,
@@ -150,6 +151,8 @@ def update_batch_results():
     # Write out results to a CSV file and to a JSON file
     # Only write out records that have been reached so far
     # Re-writing after every iteration of the loop
+    
+    # use data structures that are global relative to this script
     global batch_results_csv_path, batch_results_json_path
     global batch_l, item_count
 
@@ -169,6 +172,9 @@ def update_batch_results():
 # Process batch in a loop
 
 # Make sure at least an empty list exists to define the batch
+# (This value should get overwritten when we open a batch def file in the next 
+# step. However, if there is no such file, this enables us to exit the empty 
+# loop gracefully.)
 batch_l = []
 
 # open batch as a list of dictionaries
@@ -239,6 +245,7 @@ for item in batch_l:
         item["media_path"] = media_path
     else:
         # step failed
+        # print error messages, updated results, continue to next loop iteration
         print("Media file for " + item["asset_id"] + " could not be made available.")
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "media"
@@ -254,6 +261,8 @@ for item in batch_l:
 
     # Check for prereqs
     if item["media_filename"] == "":
+        # prereqs not satisfied
+        # print error messages, updated results, continue to next loop iteration
         print("Step prerequisite failed: No media filename recorded.")
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-0-prereq"
@@ -270,7 +279,7 @@ for item in batch_l:
 
     # Check to see if it exists; if not create it
     if ( os.path.isfile(mmif_path) and not overwrite_mmif):
-        print("MMIF file already exists:  " + mmif_path)
+        print("Will use existing MMIF:    " + mmif_path)
     else:
         print("Will create MMIF file:     " + mmif_path)
 
@@ -290,11 +299,12 @@ for item in batch_l:
             raise Exception("Tried to write MMIF, but failed.")
     
     mmif_status = mmif_check(mmif_path)
-    if ('blank' in mmif_status):
+    if 'blank' in mmif_status:
         item["mmif_files"].append(mmif_filename)
         item["mmif_paths"].append(mmif_path)
     else:
         # step failed
+        # print error messages, updated results, continue to next loop iteration
         mmif_check(mmif_path, complain=True)
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-0"
@@ -312,6 +322,8 @@ for item in batch_l:
     # Check for prereqs
     mmif_status = mmif_check(item["mmif_paths"][mmifi])
     if 'valid' not in mmif_status:
+        # prereqs not satisfied
+        # print error messages, updated results, continue to next loop iteration
         mmif_check(mmif_path, complain=True)
         print("Step prerequisite failed.")
         print("SKIPPING", item["asset_id"])
@@ -329,12 +341,14 @@ for item in batch_l:
 
     # Check to see if it exists; if not create it
     if ( os.path.isfile(mmif_path) and not overwrite_mmif):
-        print("MMIF file already exists:  " + mmif_path)
+        print("Will use existing MMIF:    " + mmif_path)
     else:
         print("Will try making MMIF file: " + mmif_path)
-        print("Sending request to CLAMS web service...")
 
+        # Run CLAMS app, assuming CLAMS is running as a local web service
+        print("Sending request to CLAMS web service...")
         if len(clams_params[clamsi]) > 0:
+            # build querystring with parameters in batch configuration
             qsp = "?"
             for p in clams_params[clamsi]:
                 qsp += p
@@ -360,7 +374,7 @@ for item in batch_l:
 
         print("CLAMS app web serivce response code:", response.status_code)
         
-        #if response.status_code == 200:
+        # use the HTTP response as appropriate
         if response.status_code :
             mmif_str = response.text
 
@@ -374,13 +388,15 @@ for item in batch_l:
                 raise Exception("Tried to write MMIF, but failed.")
 
             print("MMIF file created.")
-    
+
+    # Validate step     
     mmif_status = mmif_check(mmif_path)
     if ('laden' in mmif_status and 'error-views' not in mmif_status):
         item["mmif_files"].append(mmif_filename)
         item["mmif_paths"].append(mmif_path)
     else:
         # step failed
+        # print error messages, updated results, continue to next loop iteration
         mmif_check(mmif_path, complain=True)
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-1"
@@ -395,6 +411,8 @@ for item in batch_l:
     # Check for prereqs
     mmif_status = mmif_check(item["mmif_paths"][mmifi])
     if ('laden' not in mmif_status or 'error-views' in mmif_status):
+        # prereqs not satisfied
+        # print error messages, updated results, continue to next loop iteration
         mmif_check(mmif_path, complain=True)
         print("Step prerequisite failed.")
         print("SKIPPING", item["asset_id"])
@@ -413,8 +431,11 @@ for item in batch_l:
     # restrict to just bars and slates
     #tfs = [ tf for tf in tfs if tf[1] in ['bars', 'slate'] ]
 
-    # Note:
-    # Have to cast some values originally created by Pandas to int from int64
+    #
+    # Calculate some significant datapoints based on table of time frames
+    #
+    # Note:  For reasons I don't understand, we have to cast some integer
+    # values originally created by Pandas to int from int64
 
     # The end of the bars is the end of the last bars timeframe
     # If there is no bars timeframe, then the value is 0
@@ -448,7 +469,10 @@ for item in batch_l:
 
     print("Proxy start:", item["proxy_start"])
 
+
+    #
     # Extract the slate
+    #
     if get_slate:
         if slate_rep is not None:
             print("Trying to exact a slate to", slates_dir)
@@ -465,9 +489,10 @@ for item in batch_l:
         else:
             print("No slate found.")
 
+    #
     # Save a visaid
+    #
     if make_visaid:
-
         print("Trying to make a visaid in", visaids_dir)
 
         visaid_filename, visaid_path = swt.process_swt.create_aid( 
