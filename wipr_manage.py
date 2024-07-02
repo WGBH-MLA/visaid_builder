@@ -38,7 +38,7 @@ wdf = pd.read_json("./stovetop/WIPR_transcripts/complete/transcription_work_cur.
 ############################################################################
 # %%
 # We shouldn't be running this straight through
-# So, if it's running from the top.  Stop here!
+# So, if it's running from the top, then....  Stop here!
 raise Exception
 
 #################################################################
@@ -89,7 +89,7 @@ wdf.loc[batch_indices, "batch"] = "Kevin-02"
 wdf.loc[batch_indices, "status"] = "Assigned"
 
 
-
+#################################################################
 # %%
 # Translation batch assignments
 
@@ -137,7 +137,7 @@ wdf.loc[batch_indices, "es2en_batch"] = "mine-03"
 wdf.loc[batch_indices, "es2en_status"] = "Assigned"
 
 
-
+#################################################################
 # %%
 # Write out a batch list
 
@@ -149,7 +149,7 @@ write_csv( wdf[ wdf["batch"] == batchname ][cols], batchname+"_batch.csv")
 
 #############################################################################
 # %%
-# Check for transcript files and update Dataframe
+# Check for *transcript* files and update Dataframe
 
 basedir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/0TRANSCRIPTS"
 
@@ -200,6 +200,40 @@ wdf.loc[ redos, 'status' ] = 'Redone'
 
 # one last one not redone
 wdf.loc[ wdf["status"] == 'Assigned', 'status'] = 'Skipped'
+
+
+#############################################################################
+# %%
+# Check for *translation* files and update Dataframe
+
+basedir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/0TRANSLATIONS"
+
+# Scan directories from Owen
+owen_dirs = ["translations_LTO3-01",
+             "translations_LTO3-02",
+             "translations_LTO3-03",
+             "translations_mine-01",
+             "translations_mine-02",
+             "translations_mine-03",
+             "translations_valeria_sample"]
+
+# go into each batch-level dir
+for dstr in owen_dirs:
+    top_dir = basedir + "/" + dstr
+
+    # Use the presence of a vtt file as evidence of an attempt
+    guids = [ fn[fn.find("cpb-aacip"):-4] for fn in glob.glob(top_dir + "/*.vtt") ]
+
+    for guid in guids:
+        ts_files = glob.glob(top_dir + "/" + guid + "-translation-en.json")
+        if len(ts_files) != 1:
+            wdf.loc[ wdf['asset_id'] == guid, 'es2en_status'] = 'Failed'
+        else:
+            wdf.loc[ wdf['asset_id'] == guid, 'es2en_status'] = 'Translated'
+
+# filter for those that failed the first round
+not_attempted = ( wdf["es2en_status"] == 'Assigned') 
+fails = (wdf["es2en_status"] == 'Failed')
 
 
 #############################################################################
