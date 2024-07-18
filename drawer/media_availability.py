@@ -27,7 +27,7 @@ def extract_filename_ci_url(url:str, ci_id:str) -> str:
         # rely on assumptions about the strucutre of the URL
         start_index = url.find(ci_id) + 33
         if start_index == -1:
-            print("Error: Media filename not found in SonyCi URL.")
+            print("Failure: Media filename not found in SonyCi URL.")
             print("URL: <" + url + ">") 
             return None;
 
@@ -35,11 +35,12 @@ def extract_filename_ci_url(url:str, ci_id:str) -> str:
     if end_index == -1:
         end_index = url.find("&", start_index) 
     if end_index == -1:
-        print("Error: Could not find the end of the filename in the URL.")
+        print("Failure: Could not find the end of the filename in the URL.")
         print("URL: <" + url + ">") 
         return None;
 
-    return(url[start_index:end_index])
+    filename = url[start_index:end_index]
+    return(filename)
 
 # %%
 def remove_media(file_path:str) -> bool:
@@ -94,7 +95,6 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
 
     print("About to get Ci URL") # DIAG
 
-    #print(guid, ci_id)
     ci_url_result = subprocess.run([ 'bash', 
                                      ci_url_sh_path, 
                                      ci_id ], 
@@ -104,16 +104,19 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
     ci_url = ci_url_result.stdout.strip().replace('"', '')
 
     if ci_url == "null":
-        print("Warning: `ci_url.sh` did not return a URL for " + guid)
+        print("Failure: `ci_url.sh` did not return a URL for " + guid)
         return None
 
     # Received the URL
     # Do a little checking; then go get the file
-
     filename = extract_filename_ci_url(ci_url, ci_id)
 
     if filename is None:
-        print("Warning: no valid filename returned in SonyCi URL")
+        print("Failure: No valid filename returned in SonyCi URL")
+        return None
+    elif filename[-4:].lower() not in [".mp3", ".mp4"]:
+        # We assume all valid media files have MP3 or MP4 extensions
+        print("Failure: Media filename", filename, "does not have valid extension.")
         return None
 
     # sanity check comparison between guid and filename
@@ -122,8 +125,12 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
 
     filepath = media_dir_path + "/" + filename
 
-    print(filename, filepath)
-    #print(ci_url)
+
+    # Going to download and save the file from the web using the Ci URL
+    print("Will save", filename, "to:")
+    print(filepath)
+
+    #print(ci_url)  # DIAG
     #curl_result = subprocess.run(['curl', ci_url, '--output', filepath])
 
     # # Write the whole file once the entire thing has been received
@@ -137,7 +144,6 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
     
     # Since files can be large (up to 700MB) better to write it to disk as we go.
     bytes_limit = 1000000000 # ~1000MB  # Things are weird if we're receiving more than that
-    #bytes_limit = 20000000
 
     success = False
     with requests.get(ci_url, stream=True) as response:
@@ -174,6 +180,3 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
     else:
         return None
 
-
-
-# %%
