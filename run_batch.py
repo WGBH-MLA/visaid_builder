@@ -22,8 +22,10 @@ import swt.process_swt
 
 # Batch config filename is hard-coded (for now).
 # This is the only line that needs to be changed per run.
-batch_conf_path = "./stovetop/challenge_2_pbd/batchconf_1.json"
+#batch_conf_path = "./stovetop/challenge_2_pbd/batchconf_1.json"
 #batch_conf_path = "./stovetop/shipments/Cascade_34524/batchconf.json"
+#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_test1.json"
+batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_test2.json"
 
 
 ########################################################
@@ -32,16 +34,47 @@ with open(batch_conf_path, "r") as conffile:
     conf = json.load(conffile)
 
 try: 
-    batch_id = conf["id"]
+    batch_id = conf["id"] # required
 
     if "name" in conf:
         batch_name = conf["name"]
     else:
         batch_name = batch_id
 
-    batch_results_dir = conf["results_dir"]
-    batch_def_path = conf["def_path"]
-    media_dir = conf["media_dir"]
+    if "clams_run_cli" in conf:
+        clams_run_cli = conf["clams_run_cli"]
+    else:
+        clams_run_cli = False
+
+    if clams_run_cli:
+        # need to know the docker_image if (but only if) running in CLI mode
+        docker_image = conf["docker_image"]
+    else:
+        # ignore docker_image if not running in CLI mode
+        docker_image = ""
+
+    if "local_base" in conf:
+        local_base = conf["local_base"]
+    else:
+        local_base = ""
+
+    if "mnt_base" in conf:
+        mnt_base = conf["mnt_base"]
+    else:
+        mnt_base = ""
+
+    results_dir = local_base + conf["results_dir"]
+    batch_def_path = local_base + conf["def_path"]
+    media_dir = local_base + conf["media_dir"]
+    
+    mnt_results_dir = mnt_base + conf["results_dir"]
+    mnt_media_dir = mnt_base + conf["media_dir"]
+    
+    if "mmif_dir" in conf:
+        mmif_dir = local_base + conf["mmif_dir"]
+        mnt_mmif_dir = mnt_base + conf["mmif_dir"]
+    else:
+        mmif_dir = ""  # to be set below
 
     if "get_slate" in conf:
         get_slate = conf["get_slate"]
@@ -107,22 +140,29 @@ except KeyError as e:
 # Set up batch directories and files
 
 # Checks to make sure directories and setup file exist
-for dirpath in [batch_results_dir, batch_def_path, media_dir]:
+for dirpath in [results_dir, batch_def_path, media_dir]:
     if not os.path.exists(dirpath):
         raise FileNotFoundError("Path does not exist: " + dirpath)
 
 # Results files get a new name every time this script is run
-batch_results_file_base = batch_results_dir + "/" + batch_name + "_results"
+batch_results_file_base = results_dir + "/" + batch_name + "_results"
 timestamp = str(int(datetime.datetime.now().timestamp()))
 batch_results_csv_path  = batch_results_file_base + timestamp + ".csv"
 batch_results_json_path  = batch_results_file_base + timestamp + ".json"
 
-
-mmif_dir = "mmif"
-mmif_dir = batch_results_dir + "/" + mmif_dir 
+# Directory for MMIF files
+if mmif_dir == "":
+    # MMIF file not set by config file.  Will use default.
+    mmif_dir_name = "mmif"
+    mmif_dir = results_dir + "/" + mmif_dir_name 
+    mnt_mmif_dir = mnt_results_dir + "/" + mmif_dir_name 
+else:
+    # MMIF directory set by conf file; check that it exists
+    if not os.path.exists(mmif_dir):
+        raise FileNotFoundError("Path does not exist: " + mmif_dir)
 
 artifacts_dir = "artifacts"
-artifacts_dir = batch_results_dir + "/" + artifacts_dir
+artifacts_dir = results_dir + "/" + artifacts_dir
 
 slates_dir = artifacts_dir + "/" + "slates"
 
@@ -345,51 +385,98 @@ for item in batch_l:
     else:
         print("Will try making MMIF file: " + mmif_path)
 
-        # Run CLAMS app, assuming CLAMS is running as a local web service
-        print("Sending request to CLAMS web service...")
-        if len(clams_params[clamsi]) > 0:
-            # build querystring with parameters in batch configuration
-            qsp = "?"
-            for p in clams_params[clamsi]:
-                qsp += p
-                qsp += "="
-                qsp += str(clams_params[clamsi][p])
-                qsp += "&"
-            qsp = qsp[:-1] # remove trailing "&"
-        service = "http://localhost:5000"
-        endpoint = service + qsp
 
-        headers = {'Accept': 'application/json'}
+        if not clams_run_cli :
+            ################################################################
+            # Run CLAMS app, assuming the app is already running as a local web service
+            print("Sending request to CLAMS web service...")
 
-        with open(item["mmif_paths"][mmifi-1], "r") as file:
-            mmif_str = file.read()
+            if len(clams_params[clamsi]) > 0:
+                # build querystring with parameters in batch configuration
+                qsp = "?"
+                for p in clams_params[clamsi]:
+                    qsp += p
+                    qsp += "="
+                    qsp += str(clams_params[clamsi][p])
+                    qsp += "&"
+                qsp = qsp[:-1] # remove trailing "&"
+            service = "http://localhost:5000"
+            endpoint = service + qsp
 
-        try:
-            response = requests.post(endpoint, headers=headers, data=mmif_str)
-        except Exception as e:
-            print("Encountered exception:", e)
-            print("Failed to get a response from the CLAMS web service.")
-            print("Check CLAMS web service and resume before batch item:", item_count)
-            raise SystemExit("Exiting script.")
+            headers = {'Accept': 'application/json'}
 
-        print("CLAMS app web serivce response code:", response.status_code)
-        
-        # use the HTTP response as appropriate
-        if response.status_code :
-            mmif_str = response.text
+            with open(item["mmif_paths"][mmifi-1], "r") as file:
+                mmif_str = file.read()
 
-            if response.status_code == 500:
-                mmif_path += "500"
+            try:
+                response = requests.post(endpoint, headers=headers, data=mmif_str)
+            except Exception as e:
+                print("Encountered exception:", e)
+                print("Failed to get a response from the CLAMS web service.")
+                print("Check CLAMS web service and resume before batch item:", item_count)
+                raise SystemExit("Exiting script.")
 
-            with open(mmif_path, "w") as file:
-                num_chars = file.write(mmif_str)
+            print("CLAMS app web serivce response code:", response.status_code)
             
-            if num_chars < len(mmif_str):
-                raise Exception("Tried to write MMIF, but failed.")
+            # use the HTTP response as appropriate
+            if response.status_code :
+                mmif_str = response.text
+                if response.status_code == 500:
+                    mmif_path += "500"
 
-            print("MMIF file created.")
+            # Write out MMIF file
+            if mmif_str != "":
+                with open(mmif_path, "w") as file:
+                    num_chars = file.write(mmif_str)
+                if num_chars < len(mmif_str):
+                    raise Exception("Tried to write MMIF, but failed.")
+                print("MMIF file created.")
 
-    # Validate step     
+        else:
+            ################################################################
+            # Run CLAMS app by calling the Docker image
+            print("Attempting to call Dockerized CLAMS app CLI...")
+
+            input_mmif_filename = item["mmif_files"][mmifi-1]
+            output_mmif_filename = mmif_filename
+
+            # build shell command as list for `subprocess.run()`
+            coml = ["bash", 
+                    "../../../Program Files/Docker/Docker/resources/bin/docker", 
+                    "run",
+                    "-v",
+                    mnt_media_dir + '/:/data',
+                    "-v",
+                    mnt_mmif_dir + '/:/mmif',
+                    "-i",
+                    "--rm",
+                    docker_image,
+                    "python",
+                    "cli.py"
+                    ]
+
+            # If there are parameters, add them to the command list
+            if len(clams_params[clamsi]) > 0:
+                app_params = []
+                for p in clams_params[clamsi]:
+                    app_params.append( "--" + p )
+                    app_params.append( str(clams_params[clamsi][p]) )
+            
+                coml += app_params
+
+            coml.append("/mmif/" + input_mmif_filename)
+            coml.append("/mmif/" + output_mmif_filename)
+
+            # print(coml) # DIAG
+
+            result = subprocess.run(coml, capture_output=True, text=True)
+            if result.stderr:
+                print("Failure: stderr:", result.stderr)
+            else:
+                print("CLAMS app finished without errors.")
+
+
+    # Validate CLAMS app run
     mmif_status = mmif_check(mmif_path)
     if ('laden' in mmif_status and 'error-views' not in mmif_status):
         item["mmif_files"].append(mmif_filename)
