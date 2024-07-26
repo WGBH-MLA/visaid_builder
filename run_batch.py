@@ -25,7 +25,9 @@ import swt.process_swt
 #batch_conf_path = "./stovetop/challenge_2_pbd/batchconf_1.json"
 #batch_conf_path = "./stovetop/shipments/Cascade_34524/batchconf.json"
 #batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_test1.json"
-batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_test2.json"
+#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_try_01.json"
+#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_try_03.json"
+batch_conf_path = "./stovetop/refact/batchconf_try_01.json"
 
 
 ########################################################
@@ -206,6 +208,25 @@ def update_batch_results():
         json.dump(batch_l[:(item_count-start_after_item)], file, indent=2)
 
 
+def cleanup_media(item_count, item):
+    # Cleanup media, i.e., remove media file for this item
+    # Do this only if the global settings allow it
+    
+    # refer to data structures that are global to this script
+    global cleanup_media_per_item, cleanup_beyond_item
+
+    print("# CLEANING UP MEDIA")
+
+    if cleanup_media_per_item and item_count > cleanup_beyond_item:
+        print("Attempting to removing media at", item["media_path"])
+        removed = remove_media(item["media_path"])
+        if removed:
+            print("Media removed.")
+    else:
+        print("Leaving media for this item.")
+
+
+
 
 ########################################################
 # %%
@@ -275,10 +296,13 @@ for item in batch_l:
         media_path = media_dir + "/" + media_filename
         print("Media already available:  ", media_path) 
     else:
-        print("Media not yet available; will make available.") 
-        media_filename = make_avail(item["asset_id"], item["sonyci_id"], media_dir)
-        if media_filename is not None:
-            media_path = media_dir + "/" + media_filename
+        print("Media not yet available; will try to make available.") 
+        if item["sonyci_id"] :
+            media_filename = make_avail(item["asset_id"], item["sonyci_id"], media_dir)
+            if media_filename is not None:
+                media_path = media_dir + "/" + media_filename
+        else:
+            print("No Ci ID for " + item["asset_id"])
 
     if media_filename is not None and os.path.isfile(media_path):
         item["media_filename"] = media_filename
@@ -329,8 +353,8 @@ for item in batch_l:
             mime = "audio"
         else:
             print("Warning: media type of " + item["asset_id"] + " is `" + item["media_type"] + "`.")
-            print("Using 'text' as the MIME type.")
-            mime = "text"
+            print("Using 'video' as the MIME type.")
+            mime = "video"
         mmif_str = make_blank_mmif(item["media_filename"], mime)
 
         with open(mmif_path, "w") as file:
@@ -348,6 +372,7 @@ for item in batch_l:
         mmif_check(mmif_path, complain=True)
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-0"
+        cleanup_media(itemcount, item)
         update_batch_results()
         continue
 
@@ -471,7 +496,8 @@ for item in batch_l:
 
             result = subprocess.run(coml, capture_output=True, text=True)
             if result.stderr:
-                print("Failure: stderr:", result.stderr)
+                print("Failure: CLI returned with error.  Contents of stderr:")
+                print(result.stderr)
             else:
                 print("CLAMS app finished without errors.")
 
@@ -487,12 +513,14 @@ for item in batch_l:
         mmif_check(mmif_path, complain=True)
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-1"
+        cleanup_media(itemcount, item)
         update_batch_results()
         continue
 
     ########################################################
     # Process MMIF and get useful output
     # 
+    
     print("# USING CLAMS OUTPUT")
 
     # Check for prereqs
@@ -508,6 +536,8 @@ for item in batch_l:
         continue
     else:
         print("-- Step prerequisites passed. --")
+
+
 
     with open(item["mmif_paths"][mmifi], "r") as file:
         mmif_str = file.read()
@@ -547,7 +577,14 @@ for item in batch_l:
         proxy_start_ms = max(bars_end, slate_begin)
     else:
         proxy_start_ms = bars_end
-    
+
+    # For now:  Just use bars end time.
+    proxy_start_ms = bars_end
+
+    # A proxy start time > 150s is pretty sketchy.  Don't believe it.
+    if proxy_start_ms > 150000:
+        proxy_start_ms = 0
+
     print("bars end:", bars_end, "slate rep:", slate_rep, "proxy start:", proxy_start_ms)
 
     item["slate_begin"] = slate_begin
@@ -562,7 +599,7 @@ for item in batch_l:
     #
     if get_slate:
         if slate_rep is not None:
-            print("Trying to exact a slate to", slates_dir)
+            print("Trying to exact a slate...")
 
             slate_rslt = extract_stills( item["media_path"], 
                                         [ slate_rep ], 
@@ -580,7 +617,7 @@ for item in batch_l:
     # Save a visaid
     #
     if make_visaid:
-        print("Trying to make a visaid in", visaids_dir)
+        print("Trying to make a visaid...")
 
         visaid_filename, visaid_path = swt.process_swt.create_aid( 
             video_path=item["media_path"], 
@@ -597,25 +634,16 @@ for item in batch_l:
 
 
     ########################################################
+    # Done with this item.  
+    # 
+
     # Clean up
-    # 
-    print("# CLEANING UP MEDIA")
+    cleanup_media(item_count, item)
 
-    if cleanup_media_per_item and item_count > cleanup_beyond_item:
-        print("Attempting to removing media at", item["media_path"])
-        removed = remove_media(item["media_path"])
-        if removed:
-            print("Media removed.")
-    else:
-        print("Leaving media for this item.")
-
-
-
-
-    ########################################################
-    # Done with this item.  Update results
-    # 
+    # Update results
     update_batch_results()
+
+    # Print diag info
     tn = datetime.datetime.now()
     print("elapsed time:", (tn-t0).seconds, "seconds")
 
