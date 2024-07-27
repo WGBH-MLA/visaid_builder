@@ -41,6 +41,26 @@ def list_tfs( mmifstr:str ):
     else:
         return []
 
+    # New, to account for change in SWT v6.0
+    # Get information about the app version.
+    # If version >= 6.0, use view ID prefix for time point refs
+    app = useview.metadata.app
+    try:
+        app_ver = float(app[app.rfind("/v")+2:])
+        
+        # For SWT v6.0 and above timepoints targeted by other frames include
+        # a reference to the view from which they came.
+        if app_ver > 5.9999:
+            ref_prefix = useview.id + ":"
+        else:
+            ref_prefix = ""
+    except Error as e:
+        print("Error:", e)
+        print("Could not get app version.")
+        print("Assuming version less than 6.0")
+        ref_prefix = ""
+
+
     # Drill down to the annotations we're after, creating generators
     tfanns = useview.get_annotations(AnnotationTypes.TimeFrame)
     tpanns = useview.get_annotations(AnnotationTypes.TimePoint)
@@ -69,9 +89,13 @@ def list_tfs( mmifstr:str ):
     # Build another list for TimePoints
     tps = []
     for ann in tpanns:
-        tps += [[ ann.get_property("id"), 
-                ann.get_property("label"), 
-                ann.get_property(tP_prop) ]]  # work-around for v3.0 bug
+        
+        # tpt_id = ann.get_property("id") # for v5.1 and below
+        tpt_id = ref_prefix + ann.get_property("id") # new, for v6.0 and above
+
+        tps += [[ tpt_id, 
+                  ann.get_property("label"), 
+                  ann.get_property(tP_prop) ]]  # work-around for v3.0 bug
 
     # create DataFrames from lists and merge
     tfpts_df = pd.DataFrame(tfpts, columns=['tf_id','frameType','tp_id','is_rep'])
