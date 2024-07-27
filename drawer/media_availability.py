@@ -6,6 +6,7 @@ import os
 import glob
 import subprocess
 import requests
+import time
 
 ci_url_sh_path = '../localcode/secret/ci_url/ci_url.sh'
 #ci_url_sh_path = '../../devnc/get_sonyci_url/ci_url.sh'
@@ -93,19 +94,29 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
     if not os.path.exists(ci_url_sh_path):
         raise FileNotFoundError("Path to ci_url does not exist: " + ci_url_sh_path)
 
-    print("About to get Ci URL") # DIAG
+    print("About to get Ci URL for Ci ID:", ci_id) # DIAG
 
-    ci_url_result = subprocess.run([ 'bash', 
-                                     ci_url_sh_path, 
-                                     ci_id ], 
-                                   capture_output=True, text=True)
+    retries = 2
+    for attempt in range(retries+1):
+        ci_url_result = subprocess.run([ 'bash', 
+                                        ci_url_sh_path, 
+                                        ci_id ], 
+                                       capture_output=True, text=True)
 
-    # Remove whitespace and quotation marks (which I've notice in output)
-    ci_url = ci_url_result.stdout.strip().replace('"', '')
-
-    if ci_url == "null":
-        print("Failure: `ci_url.sh` did not return a URL for " + guid)
-        return None
+        # Remove whitespace and quotation marks (which I've notice in output)
+        ci_url = ci_url_result.stdout.strip().replace('"', '')
+        if ci_url == "null":
+            if attempt == retries:
+                print("Failure: `ci_url.sh` returned no URL for " + ci_id)
+                return None
+            else:
+                print("Warning: `ci_url.sh` returned no URL for " + ci_id)
+                delay = 5
+                print("Pausing for", delay, "seconds...")
+                time.sleep(delay)
+                print("Trying again.")
+        else:
+            break
 
     # Received the URL
     # Do a little checking; then go get the file
