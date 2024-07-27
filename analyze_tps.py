@@ -1,27 +1,31 @@
 """
 analyze_tps.py
 
-This script helps select images for SWT-style labeling.
+This script helps select and extract images for SWT-style labeling.
 
-This script takes a collection of MMIF files output by SWT.
+The main function is `analyze_mmif()` which takes a collection of MMIF files 
+output by SWT.
 For each MMIF file, it analyzes the TimePoint annotations.
 It looks for timepoints meeting certain intrinsic and relational criteria,
 yielding a list of millisecond denominated for timestamps corresponding to that
 MMIF file.
 
-Output is a dictionary with keys as AAPB IDs.  
+Function output is a dictionary with keys as AAPB IDs.  
 Dictionary values are dictionaries with the following keys:
   - timePoint - timestamp in milliseconds
   - label - single character type label
   - subLabel - single character for subtype label (if applicable)
   - confidence - confidence about that label
 
+The script uses the output of this function to extract stills and create a
+KSL-style index for the a labeling project
 
 """
 
 # %%
 # Run import statements
 import os
+import shutil
 import glob
 
 import av
@@ -37,25 +41,42 @@ from drawer.mmif_adjunct import mmif_check
 # %%
 # Set hard-coded parameters
 
-media_dir = "D:/challenge_2_pbd"
-#media_dir = "D:/challenge_1_bm"
+#media_dir = "D:/challenge_2_pbd"
+media_dir = "D:/challenge_1_bm"
 
-mmif_dir = "C:/Users/owen_king/kitchen/stovetop/challenge_2_pbd/mmif"
-
-testmmifpaths = [ 
-              "./stovetop/challenge_1_bm/mmif/cpb-aacip-0ae98c2c4b2_CHAL1_1.mmif", 
-              "./stovetop/challenge_1_bm/mmif/cpb-aacip-0b0c0afdb11_CHAL1_1.mmif"
-              ]
-#mmifpaths = testmmifpaths
-
-mmifpaths = glob.glob(mmif_dir + "/*1.mmif")
+#mmif_dir = "C:/Users/owen_king/kitchen/stovetop/challenge_2_pbd/mmif"
+#mmif_dir = "C:/Users/owen_king/kitchen/stovetop/challenge_2_pbd/challenge_mmif2"
+mmif_dir = "C:/Users/owen_king/kitchen/stovetop/challenge_1_bm/challenge_mmif1"
 
 #labeler_path = "C:/Users/owen_king/frame_labeling/challenge"
-labeler_path = "C:/Users/owen_king/frame_labeling/challenge_2_pbd"
+#labeler_path = "C:/Users/owen_king/frame_labeling/challenge_2-2_pbd"
+labeler_path = "C:/Users/owen_king/frame_labeling/challenge_1-1_bm"
+
+ksl_path = "C:/Users/owen_king/keystrokelabeler"
+
+if not os.path.exists(labeler_path):
+    print("Creating directory:", labeler_path)
+    os.mkdir(labeler_path)
+
+    # Copy KSL setup files
+    copy_files = ["conf.js", "ksllogic.js", "labeler.html", "layout.css"]
+    for fn in copy_files:
+        shutil.copyfile((ksl_path + "/" + fn), (labeler_path + "/" + fn))
+else:
+    print("Error: Project directory exists.")
+    raise Exception
 
 image_path = labeler_path + "/images"
 
+if not os.path.exists(image_path):
+    print("Creating directory:", image_path)
+    os.mkdir(image_path)
+else:
+    print("Error: Image directory exists.")
+    raise Exception
 
+
+#############################################################################
 # %%
 # Function definitions
 
@@ -129,7 +150,7 @@ def analyze_mmif(mmifstr:str):
             elif low_conf:
                 explanation = "[Low confidence]"
 
-            note = format(probs[label], '.2f') + " " + explanation
+            note = label + ": " + format(probs[label], '.2f') + " " + explanation
 
             tpois.append( [ ann.get_property("timePoint"), label, note ])
 
@@ -141,11 +162,13 @@ def analyze_mmif(mmifstr:str):
 
 
 
-
+#############################################################################
 # %%
 # Run process over collection of MMIF files
 
 guid_tps = {}
+
+mmifpaths = glob.glob(mmif_dir + "/*1.mmif")
 
 # Build a dictionary of timepoints to analyze
 for mmifpath in mmifpaths:
@@ -194,9 +217,10 @@ for guid in guid_tps:
 
     tps = guid_tps[guid]
 
-    print(tps[0]) # DIAG
     print("Extracting from", video_path)
-
+    print("Extracting to", image_path)
+    print("First extraction:", tps[0]) # DIAG
+    
     fcount = 0
     stills_count = 0
     target_time = int(tps[stills_count][0])
