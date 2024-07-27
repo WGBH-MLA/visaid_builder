@@ -31,9 +31,13 @@ hardcoded_output_file = "./batch.csv"
 #hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/batch_2024-05-07_unknowns_x1018/wipr_ams2_xml"
 #hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/batch_2024-05-07_orr_green_x2578/wipr_ams2_pbcore"
 #hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/WIPR_transcripts/complete/wipr_ams2_pbcore"
-hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/shipment_WVIA_34451_34609/ams2_pbcore"
+#hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/shipment_WVIA_34451_34609/ams2_pbcore"
+#hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/shipments/ARPB_2024-07_x2064/ams2_pbcore"
+#hardcoded_pbcore_dir = "C:/Users/owen_king/kitchen/stovetop/shipments/ARPB_2024-07_x2064/ams2_pbcore_try_02"
 
-notebook_mode = True
+
+notebook_mode = False
+#notebook_mode = True
 
 ############################################################################
 # %%
@@ -42,6 +46,8 @@ def tablify( pbcore_dir:str ):
     """
     Build tables of assets and instantiations (as Python lists of lists)
     """
+
+    print("Using directory:", pbcore_dir)
 
     if not os.path.isdir(pbcore_dir):
         print("Error:  Invalid directory path for PBCore files.")
@@ -52,6 +58,7 @@ def tablify( pbcore_dir:str ):
 
     if len(filenames) > len(xmlfilenames):
         print("Warning: Working directory includes files with extension other than .xml")
+        print("         or perhaps a file named simply '.xml'.")
 
     # define namespace prefix for XML elements
     ns = {"pbcore": "http://www.pbcore.org/PBCore/PBCoreNamespace.html"}
@@ -537,6 +544,13 @@ def inframe( assttbl, insttbl ):
 ############################################################################
 # %%
 # Define frame filter and projection functions
+
+def filterproj_main( asstdf ):
+
+    cols = ["asset_id", "sonyci_id", "media_type", "asset_type", "level_of_user_access", "broadcast_date", "created_date", "consolidated_title", "proxy_duration"]
+    return( asstdf[ cols ] ) 
+
+
 def filterproj1( asstdf ):
 
     # filter for a list of GUIDs
@@ -671,20 +685,10 @@ def main():
 
     asstdf, instdf, joindf = inframe( assttbl, insttbl )
 
-    projected = filterproj1( asstdf )
+    projected = filterproj_main( asstdf )
 
     write_csv( projected, batch_csv )
 
-
-def build_full_frames():
-
-    global hardcoded_pbcore_dir
-    global hardcoded_output_file
-
-    assttbl, insttbl = tablify( hardcoded_pbcore_dir )
-    asstdf, instdf, joindf = inframe( assttbl, insttbl )
-
-    return (asstdf, instdf, joindf)
 
 
 
