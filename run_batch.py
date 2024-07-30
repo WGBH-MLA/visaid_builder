@@ -27,7 +27,7 @@ import swt.process_swt
 #batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_test1.json"
 #batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_try_01.json"
 #batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_try_03.json"
-batch_conf_path = "./stovetop/refact/batchconf_try_01.json"
+batch_conf_path = "./stovetop/refact/batchconf_04.json"
 
 
 ########################################################
@@ -49,11 +49,16 @@ try:
         clams_run_cli = False
 
     if clams_run_cli:
-        # need to know the docker_image if (but only if) running in CLI mode
-        docker_image = conf["docker_image"]
+        # need to know the docker image if (but only if) running in CLI mode
+        clams_image = conf["clams_image"]
     else:
-        # ignore docker_image if not running in CLI mode
-        docker_image = ""
+        # ignore clams_image if not running in CLI mode
+        clams_image = ""
+
+    if "clams_params" in conf:
+        clams_params = conf["clams_params"]
+    else:
+        clams_params = []
 
     if "local_base" in conf:
         local_base = conf["local_base"]
@@ -127,11 +132,6 @@ try:
         scene_types = conf["scene_types"]
     else:
         scene_types = []
-
-    if "clams_params" in conf:
-        clams_params = conf["clams_params"]
-    else:
-        clams_params = []
 
 except KeyError as e:
     print("Invalid configuration file at", batch_conf_path)
@@ -475,7 +475,7 @@ for item in batch_l:
                     mnt_mmif_dir + '/:/mmif',
                     "-i",
                     "--rm",
-                    docker_image,
+                    clams_image,
                     "python",
                     "cli.py"
                     ]
@@ -484,15 +484,28 @@ for item in batch_l:
             if len(clams_params[clamsi]) > 0:
                 app_params = []
                 for p in clams_params[clamsi]:
-                    app_params.append( "--" + p )
-                    app_params.append( str(clams_params[clamsi][p]) )
+                    if type(clams_params[clamsi][p]) != dict:
+                        # parameter is not nested; just add it
+                        app_params.append( "--" + p )
+                        app_params.append( str(clams_params[clamsi][p]) )
+                    else:
+                        # parameter is a dictionary; break it into separately
+                        # specified parameters
+                        for mkey in clams_params[clamsi][p]:
+                            app_params.append( "--" + p )
+                            mvalue = clams_params[clamsi][p][mkey]
+                            app_params.append( mkey + ":" +  mvalue )
+
+                # Work around to delimit values passed with --map flag:
+                # Add a dummy flag
+                app_params.append("--")
             
                 coml += app_params
 
             coml.append("/mmif/" + input_mmif_filename)
             coml.append("/mmif/" + output_mmif_filename)
 
-            # print(coml) # DIAG
+            print(coml) # DIAG
 
             result = subprocess.run(coml, capture_output=True, text=True)
             if result.stderr:
