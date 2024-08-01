@@ -21,7 +21,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-def list_tfs( mmifstr:str ):
+def list_tfs( mmifstr:str, max_gap:int=0 ):
     """
     Analyzes MMIF file from SWT and returns tabular data.
 
@@ -111,6 +111,50 @@ def list_tfs( mmifstr:str ):
 
     # sort list of timeFrames by start time
     tfs.sort(key=lambda f:f[2])
+
+    # intersperse sample non-labeled frames among labeled timeframes.
+    if max_gap: 
+
+        # Samples are primarily useful for their central frame, but they need a 
+        # duration to be represented in the tfs data structure
+        sample_dur = max_gap // 2
+
+        sample_counter = 1
+        samples = []
+
+        # Iterate through existing time frames to identify gaps in which to 
+        # insert samples.  Specifically, for each time frame, after the first,
+        # look back to see how much time since the last one.  If that gap is 
+        # bigger than the max_gap, then make a sample.
+        for rnum in range(1, len(tfs)-1) :
+
+            # calculate the distance between the start of the current frame
+            # and the end of the previous
+            full_gap = tfs[rnum][2] - tfs[rnum-1][3]
+
+            if full_gap > max_gap :
+
+                # figure out how many and where to sample
+                num_samples = full_gap // max_gap
+                gap_size = full_gap // num_samples
+
+                # collect samples (we'll add them into tfs later)
+                for sample_num in range(num_samples):
+                    gap_start = sample_num * gap_size + tfs[rnum-1][3]
+                    
+                    sample_start = gap_start + (gap_size - sample_dur)//2
+                    sample_end = sample_start + sample_dur
+                    sample_rep = sample_start + sample_dur//2
+
+                    tf_id = "s_" + str(sample_counter)
+
+                    samples.append([tf_id, 'unlabeled_sample', sample_start, sample_end, sample_rep])
+                    sample_counter += 1
+
+        # add samples to timeframes and re-sort
+        tfs += samples
+        tfs.sort(key=lambda f:f[2])
+
 
     return tfs
 

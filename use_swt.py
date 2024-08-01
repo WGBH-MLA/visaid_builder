@@ -94,7 +94,7 @@ def main():
     usefile.close()
 
     # Process the serialized MMIF to create the table of time frames
-    tfs = swt.process_swt.list_tfs(mmifstr)
+    tfs = swt.process_swt.list_tfs(mmifstr, max_gap=180000)
 
     # Display the TimeFrame index
     if display: 

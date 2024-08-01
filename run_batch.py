@@ -556,7 +556,7 @@ for item in batch_l:
         mmif_str = file.read()
     
     # call SWT MMIF processors to get a table of time frames
-    tfs = swt.process_swt.list_tfs(mmif_str)
+    tfs = swt.process_swt.list_tfs(mmif_str, max_gap=180000)
 
     # restrict to just bars and slates
     #tfs = [ tf for tf in tfs if tf[1] in ['bars', 'slate'] ]
