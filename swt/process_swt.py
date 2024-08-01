@@ -88,14 +88,17 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
 
     # Build another list for TimePoints
     tps = []
+    last_time = 0
     for ann in tpanns:
         
-        # tpt_id = ann.get_property("id") # for v5.1 and below
         tpt_id = ref_prefix + ann.get_property("id") # new, for v6.0 and above
 
         tps += [[ tpt_id, 
                   ann.get_property("label"), 
                   ann.get_property(tP_prop) ]]  # work-around for v3.0 bug
+        
+        if ann.get_property(tP_prop) > last_time:
+            last_time = ann.get_property(tP_prop)
 
     # create DataFrames from lists and merge
     tfpts_df = pd.DataFrame(tfpts, columns=['tf_id','frameType','tp_id','is_rep'])
@@ -112,8 +115,15 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
     # sort list of timeFrames by start time
     tfs.sort(key=lambda f:f[2])
 
+    # If this parameter has been passed to the function, then
     # intersperse sample non-labeled frames among labeled timeframes.
+    # The max_gap value controls the largest gap without the addtition
+    # of an interspersed frame.
     if max_gap: 
+
+        # add frames for first and last timepoints
+        tfs.insert(0, ['f_0', 'first_frame', 0, 0, 0])
+        tfs.append(['f_n', 'last_frame', last_time, last_time, last_time])
 
         # Samples are primarily useful for their central frame, but they need a 
         # duration to be represented in the tfs data structure
@@ -126,8 +136,8 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
         # insert samples.  Specifically, for each time frame, after the first,
         # look back to see how much time since the last one.  If that gap is 
         # bigger than the max_gap, then make a sample.
-        for rnum in range(1, len(tfs)-1) :
-
+        for rnum in range(1, len(tfs)) :
+            
             # calculate the distance between the start of the current frame
             # and the end of the previous
             full_gap = tfs[rnum][2] - tfs[rnum-1][3]
