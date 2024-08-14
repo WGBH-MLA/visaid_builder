@@ -22,13 +22,7 @@ import swt.process_swt
 
 # Batch config filename is hard-coded (for now).
 # This is the only line that needs to be changed per run.
-#batch_conf_path = "./stovetop/challenge_2_pbd/batchconf_1.json"
-#batch_conf_path = "./stovetop/shipments/Cascade_34524/batchconf.json"
-#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_test1.json"
-#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_try_01.json"
-#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064/batchconf_try_03.json"
-batch_conf_path = "./stovetop/refact/batchconf_04.json"
-
+batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064_redo/batchconf_02.json"
 
 ########################################################
 # Set batch-specific parameters based on values in conf file
@@ -138,6 +132,7 @@ except KeyError as e:
     print("Error for expected key:", e)
     raise SystemExit
 
+
 #########################################################
 # Set up batch directories and files
 
@@ -226,16 +221,14 @@ def cleanup_media(item_count, item):
         print("Leaving media for this item.")
 
 
-
-
 ########################################################
 # %%
 # Process batch in a loop
 
 # Make sure at least an empty list exists to define the batch
 # (This value should get overwritten when we open a batch def file in the next 
-# step. However, if there is no such file, this enables us to exit the empty 
-# loop gracefully.)
+# step. However, if there is no such file, having an empty list this enables 
+# us to exit the empty loop gracefully.)
 batch_l = []
 
 # open batch as a list of dictionaries
@@ -496,7 +489,7 @@ for item in batch_l:
                             mvalue = clams_params[clamsi][p][mkey]
                             app_params.append( mkey + ":" +  mvalue )
 
-                # Work around to delimit values passed with --map flag:
+                # Work-around to delimit values passed with --map flag:
                 # Add a dummy flag
                 app_params.append("--")
             
@@ -505,11 +498,11 @@ for item in batch_l:
             coml.append("/mmif/" + input_mmif_filename)
             coml.append("/mmif/" + output_mmif_filename)
 
-            print(coml) # DIAG
+            # print(coml) # DIAG
 
             result = subprocess.run(coml, capture_output=True, text=True)
             if result.stderr:
-                print("Failure: CLI returned with error.  Contents of stderr:")
+                print("Warning: CLI returned with error.  Contents of stderr:")
                 print(result.stderr)
             else:
                 print("CLAMS app finished without errors.")
@@ -549,7 +542,6 @@ for item in batch_l:
         continue
     else:
         print("-- Step prerequisites passed. --")
-
 
 
     with open(item["mmif_paths"][mmifi], "r") as file:
@@ -614,15 +606,21 @@ for item in batch_l:
         if slate_rep is not None:
             print("Trying to exact a slate...")
 
-            slate_rslt = extract_stills( item["media_path"], 
-                                        [ slate_rep ], 
-                                        item["asset_id"],
-                                        slates_dir,
-                                        verbose=False )
-            item["slate_filename"] = slate_rslt[0]
-            item["slate_path"] = slate_rslt[1]
+            try:
+                slate_rslt = extract_stills( item["media_path"], 
+                                            [ slate_rep ], 
+                                            item["asset_id"],
+                                            slates_dir,
+                                            verbose=False )
+                item["slate_filename"] = slate_rslt[0]
+                item["slate_path"] = slate_rslt[1]
 
-            print("Slate saved at", item["slate_path"])
+                print("Slate saved at", item["slate_path"])
+
+            except Exception as e:
+                print("Extraction of slate frame at", slate_rep ,"failed.")
+                print("Error:", e)
+            
         else:
             print("No slate found.")
 
@@ -632,18 +630,23 @@ for item in batch_l:
     if make_visaid:
         print("Trying to make a visaid...")
 
-        visaid_filename, visaid_path = swt.process_swt.create_aid( 
-            video_path=item["media_path"], 
-            tfs=tfs, 
-            stdout=False, 
-            output_dirname=visaids_dir,
-            proj_name=item["mmif_files"][mmifi], 
-            guid=item["asset_id"],
-            types=scene_types
-            )
+        try:
+            visaid_filename, visaid_path = swt.process_swt.create_aid( 
+                video_path=item["media_path"], 
+                tfs=tfs, 
+                stdout=False, 
+                output_dirname=visaids_dir,
+                proj_name=item["mmif_files"][mmifi], 
+                guid=item["asset_id"],
+                types=scene_types
+                )
 
-        item["visaid_filename"] = visaid_filename
-        item["visaid_path"] = visaid_path
+            item["visaid_filename"] = visaid_filename
+            item["visaid_path"] = visaid_path
+
+        except Exception as e:
+            print("Creation of visaid failed.")
+            print("Error:", e)
 
 
     ########################################################
