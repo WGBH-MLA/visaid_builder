@@ -158,7 +158,7 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
 
                     tf_id = "s_" + str(sample_counter)
 
-                    samples.append([tf_id, 'unlabeled_sample', sample_start, sample_end, sample_rep])
+                    samples.append([tf_id, 'unlabeled sample', sample_start, sample_end, sample_rep])
                     sample_counter += 1
 
         # add samples to timeframes and re-sort
@@ -176,7 +176,8 @@ def create_aid(video_path: str,
                guid: str = None,
                stdout: bool = False,
                output_dirname: str = ".",
-               types: list = []
+               types: list = [],
+               metadata: str = ""
                ):
     """
     Creates an HTML file (with embedded images) as a visual aid, based on the output
@@ -281,7 +282,7 @@ def create_aid(video_path: str,
         html_img_tag = f'<img src="data:image/jpeg;base64,{f[5]}" />'
         html_cap = f'<span>{html_start} - {end_str}: {label}</span><br />'
 
-        html_body += ("<div class='item'>" + html_cap + html_img_tag + "</div>")
+        html_body += ("<div class='item'>" + html_cap + html_img_tag + "</div>" + "\n")
         
 
     html_str = html_top + html_body + html_end
