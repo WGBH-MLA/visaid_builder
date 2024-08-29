@@ -18,11 +18,17 @@ import swt.process_swt
 
 ########################################################
 # %%
-# Read batch conf file for batch-specific parameters
+# environment-specific path to Docker
+#docker_bin_path = "../../../Program Files/Docker/Docker/resources/bin/docker"
+docker_bin_path = "/mnt/c/Program Files/Docker/Docker/resources/bin/docker"
 
 # Batch config filename is hard-coded (for now).
 # This is the only line that needs to be changed per run.
-batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064_redo/batchconf_02.json"
+#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064_redo/batchconf_03.json"
+#batch_conf_path = "./stovetop/clams_whisper_batch_test/batchconf_01.json"
+#batch_conf_path = "./stovetop/shipments/OPB_35059_35124_35135_35195_35220/batchconf_01.json"
+#batch_conf_path = "./stovetop/shipments/SFL_PBS_34959/batchconf_01.json"
+batch_conf_path = "./stovetop/shipments/Hawaii_35148_35227_35255/batchconf_01.json"
 
 ########################################################
 # Set batch-specific parameters based on values in conf file
@@ -44,10 +50,10 @@ try:
 
     if clams_run_cli:
         # need to know the docker image if (but only if) running in CLI mode
-        clams_image = conf["clams_image"]
+        clams_images = conf["clams_images"]
     else:
-        # ignore clams_image if not running in CLI mode
-        clams_image = ""
+        # ignore clams_images if not running in CLI mode
+        clams_images = ""
 
     if "clams_params" in conf:
         clams_params = conf["clams_params"]
@@ -76,16 +82,6 @@ try:
         mnt_mmif_dir = mnt_base + conf["mmif_dir"]
     else:
         mmif_dir = ""  # to be set below
-
-    if "get_slate" in conf:
-        get_slate = conf["get_slate"]
-    else:
-        get_slate = False
-
-    if "make_visaid" in conf:
-        make_visaid = conf["make_visaid"]
-    else:
-        make_visaid = False
 
     if "start_after_item" in conf:
         start_after_item = conf["start_after_item"]
@@ -121,6 +117,23 @@ try:
         warnings.filterwarnings(conf["filter_warnings"])
     else:
         warnings.filterwarnings("ignore")
+
+    if "post_proc" in conf:
+        post_proc = conf["post_proc"]
+    else:
+        post_proc = ""
+
+    # config parameters specific to SWT
+
+    if "get_slate" in conf:
+        get_slate = conf["get_slate"]
+    else:
+        get_slate = False
+
+    if "make_visaid" in conf:
+        make_visaid = conf["make_visaid"]
+    else:
+        make_visaid = False
 
     if "scene_types" in conf:
         scene_types = conf["scene_types"]
@@ -365,7 +378,7 @@ for item in batch_l:
         mmif_check(mmif_path, complain=True)
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-0"
-        cleanup_media(itemcount, item)
+        cleanup_media(item_count, item)
         update_batch_results()
         continue
 
@@ -460,7 +473,7 @@ for item in batch_l:
 
             # build shell command as list for `subprocess.run()`
             coml = ["bash", 
-                    "../../../Program Files/Docker/Docker/resources/bin/docker", 
+                    docker_bin_path, 
                     "run",
                     "-v",
                     mnt_media_dir + '/:/data',
@@ -468,7 +481,7 @@ for item in batch_l:
                     mnt_mmif_dir + '/:/mmif',
                     "-i",
                     "--rm",
-                    clams_image,
+                    clams_images[clamsi],
                     "python",
                     "cli.py"
                     ]
@@ -499,6 +512,7 @@ for item in batch_l:
             coml.append("/mmif/" + output_mmif_filename)
 
             # print(coml) # DIAG
+            print( " ".join(coml) ) # DIAG
 
             result = subprocess.run(coml, capture_output=True, text=True)
             if result.stderr:
@@ -519,7 +533,7 @@ for item in batch_l:
         mmif_check(mmif_path, complain=True)
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-1"
-        cleanup_media(itemcount, item)
+        cleanup_media(item_count, item)
         update_batch_results()
         continue
 
@@ -527,126 +541,130 @@ for item in batch_l:
     # Process MMIF and get useful output
     # 
     
-    print("# USING CLAMS OUTPUT")
+    if post_proc :
 
-    # Check for prereqs
-    mmif_status = mmif_check(item["mmif_paths"][mmifi])
-    if ('laden' not in mmif_status or 'error-views' in mmif_status):
-        # prereqs not satisfied
-        # print error messages, updated results, continue to next loop iteration
-        mmif_check(mmif_path, complain=True)
-        print("Step prerequisite failed.")
-        print("SKIPPING", item["asset_id"])
-        item["skip_reason"] = "usemmif-prereq"
-        update_batch_results()
-        continue
-    else:
-        print("-- Step prerequisites passed. --")
+        print("# USING CLAMS OUTPUT")
+
+        # Check for prereqs
+        mmif_status = mmif_check(item["mmif_paths"][mmifi])
+        if ('laden' not in mmif_status or 'error-views' in mmif_status):
+            # prereqs not satisfied
+            # print error messages, updated results, continue to next loop iteration
+            mmif_check(mmif_path, complain=True)
+            print("Step prerequisite failed.")
+            print("SKIPPING", item["asset_id"])
+            item["skip_reason"] = "usemmif-prereq"
+            update_batch_results()
+            continue
+        else:
+            print("-- Step prerequisites passed. --")
 
 
-    with open(item["mmif_paths"][mmifi], "r") as file:
-        mmif_str = file.read()
+        with open(item["mmif_paths"][mmifi], "r") as file:
+            mmif_str = file.read()
     
-    # call SWT MMIF processors to get a table of time frames
-    tfs = swt.process_swt.list_tfs(mmif_str, max_gap=180000)
+    if post_proc.lower() == "swt" :
 
-    # restrict to just bars and slates
-    #tfs = [ tf for tf in tfs if tf[1] in ['bars', 'slate'] ]
+        # call SWT MMIF processors to get a table of time frames
+        tfs = swt.process_swt.list_tfs(mmif_str, max_gap=180000)
 
-    #
-    # Calculate some significant datapoints based on table of time frames
-    #
-    # Note:  For reasons I don't understand, we have to cast some integer
-    # values originally created by Pandas to int from int64
+        # restrict to just bars and slates
+        #tfs = [ tf for tf in tfs if tf[1] in ['bars', 'slate'] ]
 
-    # The end of the bars is the end of the last bars timeframe
-    # If there is no bars timeframe, then the value is 0
-    bars_end = 0
-    bars_tfs = [ tf for tf in tfs if tf[1] in ['bars'] ]
-    if len(bars_tfs) > 0:
-        bars_end = int(bars_tfs[-1][3])
-    
-    # The slate rep is the rep timepoint from from the first slate timeframe
-    # If there is not slate timeframe, then the value is None
-    slate_rep = None
-    slate_tfs = [ tf for tf in tfs if tf[1] in ['slate'] ]
-    if len(slate_tfs) > 0:
-        slate_rep = int(slate_tfs[0][4])
+        #
+        # Calculate some significant datapoints based on table of time frames
+        #
+        # Note:  For reasons I don't understand, we have to cast some integer
+        # values originally created by Pandas to int from int64
 
-    # Proxy starts at the end of the bars or the beginning of the slate,
-    # whichever is greater
-    slate_begin = None
-    proxy_start_ms = 0 
-    if len(slate_tfs) > 0:
-        slate_begin = int(slate_tfs[0][2])
-        proxy_start_ms = max(bars_end, slate_begin)
-    else:
+        # The end of the bars is the end of the last bars timeframe
+        # If there is no bars timeframe, then the value is 0
+        bars_end = 0
+        bars_tfs = [ tf for tf in tfs if tf[1] in ['bars'] ]
+        if len(bars_tfs) > 0:
+            bars_end = int(bars_tfs[-1][3])
+        
+        # The slate rep is the rep timepoint from from the first slate timeframe
+        # If there is not slate timeframe, then the value is None
+        slate_rep = None
+        slate_tfs = [ tf for tf in tfs if tf[1] in ['slate'] ]
+        if len(slate_tfs) > 0:
+            slate_rep = int(slate_tfs[0][4])
+
+        # Proxy starts at the end of the bars or the beginning of the slate,
+        # whichever is greater
+        slate_begin = None
+        proxy_start_ms = 0 
+        if len(slate_tfs) > 0:
+            slate_begin = int(slate_tfs[0][2])
+            proxy_start_ms = max(bars_end, slate_begin)
+        else:
+            proxy_start_ms = bars_end
+
+        # For now:  Just use bars end time.
         proxy_start_ms = bars_end
 
-    # For now:  Just use bars end time.
-    proxy_start_ms = bars_end
+        # A proxy start time > 150s is pretty sketchy.  Don't believe it.
+        if proxy_start_ms > 150000:
+            proxy_start_ms = 0
 
-    # A proxy start time > 150s is pretty sketchy.  Don't believe it.
-    if proxy_start_ms > 150000:
-        proxy_start_ms = 0
+        print("bars end:", bars_end, "slate rep:", slate_rep, "proxy start:", proxy_start_ms)
 
-    print("bars end:", bars_end, "slate rep:", slate_rep, "proxy start:", proxy_start_ms)
+        item["slate_begin"] = slate_begin
+        item["bars_end"] = bars_end
+        item["proxy_start"] = proxy_start_ms / 1000
 
-    item["slate_begin"] = slate_begin
-    item["bars_end"] = bars_end
-    item["proxy_start"] = proxy_start_ms / 1000
-
-    print("Proxy start:", item["proxy_start"])
+        print("Proxy start:", item["proxy_start"])
 
 
-    #
-    # Extract the slate
-    #
-    if get_slate:
-        if slate_rep is not None:
-            print("Trying to exact a slate...")
+        #
+        # Extract the slate
+        #
+        if get_slate:
+            if slate_rep is not None:
+                print("Trying to exact a slate...")
+
+                try:
+                    slate_rslt = extract_stills( item["media_path"], 
+                                                [ slate_rep ], 
+                                                item["asset_id"],
+                                                slates_dir,
+                                                verbose=False )
+                    item["slate_filename"] = slate_rslt[0]
+                    item["slate_path"] = slate_rslt[1]
+
+                    print("Slate saved at", item["slate_path"])
+
+                except Exception as e:
+                    print("Extraction of slate frame at", slate_rep ,"failed.")
+                    print("Error:", e)
+                
+            else:
+                print("No slate found.")
+
+        #
+        # Save a visaid
+        #
+        if make_visaid:
+            print("Trying to make a visaid...")
 
             try:
-                slate_rslt = extract_stills( item["media_path"], 
-                                            [ slate_rep ], 
-                                            item["asset_id"],
-                                            slates_dir,
-                                            verbose=False )
-                item["slate_filename"] = slate_rslt[0]
-                item["slate_path"] = slate_rslt[1]
+                visaid_filename, visaid_path = swt.process_swt.create_aid( 
+                    video_path=item["media_path"], 
+                    tfs=tfs, 
+                    stdout=False, 
+                    output_dirname=visaids_dir,
+                    proj_name=item["mmif_files"][mmifi], 
+                    guid=item["asset_id"],
+                    types=scene_types
+                    )
 
-                print("Slate saved at", item["slate_path"])
+                item["visaid_filename"] = visaid_filename
+                item["visaid_path"] = visaid_path
 
             except Exception as e:
-                print("Extraction of slate frame at", slate_rep ,"failed.")
+                print("Creation of visaid failed.")
                 print("Error:", e)
-            
-        else:
-            print("No slate found.")
-
-    #
-    # Save a visaid
-    #
-    if make_visaid:
-        print("Trying to make a visaid...")
-
-        try:
-            visaid_filename, visaid_path = swt.process_swt.create_aid( 
-                video_path=item["media_path"], 
-                tfs=tfs, 
-                stdout=False, 
-                output_dirname=visaids_dir,
-                proj_name=item["mmif_files"][mmifi], 
-                guid=item["asset_id"],
-                types=scene_types
-                )
-
-            item["visaid_filename"] = visaid_filename
-            item["visaid_path"] = visaid_path
-
-        except Exception as e:
-            print("Creation of visaid failed.")
-            print("Error:", e)
 
 
     ########################################################
