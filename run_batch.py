@@ -2,6 +2,7 @@
 # Import modules
 
 import os
+import platform
 import csv
 import json
 import datetime
@@ -18,9 +19,16 @@ import swt.process_swt
 
 ########################################################
 # %%
-# environment-specific path to Docker
-#docker_bin_path = "../../../Program Files/Docker/Docker/resources/bin/docker"
-docker_bin_path = "/mnt/c/Program Files/Docker/Docker/resources/bin/docker"
+# Set the environment-specific path to Docker
+current_os = platform.system()
+if current_os == "Windows":
+    #docker_bin_path = "../../../Program Files/Docker/Docker/resources/bin/docker"
+    docker_bin_path = "/mnt/c/Program Files/Docker/Docker/resources/bin/docker"
+elif current_os == "Linux":
+    docker_bin_path = "/usr/bin/docker"
+else:
+    raise OSError(f"Unsupported operating system: {current_os}")
+
 
 # Batch config filename is hard-coded (for now).
 # This is the only line that needs to be changed per run.
