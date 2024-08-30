@@ -1,5 +1,7 @@
 # %%
 # Import modules
+# required modules not in Python standard library: 
+#   requests, av, pandas, mmif-python, pillow
 
 import os
 import platform
@@ -19,16 +21,6 @@ import swt.process_swt
 
 ########################################################
 # %%
-# Set the environment-specific path to Docker
-current_os = platform.system()
-if current_os == "Windows":
-    #docker_bin_path = "../../../Program Files/Docker/Docker/resources/bin/docker"
-    docker_bin_path = "/mnt/c/Program Files/Docker/Docker/resources/bin/docker"
-elif current_os == "Linux":
-    docker_bin_path = "/usr/bin/docker"
-else:
-    raise OSError(f"Unsupported operating system: {current_os}")
-
 
 # Batch config filename is hard-coded (for now).
 # This is the only line that needs to be changed per run.
@@ -36,7 +28,8 @@ else:
 #batch_conf_path = "./stovetop/clams_whisper_batch_test/batchconf_01.json"
 #batch_conf_path = "./stovetop/shipments/OPB_35059_35124_35135_35195_35220/batchconf_01.json"
 #batch_conf_path = "./stovetop/shipments/SFL_PBS_34959/batchconf_01.json"
-batch_conf_path = "./stovetop/shipments/Hawaii_35148_35227_35255/batchconf_01.json"
+#batch_conf_path = "./stovetop/shipments/Hawaii_35148_35227_35255/batchconf_01.json"
+batch_conf_path = "./scratch/Hawaii_35148_35227_35255_TEST/batchconf_fern01.json"
 
 ########################################################
 # Set batch-specific parameters based on values in conf file
@@ -479,8 +472,19 @@ for item in batch_l:
             input_mmif_filename = item["mmif_files"][mmifi-1]
             output_mmif_filename = mmif_filename
 
+            # Set the environment-specific path to Docker and Windows-specific additions
+            current_os = platform.system()
+            if current_os == "Windows":
+                docker_bin_path = "/mnt/c/Program Files/Docker/Docker/resources/bin/docker"
+                coml_prefix = ["bash"]
+            elif current_os == "Linux":
+                docker_bin_path = "/usr/bin/docker"
+                coml_prefix = []
+            else:
+                raise OSError(f"Unsupported operating system: {current_os}")
+
             # build shell command as list for `subprocess.run()`
-            coml = ["bash", 
+            coml = [
                     docker_bin_path, 
                     "run",
                     "-v",
@@ -492,7 +496,9 @@ for item in batch_l:
                     clams_images[clamsi],
                     "python",
                     "cli.py"
-                    ]
+                   ]
+
+            coml = coml_prefix + coml
 
             # If there are parameters, add them to the command list
             if len(clams_params[clamsi]) > 0:
