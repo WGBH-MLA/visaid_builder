@@ -10,12 +10,8 @@ import time
 import platform
 
 
-# hard-coded location of non-portable code (outside of this repository)
-if platform.system() == "Windows":
-    #ci_url_sh_path = '../localcode/secret/ci_url/ci_url.sh'
-    ci_url_sh_path = '/mnt/c/Users/owen_king/localcode/secret/ci_url/ci_url.sh'
-else:
-    ci_url_sh_path = '/home/owen/GBH/localcode/secret/ci_url/ci_url.sh'
+# location of helper bash script
+ci_url_sh_path = './drawer/bash_aux/ci_url.sh'
 
 # confirm ci_url is accessible via bash (which is what will call it).
 command = "[ -f " + ci_url_sh_path + " ] && echo exists || echo missing "
