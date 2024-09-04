@@ -17,6 +17,12 @@ if platform.system() == "Windows":
 else:
     ci_url_sh_path = '/home/owen/GBH/localcode/secret/ci_url/ci_url.sh'
 
+# confirm ci_url is accessible via bash (which is what will call it).
+command = "[ -f " + ci_url_sh_path + " ] && echo exists || echo missing "
+ci_url_exists = subprocess.run([ 'bash', '-c', command ], capture_output=True, text=True)
+result = ci_url_exists.stdout.strip()
+if result != "exists":
+    raise FileNotFoundError("Path to ci_url does not exist: " + ci_url_sh_path)
 
 temp_suffix = ".PARTIAL"
 
@@ -94,10 +100,6 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
     Else returns None
     """
     global ci_url_sh_path
-    #print(ci_url_sh_path)
-    
-    if not os.path.exists(ci_url_sh_path):
-        raise FileNotFoundError("Path to ci_url does not exist: " + ci_url_sh_path)
 
     print("About to get Ci URL for Ci ID:", ci_id) # DIAG
 
