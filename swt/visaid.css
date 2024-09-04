@@ -1,7 +1,7 @@
 body {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     font-size: small;
-    background-color: #dadada;
+    background-color: #f3f3f3;
 }
 div.top {
     font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
@@ -10,8 +10,18 @@ div.top {
     margin-bottom: 10px;
     background-color: white;
 }
+pre.metadata {
+    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+    font-size: x-small;
+    display: none;
+}
 span.proj {
     color:  #6d57db;
+}
+span.img_fname {
+    font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
+    font-size: 55%;
+    color: #a3a3a3 ; 
 }
 div.container {
     display: flex;
@@ -19,8 +29,8 @@ div.container {
     gap: 10px;
 }
 div.item {
-    background-color: #b8c5bf;
-    padding: 15px;
+    background-color: #cfdeec;
+    padding: 15px 15px 5px 15px;
     border-radius: 10px 10px 10px 10px;
     box-shadow: 2px 2px 2px 0 #38383f7a,
                 -1px -1px 1px 0 #e2e2e2;

@@ -29,7 +29,8 @@ import swt.process_swt
 #batch_conf_path = "./stovetop/shipments/OPB_35059_35124_35135_35195_35220/batchconf_01.json"
 #batch_conf_path = "./stovetop/shipments/SFL_PBS_34959/batchconf_01.json"
 #batch_conf_path = "./stovetop/shipments/Hawaii_35148_35227_35255/batchconf_01.json"
-batch_conf_path = "./scratch/Hawaii_35148_35227_35255_TEST/batchconf_fern01.json"
+#batch_conf_path = "./scratch/Hawaii_35148_35227_35255_TEST/batchconf_fern01.json"
+batch_conf_path = "./stovetop/shipments/SFL_PBS_34959_redo/batchconf_01.json"
 
 ########################################################
 # Set batch-specific parameters based on values in conf file
@@ -582,6 +583,9 @@ for item in batch_l:
         # call SWT MMIF processors to get a table of time frames
         tfs = swt.process_swt.list_tfs(mmif_str, max_gap=180000)
 
+        # get metadata_str
+        metadata_str = swt.process_swt.get_mmif_metadata_str(mmif_str)
+
         # restrict to just bars and slates
         #tfs = [ tf for tf in tfs if tf[1] in ['bars', 'slate'] ]
 
@@ -670,7 +674,8 @@ for item in batch_l:
                     output_dirname=visaids_dir,
                     proj_name=item["mmif_files"][mmifi], 
                     guid=item["asset_id"],
-                    types=scene_types
+                    types=scene_types,
+                    metadata_str=metadata_str
                     )
 
                 item["visaid_filename"] = visaid_filename

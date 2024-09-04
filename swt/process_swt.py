@@ -1,6 +1,6 @@
 """
 process_swt.py
-v1.0
+v1.1
 
 Defines functions that perform processing on MMIF output from SWT
 """
@@ -10,6 +10,7 @@ Defines functions that perform processing on MMIF output from SWT
 import os
 import io
 import base64
+import json
 
 import pandas as pd
 import av
@@ -21,12 +22,40 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
+def get_mmif_metadata_str( mmifstr:str ):
+    """
+    Takes the metadata object from the first view with TimeFrame annotations
+    Returns prettified serialized JSON for that metadata
+    """
+
+    # turn the MMIF string into a Mmif object
+    usemmif = Mmif(mmifstr)
+
+    # First, get the first view that contains a TimeFrame
+    # If none exists, return an empty list.
+    if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) > 0:
+        useview = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+    else:
+        return ""
+
+    return json.dumps(json.loads(str(useview.metadata)), indent=2)
+
+
+
 def list_tfs( mmifstr:str, max_gap:int=0 ):
     """
     Analyzes MMIF file from SWT and returns tabular data.
 
     Takes serialized MMIF as a string as input.
     Returns a table (list of lists) representing the timeFrame annotations
+
+    Columns:
+    0: TimeFrame id (from MMIF file) (string)
+    1: bin label (string)
+    2: start time in milliseconds (int)
+    3: stop time in milliseconds (int)
+    4: represenative still time in milliseconds(int)
+
     """
     
     # turn the MMIF string into a Mmif object
@@ -165,7 +194,6 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
         tfs += samples
         tfs.sort(key=lambda f:f[2])
 
-
     return tfs
 
 
@@ -177,7 +205,7 @@ def create_aid(video_path: str,
                stdout: bool = False,
                output_dirname: str = ".",
                types: list = [],
-               metadata: str = ""
+               metadata_str: str = ""
                ):
     """
     Creates an HTML file (with embedded images) as a visual aid, based on the output
@@ -204,7 +232,9 @@ def create_aid(video_path: str,
     # table like tfs, but with images
     tfsi = []
 
-    # build up tfsi table with image data
+    # Build up tfsi table.
+    # Use rows from the tfs table, but add additional columns for actual frame 
+    # time and image data
     if len(tfs) > 0:
         next_scene = 0 
         target_time = tfs[next_scene][4]
@@ -222,7 +252,8 @@ def create_aid(video_path: str,
                 img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
                 #html_img_tag = f'<img src="data:image/jpeg;base64,{img_str}" />'
 
-                tfsi.append(tfs[next_scene] + [img_str])
+
+                tfsi.append(tfs[next_scene] + [ ftime ] + [ img_str ] )
                 
                 next_scene += 1
                 if next_scene < len(tfs):            
@@ -251,6 +282,9 @@ def create_aid(video_path: str,
 </head>
 <body>
 <div class='top'>Visual index from <br /><span class='proj'>""" + proj_name + """</span>
+<pre class="metadata" id="mmif_metadata">
+""" + metadata_str + """
+</pre>
 </div>
 <div class='container'>
 """
@@ -279,10 +313,17 @@ def create_aid(video_path: str,
         else:
             html_start = start_str
 
-        html_img_tag = f'<img src="data:image/jpeg;base64,{f[5]}" />'
         html_cap = f'<span>{html_start} - {end_str}: {label}</span><br />'
+        html_img_tag = f'<img src="data:image/jpeg;base64,{f[6]}" />'
+        img_fname = f'{guid}_{length:08}_{f[4]:08}_{f[5]:08}' + ".jpg"
+        #img_fname = guid + "_" + str(length) + "_" + str(f[4]) + "_" + str(f[5])
+        html_img_fname = "<br /><span class='img_fname'>" + img_fname + "</span>"
 
-        html_body += ("<div class='item'>" + html_cap + html_img_tag + "</div>" + "\n")
+        html_body += ("<div class='item'>" + 
+                      html_cap + 
+                      html_img_tag + "\n" +
+                      html_img_fname +
+                      "</div>" + "\n")
         
 
     html_str = html_top + html_body + html_end
@@ -301,3 +342,5 @@ def create_aid(video_path: str,
     return (hfilename, hfilepath)
    
 
+
+# %%
