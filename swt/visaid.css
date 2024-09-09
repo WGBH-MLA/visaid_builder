@@ -6,9 +6,12 @@ body {
 div.top {
     font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
     font-size: large;
-    padding: 15px;
+    padding: 12px;
     margin-bottom: 10px;
     background-color: white;
+}
+span.version {
+    font-size: x-small;
 }
 pre.metadata {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
@@ -17,6 +20,9 @@ pre.metadata {
 }
 span.proj {
     color:  #6d57db;
+}
+span.label {
+    font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
 }
 span.img_fname {
     font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
@@ -30,7 +36,7 @@ div.container {
 }
 div.item {
     background-color: #cfdeec;
-    padding: 15px 15px 5px 15px;
+    padding: 12px 12px 4px 12px;
     border-radius: 10px 10px 10px 10px;
     box-shadow: 2px 2px 2px 0 #38383f7a,
                 -1px -1px 1px 0 #e2e2e2;

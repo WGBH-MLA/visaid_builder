@@ -1,9 +1,9 @@
 """
 process_swt.py
-v1.1
 
 Defines functions that perform processing on MMIF output from SWT
 """
+module_version = "1.11.1"
 
 # %%
 # Run import statements
@@ -151,8 +151,8 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
     if max_gap: 
 
         # add frames for first and last timepoints
-        tfs.insert(0, ['f_0', 'first_frame', 0, 0, 0])
-        tfs.append(['f_n', 'last_frame', last_time, last_time, last_time])
+        tfs.insert(0, ['f_0', 'first frame', 0, 0, 0])
+        tfs.append(['f_n', 'last frame', last_time, last_time, last_time])
 
         # Samples are primarily useful for their central frame, but they need a 
         # duration to be represented in the tfs data structure
@@ -213,6 +213,8 @@ def create_aid(video_path: str,
 
     If a list of types is passed in, the visaid is limited to those types.
     """
+
+    global module_version
 
     if len(types) > 0:
         tfs = [ row for row in tfs if row[1] in types ] 
@@ -281,7 +283,8 @@ def create_aid(video_path: str,
 </style>
 </head>
 <body>
-<div class='top'>Visual index from <br /><span class='proj'>""" + proj_name + """</span>
+<div class='top'>Visual index from <span class='proj'>""" + proj_name + """</span>
+<br /><span class="version">(visaid version: """ + module_version + """)</span>
 <pre class="metadata" id="mmif_metadata">
 """ + metadata_str + """
 </pre>
@@ -313,7 +316,7 @@ def create_aid(video_path: str,
         else:
             html_start = start_str
 
-        html_cap = f'<span>{html_start} - {end_str}: {label}</span><br />'
+        html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br />'
         html_img_tag = f'<img src="data:image/jpeg;base64,{f[6]}" />'
         img_fname = f'{guid}_{length:08}_{f[4]:08}_{f[5]:08}' + ".jpg"
         #img_fname = guid + "_" + str(length) + "_" + str(f[4]) + "_" + str(f[5])
@@ -341,6 +344,3 @@ def create_aid(video_path: str,
     
     return (hfilename, hfilepath)
    
-
-
-# %%
