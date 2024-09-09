@@ -3,7 +3,7 @@ process_swt.py
 
 Defines functions that perform processing on MMIF output from SWT
 """
-module_version = "1.11.1"
+module_version = "1.11.2"
 
 # %%
 # Run import statements
@@ -200,8 +200,9 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
 
 def create_aid(video_path: str, 
                tfs: list,
-               proj_name: str = "asset",
-               guid: str = None,
+               batch_name: str = None,
+               hfilename: str = "",
+               guid: str = "",
                stdout: bool = False,
                output_dirname: str = ".",
                types: list = [],
@@ -215,6 +216,18 @@ def create_aid(video_path: str,
     """
 
     global module_version
+
+    if hfilename == "":
+        if guid:
+            hfilename = guid + "_visaid.html"
+        else:
+            hfilename = "visaid.html"
+
+    if guid:
+        proj_name = guid
+    else:
+        video_fname = video_path[video_path.rfind("/")+1:]
+        proj_name = video_fname
 
     if len(types) > 0:
         tfs = [ row for row in tfs if row[1] in types ] 
@@ -284,7 +297,7 @@ def create_aid(video_path: str,
 </head>
 <body>
 <div class='top'>Visual index from <span class='proj'>""" + proj_name + """</span>
-<br /><span class="version">(visaid version: """ + module_version + """)</span>
+<br /><span class="version">batch: """ + str(batch_name) + " (visaid version: " + module_version + """)</span>
 <pre class="metadata" id="mmif_metadata">
 """ + metadata_str + """
 </pre>
@@ -336,7 +349,7 @@ def create_aid(video_path: str,
         hfilename = None
         hfilepath = None
     else:
-        hfilename = "visaid_" + proj_name + ".html"
+        #hfilename = "visaid_" + proj_name + ".html"
         hfilepath = output_dirname + "/" + hfilename
         with open(hfilepath, "w") as html_file:
             html_file.write(html_str)

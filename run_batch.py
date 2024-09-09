@@ -28,9 +28,11 @@ import swt.process_swt
 #batch_conf_path = "./stovetop/clams_whisper_batch_test/batchconf_01.json"
 #batch_conf_path = "./stovetop/shipments/OPB_35059_35124_35135_35195_35220/batchconf_01.json"
 #batch_conf_path = "./stovetop/shipments/SFL_PBS_34959/batchconf_01.json"
-#batch_conf_path = "./stovetop/shipments/Hawaii_35148_35227_35255/batchconf_01.json"
+#batch_conf_path = "./stovetop/shipments/Hawaii_35148_35227_35255/batchconf_02.json"
 #batch_conf_path = "./scratch/Hawaii_35148_35227_35255_TEST/batchconf_fern01.json"
-batch_conf_path = "./stovetop/shipments/SFL_PBS_34959_redo/batchconf_01.json"
+#batch_conf_path = "./stovetop/shipments/SFL_PBS_34959_redo/batchconf_01.json"
+#batch_conf_path = "./stovetop/shipments/Hawaii_35270/batchconf_01.json"
+batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064_redo/batchconf_04.json"
 
 ########################################################
 # Set batch-specific parameters based on values in conf file
@@ -672,7 +674,7 @@ for item in batch_l:
                     tfs=tfs, 
                     stdout=False, 
                     output_dirname=visaids_dir,
-                    proj_name=item["mmif_files"][mmifi], 
+                    batch_name=batch_name, 
                     guid=item["asset_id"],
                     types=scene_types,
                     metadata_str=metadata_str
