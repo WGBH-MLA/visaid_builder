@@ -149,7 +149,6 @@ def main():
             video_path=video_path, 
             tfs=tfs, 
             stdout=stdout, 
-            proj_name=proj_name, 
             guid=guid)
 
         if not stdout:
