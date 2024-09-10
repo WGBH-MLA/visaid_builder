@@ -13,7 +13,6 @@ from mmif import Mmif
 from mmif import AnnotationTypes
 
 import drawer.lilhelp
-
 import swt.process_swt
 
 # Global default values for SWT processing
@@ -101,7 +100,7 @@ def run_post(item, post_proc, mmif_path, artifacts_dir:str, batch_id:str, batch_
         else:
             proxy_start_ms = bars_end
 
-        print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start_ms) # DIAG
+        # print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start_ms) # DIAG
 
         item["slate_begin"] = slate_begin
         item["bars_end"] = bars_end
@@ -125,11 +124,12 @@ def run_post(item, post_proc, mmif_path, artifacts_dir:str, batch_id:str, batch_
             print("Trying to exact a slate...")
 
             try:
-                slate_rslt = extract_stills( item["media_path"], 
-                                            [ slate_rep ], 
-                                            item["asset_id"],
-                                            slates_dir,
-                                            verbose=False )
+                slate_rslt = drawer.lilhelp.extract_stills( 
+                               item["media_path"], 
+                               [ slate_rep ], 
+                               item["asset_id"],
+                               slates_dir,
+                               verbose=False )
                 item["slate_filename"] = slate_rslt[0]
                 item["slate_path"] = slate_rslt[1]
 
