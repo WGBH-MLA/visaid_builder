@@ -11,30 +11,35 @@ import datetime
 import warnings
 import subprocess
 import requests
+import argparse
 
 from drawer.media_availability import check_avail, make_avail, remove_media
 from drawer.mmif_adjunct import make_blank_mmif, mmif_check
-from drawer.lilhelp import extract_stills
 
 import swt.process_swt
 import swt.post_proc_item
 
-
 ########################################################
 # %%
 
-# Batch config filename is hard-coded (for now).
-# This is the only line that needs to be changed per run.
-#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064_redo/batchconf_03.json"
-#batch_conf_path = "./stovetop/clams_whisper_batch_test/batchconf_01.json"
-#batch_conf_path = "./stovetop/shipments/OPB_35059_35124_35135_35195_35220/batchconf_01.json"
-#batch_conf_path = "./stovetop/shipments/SFL_PBS_34959/batchconf_01.json"
-#batch_conf_path = "./stovetop/shipments/Hawaii_35148_35227_35255/batchconf_02.json"
-#batch_conf_path = "./scratch/Hawaii_35148_35227_35255_TEST/batchconf_fern01.json"
-#batch_conf_path = "./stovetop/shipments/SFL_PBS_34959_redo/batchconf_01.json"
-#batch_conf_path = "./stovetop/shipments/Hawaii_35270/batchconf_01.json"
-#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064_redo/batchconf_04.json"
-batch_conf_path = "./stovetop/Hawaii_35148_35227_35255_TEST/batchconf_02.json"
+app_desc="""
+Performs CLAMS processing and post-processing in a loop as specified in a configuration file
+"""
+parser = parser = argparse.ArgumentParser(
+        prog='python run_batch.py',
+        description=app_desc,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument("batch_conf_path", metavar="CONFIG",
+    help="Path and filename for the JSON configuration file")
+
+batch_conf_path = parser.parse_args().batch_conf_path
+
+
+# %%
+# A hard-coded batch config filename will replace one from the command line
+#batch_conf_path = "./stovetop/Hawaii_35148_35227_35255_TEST/batchconf_02.json"
+
 
 ########################################################
 # Set batch-specific parameters based on values in conf file
@@ -220,6 +225,7 @@ def cleanup_media(item_count, item):
     # refer to data structures that are global to this script
     global cleanup_media_per_item, cleanup_beyond_item
 
+    print()
     print("# CLEANING UP MEDIA")
 
     if cleanup_media_per_item and item_count > cleanup_beyond_item:
@@ -258,6 +264,7 @@ for item in batch_l:
 
     item_count += 1
     print()
+    print()
     print("*** ITEM #", item_count, ":", item["asset_id"], "[", batch_name, "]", t0s, "***")
 
     ########################################################
@@ -291,6 +298,7 @@ for item in batch_l:
     # Add media to the availability place, if it is not already there,
     # and update the dictionary
 
+    print()
     print("# MEDIA AVAILABILITY")
 
     media_path = ""
@@ -326,6 +334,7 @@ for item in batch_l:
     # MMIF creation #0
     # Add blank MMIF file, if it's not already there
 
+    print()
     print("# MAKING BLANK MMIF")
 
     # Check for prereqs
@@ -338,7 +347,7 @@ for item in batch_l:
         update_batch_results()
         continue
     else:
-        print("-- Step prerequisites passed. --")
+        print("  -- Step prerequisites passed. --")
 
 
     # define MMIF for this stage of this iteration
@@ -387,6 +396,7 @@ for item in batch_l:
     # Construct CLAMS call and call CLAMS app
     # Save output MMIF file
 
+    print()
     print("# RUNNING CLAMS APP TO CREATE ANNOTATIONS IN MMIF")
 
     # Check for prereqs
@@ -401,7 +411,7 @@ for item in batch_l:
         update_batch_results()
         continue
     else:
-        print("-- Step prerequisites passed. --")
+        print("  -- Step prerequisites passed. --")
 
     # Define MMIF for this step of the batch
     mmifi += 1
@@ -524,7 +534,7 @@ for item in batch_l:
             coml.append("/mmif/" + output_mmif_filename)
 
             # print(coml) # DIAG
-            print( " ".join(coml) ) # DIAG
+            # print( " ".join(coml) ) # DIAG
 
             result = subprocess.run(coml, capture_output=True, text=True)
             if result.stderr:
@@ -555,6 +565,7 @@ for item in batch_l:
     
     if post_proc :
 
+        print()
         print("# USING CLAMS OUTPUT")
 
         # Check for prereqs
@@ -569,7 +580,7 @@ for item in batch_l:
             update_batch_results()
             continue
         else:
-            print("-- Step prerequisites passed. --")
+            print("  -- Step prerequisites passed. --")
 
 
         # Call separate procedure for appropraite post-processing
@@ -596,6 +607,7 @@ for item in batch_l:
 
     # Print diag info
     tn = datetime.datetime.now()
+    print()
     print("elapsed time:", (tn-t0).seconds, "seconds")
 
 
