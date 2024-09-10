@@ -1,3 +1,35 @@
+"""
+run_batch.py
+
+# Overview
+
+This script runs CLAMS applications against a batch of assets by looping through 
+the items in the batch, taking several steps with each one.  For each item, the 
+script performs the following steps:
+  - downloading the asset from SonyCi
+  - creating a "blank" MMIF file for the asset
+  - running a CLAMS app to create data-laden MMIF
+  - performing post-processing on the data-laden MMIF to create useful output
+  - cleaning up (removing) downloaded media
+
+# Configuration
+
+The script depends on a configuration file which specifies all the parameters and
+options. One required parameter `def_path` specifies a CSV file that defines the
+batch as a list of items with identifiers and SonyCi IDs.
+
+# Limitations
+
+The configuration files support running multiple CLAMS apps on a single item, but
+this is not yet implemented.  It would require adding another inner loop, which is 
+straightforward.
+
+This script works with CLAMS apps running in CLI mode or as web services.  However,
+support for web services is more difficult and may be dropped.  One problem with 
+using apps running as web services is that if the app fails, the script does not
+have a way to restart the web service.  Also, complex parameters, like the 'map' 
+parameter of SWT does not work for web-service mode.
+"""
 # %%
 # Import modules
 # required modules not in Python standard library: 
@@ -58,6 +90,11 @@ try:
         clams_run_cli = conf["clams_run_cli"]
     else:
         clams_run_cli = False
+    
+    if not clams_run_cli:
+        # need to know the URLs of the webservices if (but only if) not running
+        # in CLI mode
+        clams_endpoints = conf["clams_endpoints"]
 
     if clams_run_cli:
         # need to know the docker image if (but only if) running in CLI mode
@@ -71,6 +108,11 @@ try:
     else:
         clams_params = []
 
+    # Paths for local_base and mnt_base will usually be the same in a 
+    # POSIX-like environment.
+    # They differ in a Windows environment where the local_base may begin with
+    # Windows drive letters, e.g., "C:/Users/..." and the mnt_base may be 
+    # translated to a POSIX-compatible format, e.g., "/mnt/c/Users/...".
     if "local_base" in conf:
         local_base = conf["local_base"]
     else:
@@ -264,8 +306,9 @@ for item in batch_l:
 
     item_count += 1
     print()
-    print()
-    print("*** ITEM #", item_count, ":", item["asset_id"], "[", batch_name, "]", t0s, "***")
+    print(" * ")
+    print("*** ITEM #", item_count, ":", item["asset_id"], "[", batch_name, "]", t0s)
+    print(" * ")
 
     ########################################################
     # initialize new dictionary elements (do only once per item)
@@ -425,7 +468,6 @@ for item in batch_l:
     else:
         print("Will try making MMIF file: " + mmif_path)
 
-
         if not clams_run_cli :
             ################################################################
             # Run CLAMS app, assuming the app is already running as a local web service
@@ -440,7 +482,7 @@ for item in batch_l:
                     qsp += str(clams_params[clamsi][p])
                     qsp += "&"
                 qsp = qsp[:-1] # remove trailing "&"
-            service = "http://localhost:5000"
+            service = clams_endpoints[clamsi]
             endpoint = service + qsp
 
             headers = {'Accept': 'application/json'}
