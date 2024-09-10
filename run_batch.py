@@ -17,6 +17,7 @@ from drawer.mmif_adjunct import make_blank_mmif, mmif_check
 from drawer.lilhelp import extract_stills
 
 import swt.process_swt
+import swt.post_proc_item
 
 
 ########################################################
@@ -32,7 +33,8 @@ import swt.process_swt
 #batch_conf_path = "./scratch/Hawaii_35148_35227_35255_TEST/batchconf_fern01.json"
 #batch_conf_path = "./stovetop/shipments/SFL_PBS_34959_redo/batchconf_01.json"
 #batch_conf_path = "./stovetop/shipments/Hawaii_35270/batchconf_01.json"
-batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064_redo/batchconf_04.json"
+#batch_conf_path = "./stovetop/shipments/ARPB_2024-07_x2064_redo/batchconf_04.json"
+batch_conf_path = "./stovetop/Hawaii_35148_35227_35255_TEST/batchconf_02.json"
 
 ########################################################
 # Set batch-specific parameters based on values in conf file
@@ -85,7 +87,9 @@ try:
         mmif_dir = local_base + conf["mmif_dir"]
         mnt_mmif_dir = mnt_base + conf["mmif_dir"]
     else:
-        mmif_dir = ""  # to be set below
+        mmif_dir_name = "mmif"
+        mmif_dir = results_dir + "/" + mmif_dir_name 
+        mnt_mmif_dir = mnt_results_dir + "/" + mmif_dir_name 
 
     if "start_after_item" in conf:
         start_after_item = conf["start_after_item"]
@@ -124,25 +128,20 @@ try:
 
     if "post_proc" in conf:
         post_proc = conf["post_proc"]
-    else:
-        post_proc = ""
 
-    # config parameters specific to SWT
+        if "name" in post_proc:
+            post_proc_name = conf["post_proc"]["name"]
+        else:
+            post_proc_name = ""
 
-    if "get_slate" in conf:
-        get_slate = conf["get_slate"]
+        if "artifacts" in post_proc:
+            artifacts = post_proc["artifacts"]
+        else:
+            artifacts = []
     else:
-        get_slate = False
-
-    if "make_visaid" in conf:
-        make_visaid = conf["make_visaid"]
-    else:
-        make_visaid = False
-
-    if "scene_types" in conf:
-        scene_types = conf["scene_types"]
-    else:
-        scene_types = []
+        post_proc = {}
+        post_proc_name = ""
+        artifacts = []
 
 except KeyError as e:
     print("Invalid configuration file at", batch_conf_path)
@@ -164,30 +163,24 @@ timestamp = str(int(datetime.datetime.now().timestamp()))
 batch_results_csv_path  = batch_results_file_base + timestamp + ".csv"
 batch_results_json_path  = batch_results_file_base + timestamp + ".json"
 
-# Directory for MMIF files
-if mmif_dir == "":
-    # MMIF file not set by config file.  Will use default.
-    mmif_dir_name = "mmif"
-    mmif_dir = results_dir + "/" + mmif_dir_name 
-    mnt_mmif_dir = mnt_results_dir + "/" + mmif_dir_name 
+# Create list of dirs to create/validate
+dirs = [mmif_dir]
+
+if len(artifacts) > 0:
+    # directory for all artifacts (not including MMIF files)
+    artifacts_dir = results_dir + "/" + "artifacts"
+    dirs.append(artifacts_dir)
+
+    # subdirectories for types of artifacts
+    for arttype in artifacts:
+        artdir = artifacts_dir + "/" + arttype
+        dirs.append(artdir)
 else:
-    # MMIF directory set by conf file; check that it exists
-    if not os.path.exists(mmif_dir):
-        raise FileNotFoundError("Path does not exist: " + mmif_dir)
-
-artifacts_dir = "artifacts"
-artifacts_dir = results_dir + "/" + artifacts_dir
-
-slates_dir = artifacts_dir + "/" + "slates"
-
-visaids_dir = artifacts_dir + "/" + "visaids"
+    artifacts_dir = ""
 
 # Checks to make sure these directories exist
 # If directories do not exist, then create them
-for dirpath in [mmif_dir, 
-                artifacts_dir, 
-                slates_dir,
-                visaids_dir]:
+for dirpath in dirs:
     if os.path.exists(dirpath):
         print("Found existing directory: " + dirpath)
     else:
@@ -261,9 +254,11 @@ item_count = start_after_item
 for item in batch_l:
     t0 = datetime.datetime.now()
 
+    t0s = t0.strftime("%Y-%m-%d %H:%M:%S")
+
     item_count += 1
     print()
-    print("*** ITEM #", item_count, item["asset_id"], t0, "***")
+    print("*** ITEM #", item_count, ":", item["asset_id"], "[", batch_name, "]", t0s, "***")
 
     ########################################################
     # initialize new dictionary elements (do only once per item)
@@ -577,115 +572,16 @@ for item in batch_l:
             print("-- Step prerequisites passed. --")
 
 
-        with open(item["mmif_paths"][mmifi], "r") as file:
-            mmif_str = file.read()
-    
-    if post_proc.lower() == "swt" :
-
-        # call SWT MMIF processors to get a table of time frames
-        tfs = swt.process_swt.list_tfs(mmif_str, max_gap=180000)
-
-        # get metadata_str
-        metadata_str = swt.process_swt.get_mmif_metadata_str(mmif_str)
-
-        # restrict to just bars and slates
-        #tfs = [ tf for tf in tfs if tf[1] in ['bars', 'slate'] ]
-
-        #
-        # Calculate some significant datapoints based on table of time frames
-        #
-        # Note:  For reasons I don't understand, we have to cast some integer
-        # values originally created by Pandas to int from int64
-
-        # The end of the bars is the end of the last bars timeframe
-        # If there is no bars timeframe, then the value is 0
-        bars_end = 0
-        bars_tfs = [ tf for tf in tfs if tf[1] in ['bars'] ]
-        if len(bars_tfs) > 0:
-            bars_end = int(bars_tfs[-1][3])
-        
-        # The slate rep is the rep timepoint from from the first slate timeframe
-        # If there is not slate timeframe, then the value is None
-        slate_rep = None
-        slate_tfs = [ tf for tf in tfs if tf[1] in ['slate'] ]
-        if len(slate_tfs) > 0:
-            slate_rep = int(slate_tfs[0][4])
-
-        # Proxy starts at the end of the bars or the beginning of the slate,
-        # whichever is greater
-        slate_begin = None
-        proxy_start_ms = 0 
-        if len(slate_tfs) > 0:
-            slate_begin = int(slate_tfs[0][2])
-            proxy_start_ms = max(bars_end, slate_begin)
+        # Call separate procedure for appropraite post-processing
+        if post_proc_name.lower() == "swt" :
+            swt.post_proc_item.run_post(item=item, 
+                                        post_proc=post_proc, 
+                                        mmif_path=item["mmif_paths"][mmifi], 
+                                        artifacts_dir=artifacts_dir,
+                                        batch_id=batch_id,
+                                        batch_name=batch_name)
         else:
-            proxy_start_ms = bars_end
-
-        # For now:  Just use bars end time.
-        proxy_start_ms = bars_end
-
-        # A proxy start time > 150s is pretty sketchy.  Don't believe it.
-        if proxy_start_ms > 150000:
-            proxy_start_ms = 0
-
-        print("bars end:", bars_end, "slate rep:", slate_rep, "proxy start:", proxy_start_ms)
-
-        item["slate_begin"] = slate_begin
-        item["bars_end"] = bars_end
-        item["proxy_start"] = proxy_start_ms / 1000
-
-        print("Proxy start:", item["proxy_start"])
-
-
-        #
-        # Extract the slate
-        #
-        if get_slate:
-            if slate_rep is not None:
-                print("Trying to exact a slate...")
-
-                try:
-                    slate_rslt = extract_stills( item["media_path"], 
-                                                [ slate_rep ], 
-                                                item["asset_id"],
-                                                slates_dir,
-                                                verbose=False )
-                    item["slate_filename"] = slate_rslt[0]
-                    item["slate_path"] = slate_rslt[1]
-
-                    print("Slate saved at", item["slate_path"])
-
-                except Exception as e:
-                    print("Extraction of slate frame at", slate_rep ,"failed.")
-                    print("Error:", e)
-                
-            else:
-                print("No slate found.")
-
-        #
-        # Save a visaid
-        #
-        if make_visaid:
-            print("Trying to make a visaid...")
-
-            try:
-                visaid_filename, visaid_path = swt.process_swt.create_aid( 
-                    video_path=item["media_path"], 
-                    tfs=tfs, 
-                    stdout=False, 
-                    output_dirname=visaids_dir,
-                    batch_name=batch_name, 
-                    guid=item["asset_id"],
-                    types=scene_types,
-                    metadata_str=metadata_str
-                    )
-
-                item["visaid_filename"] = visaid_filename
-                item["visaid_path"] = visaid_path
-
-            except Exception as e:
-                print("Creation of visaid failed.")
-                print("Error:", e)
+            print("Invalid post-processing procedure:", post_proc)
 
 
     ########################################################
