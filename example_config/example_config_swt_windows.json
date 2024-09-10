@@ -4,7 +4,7 @@
   "local_base": "C:/Users/owen_king/",
   "mnt_base": "/mnt/c/Users/owen_king/",
   "results_dir": "kitchen/stovetop/Hawaii_35148_35227_35255_TEST",
-  "def_path": "kitchen/stovetop/Hawaii_35148_35227_35255_TEST/batch_def_01.csv",
+  "def_path": "kitchen/example_config/example_batch_01.csv",
   "media_dir": "batchmedia/shipment",
   "start_after_item": 0,
   "end_after_item": "",
