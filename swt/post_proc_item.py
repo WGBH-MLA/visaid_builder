@@ -24,10 +24,11 @@ max_gap = 180000
 prog_start_max = 150000
 
 
-def run_post(item, post_proc, mmif_path, artifacts_dir:str, batch_id:str, batch_name:str=""):
+def run_post(item, cf, post_proc, mmif_path):
 
-    if batch_name == "":
-        batch_name = batch_id
+    artifacts_dir = cf["artifacts_dir"]
+    batch_id = cf["batch_id"]
+    batch_name = cf["batch_name"]
 
     global max_gap, prog_start_max
 
