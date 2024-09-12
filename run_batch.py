@@ -409,7 +409,7 @@ for item in batch_l:
 
     # define MMIF for this stage of this iteration
     mmifi += 1
-    mmif_filename = item["asset_id"] + "_" + cf["batch_id"] + "_" + str(mmifi) + ".mmif"
+    mmif_filename = item["asset_id"] + "_" + str(mmifi) + ".mmif"
     mmif_path = mmif_dir + "/" + mmif_filename
 
     # Check to see if it exists; if not create it
