@@ -205,10 +205,10 @@ for dirpath in [results_dir, batch_def_path, media_dir]:
         raise FileNotFoundError("Path does not exist: " + dirpath)
 
 # Results files get a new name every time this script is run
-batch_results_file_base = results_dir + "/" + batch_name + "_results"
-timestamp = str(int(datetime.datetime.now().timestamp()))
-batch_results_csv_path  = batch_results_file_base + timestamp + ".csv"
-batch_results_json_path  = batch_results_file_base + timestamp + ".json"
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+batch_results_file_base = results_dir + "/" + batch_name + "_" + timestamp + "_runlog"
+batch_results_csv_path  = batch_results_file_base + ".csv"
+batch_results_json_path  = batch_results_file_base + ".json"
 
 # Create list of dirs to create/validate
 dirs = [mmif_dir]
