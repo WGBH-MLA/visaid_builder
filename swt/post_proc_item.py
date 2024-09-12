@@ -102,8 +102,6 @@ def run_post(item, post_proc, mmif_path, artifacts_dir:str, batch_id:str, batch_
 
         # print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start_ms) # DIAG
 
-        item["slate_begin"] = slate_begin
-        item["bars_end"] = bars_end
         item["proxy_start"] = proxy_start_ms / 1000
 
         print("Proxy start:", item["proxy_start"])
@@ -130,10 +128,10 @@ def run_post(item, post_proc, mmif_path, artifacts_dir:str, batch_id:str, batch_
                                item["asset_id"],
                                slates_dir,
                                verbose=False )
-                item["slate_filename"] = slate_rslt[0]
-                item["slate_path"] = slate_rslt[1]
+                slate_filename = slate_rslt[0]
+                slate_path = slate_rslt[1]
 
-                print("Slate saved at", item["slate_path"])
+                print("Slate saved at", slate_path)
 
             except Exception as e:
                 print("Extraction of slate frame at", slate_rep ,"failed.")
@@ -164,9 +162,6 @@ def run_post(item, post_proc, mmif_path, artifacts_dir:str, batch_id:str, batch_
                 types=scene_types,
                 metadata_str=metadata_str
                 )
-
-            item["visaid_filename"] = visaid_filename
-            item["visaid_path"] = visaid_path
 
         except Exception as e:
             print("Creation of visaid failed.")

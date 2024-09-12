@@ -324,14 +324,7 @@ for item in batch_l:
         item["media_type"] = "Moving Image"
         print("Warning:  Media type not specified. Assuming it is 'Moving Image'.")
 
-    item["bars_end"] = 0
-    item["slate_begin"] = None
-
-    item["proxy_start"] = 0.0
-    item["slate_path"] = ""
-    item["slate_filename"] = ""
-    item["visaid_path"] = ""
-    item["visaid_filename"] = ""
+    item["proxy_start"] = None
 
     # set the index of the MMIF files so far for this item
     mmifi = -1
