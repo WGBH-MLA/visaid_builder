@@ -53,6 +53,45 @@ import swt.post_proc_item
 
 ########################################################
 # %%
+# Define helper functions
+
+def write_batch_results_log(cf, batch_l, item_count):
+    # Write out results to a CSV file and to a JSON file
+    # Only write out records that have been reached so far
+
+    # Results files get a new name every time this script is run
+    batch_results_log_file_base = cf["logs_dir"] + "/" + cf["batch_name"] + "_" + cf["start_timestamp"] + "_runlog"
+    batch_results_log_csv_path  = batch_results_log_file_base + ".csv"
+    batch_results_log_json_path  = batch_results_log_file_base + ".json"
+
+    with open(batch_results_log_csv_path, 'w', newline='') as file:
+        fieldnames = batch_l[0].keys()
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(batch_l[:(item_count-cf["start_after_item"])])
+    
+    with open(batch_results_log_json_path, 'w') as file:
+        json.dump(batch_l[:(item_count-cf["start_after_item"])], file, indent=2)
+
+
+def cleanup_media(cf, item_count, item):
+    # Cleanup media, i.e., remove media file for this item
+    # Do this only if the global settings allow it
+    
+    print()
+    print("# CLEANING UP MEDIA")
+
+    if cf["cleanup_media_per_item"] and item_count > cf["cleanup_beyond_item"]:
+        print("Attempting to removing media at", item["media_path"])
+        removed = remove_media(item["media_path"])
+        if removed:
+            print("Media removed.")
+    else:
+        print("Leaving media for this item.")
+
+
+########################################################
+# %%
 
 app_desc="""
 Performs CLAMS processing and post-processing in a loop as specified in a configuration file
@@ -67,163 +106,189 @@ parser.add_argument("batch_conf_path", metavar="CONFIG",
 
 batch_conf_path = parser.parse_args().batch_conf_path
 
-
 # %%
 # A hard-coded batch config filename will replace one from the command line
 #batch_conf_path = "./stovetop/Hawaii_35148_35227_35255_TEST/batchconf_02.json"
 
-
 ########################################################
-# Set batch-specific parameters based on values in conf file
-with open(batch_conf_path, "r") as conffile:
-    conf = json.load(conffile)
+# %%
+# Set batch-specific configuration based on values in configuration file
+with open(batch_conf_path, "r") as jsonfile:
+    conffile = json.load(jsonfile)
+
+# Dictionaries to store configuation information for this batch
+# These will be based on the conffile dictionary, but checked and normalized
+cf = {}
+post_proc = {}
+
+# Additional variables related to post-processing config
+post_proc_name = ""
+artifacts = []
+
+t0 = datetime.datetime.now()
+cf["start_timestamp"] = t0.strftime("%Y%m%d_%H%M%S")
 
 try: 
-    batch_id = conf["id"] # required
+    cf["batch_id"] = conffile["id"] # required
 
-    if "name" in conf:
-        batch_name = conf["name"]
+    if "name" in conffile:
+        cf["batch_name"] = conffile["name"]
     else:
-        batch_name = batch_id
+        cf["batch_name"] = cf["batch_id"]
 
-    if "clams_run_cli" in conf:
-        clams_run_cli = conf["clams_run_cli"]
+
+    # CLAMS config
+
+    if "clams_run_cli" in conffile:
+        clams_run_cli = conffile["clams_run_cli"]
     else:
         clams_run_cli = False
     
     if not clams_run_cli:
         # need to know the URLs of the webservices if (but only if) not running
         # in CLI mode
-        clams_endpoints = conf["clams_endpoints"]
+        clams_endpoints = conffile["clams_endpoints"]
 
     if clams_run_cli:
         # need to know the docker image if (but only if) running in CLI mode
-        clams_images = conf["clams_images"]
+        clams_images = conffile["clams_images"]
     else:
         # ignore clams_images if not running in CLI mode
         clams_images = ""
 
-    if "clams_params" in conf:
-        clams_params = conf["clams_params"]
+    if "clams_params" in conffile:
+        clams_params = conffile["clams_params"]
     else:
         clams_params = []
+
+
+    # Paths and directories 
 
     # Paths for local_base and mnt_base will usually be the same in a 
     # POSIX-like environment.
     # They differ in a Windows environment where the local_base may begin with
     # Windows drive letters, e.g., "C:/Users/..." and the mnt_base may be 
     # translated to a POSIX-compatible format, e.g., "/mnt/c/Users/...".
-    if "local_base" in conf:
-        local_base = conf["local_base"]
+    if "local_base" in conffile:
+        local_base = conffile["local_base"]
     else:
         local_base = ""
 
-    if "mnt_base" in conf:
-        mnt_base = conf["mnt_base"]
+    if "mnt_base" in conffile:
+        mnt_base = conffile["mnt_base"]
     else:
         mnt_base = ""
 
-    results_dir = local_base + conf["results_dir"]
-    batch_def_path = local_base + conf["def_path"]
-    media_dir = local_base + conf["media_dir"]
+    results_dir = local_base + conffile["results_dir"]
+    mnt_results_dir = mnt_base + conffile["results_dir"]
     
-    mnt_results_dir = mnt_base + conf["results_dir"]
-    mnt_media_dir = mnt_base + conf["media_dir"]
-    
-    if "mmif_dir" in conf:
-        mmif_dir = local_base + conf["mmif_dir"]
-        mnt_mmif_dir = mnt_base + conf["mmif_dir"]
+    media_dir = local_base + conffile["media_dir"]
+    mnt_media_dir = mnt_base + conffile["media_dir"]
+
+    if "mmif_dir" in conffile:
+        mmif_dir = local_base + conffile["mmif_dir"]
+        mnt_mmif_dir = mnt_base + conffile["mmif_dir"]
     else:
         mmif_dir_name = "mmif"
         mmif_dir = results_dir + "/" + mmif_dir_name 
         mnt_mmif_dir = mnt_results_dir + "/" + mmif_dir_name 
 
-    if "start_after_item" in conf:
-        start_after_item = conf["start_after_item"]
+    if "logs_dir" in conffile:
+        cf["logs_dir"] = local_base + conffile["logs_dir"]
     else:
-        start_after_item = 0
+        cf["logs_dir"] = results_dir
 
-    if "end_after_item" in conf:
-        if conf["end_after_item"] == "":
-            end_after_item = None
-        elif conf["end_after_item"] is None:
-            end_after_item = None
+    batch_def_path = local_base + conffile["def_path"]
+
+    # Checks to make sure directories and setup file exist
+    for dirpath in [results_dir, cf["logs_dir"], media_dir, batch_def_path]:
+        if not os.path.exists(dirpath):
+            raise FileNotFoundError("Path does not exist: " + dirpath)
+
+
+    # Additional configuration options
+
+    if "start_after_item" in conffile:
+        cf["start_after_item"] = conffile["start_after_item"]
+    else:
+        cf["start_after_item"] = 0
+
+    if "end_after_item" in conffile:
+        if conffile["end_after_item"] == "":
+            cf["end_after_item"] = None
+        elif conffile["end_after_item"] is None:
+            cf["end_after_item"] = None
         else:
-            end_after_item = conf["end_after_item"]
+            cf["end_after_item"] = conffile["end_after_item"]
     else:
-        end_after_item = None
+        cf["end_after_item"] = None
 
-    if "overwrite_mmif" in conf:
-        overwrite_mmif = conf["overwrite_mmif"]
+    if "overwrite_mmif" in conffile:
+        cf["overwrite_mmif"] = conffile["overwrite_mmif"]
     else:
-        overwrite_mmif = False
+        cf["overwrite_mmif"] = False
 
-    if "cleanup_media_per_item" in conf:
-        cleanup_media_per_item = conf["cleanup_media_per_item"]
+    if "cleanup_media_per_item" in conffile:
+        cf["cleanup_media_per_item"] = conffile["cleanup_media_per_item"]
     else:
-        cleanup_media_per_item = True
+        cf["cleanup_media_per_item"] = True
     
-    if "cleanup_beyond_item" in conf:
-        cleanup_beyond_item = conf["cleanup_beyond_item"]
+    if "cleanup_beyond_item" in conffile:
+        cf["cleanup_beyond_item"] = conffile["cleanup_beyond_item"]
     else:
-        cleanup_beyond_item = 0
+        cf["cleanup_beyond_item"] = 0
 
-    if "filter_warnings" in conf:
-        warnings.filterwarnings(conf["filter_warnings"])
+    if "filter_warnings" in conffile:
+        warnings.filterwarnings(conffile["filter_warnings"])
     else:
         warnings.filterwarnings("ignore")
 
-    if "post_proc" in conf:
-        post_proc = conf["post_proc"]
+
+    # Post-processing configuration options
+
+    if "post_proc" in conffile:
+        post_proc = conffile["post_proc"]
 
         if "name" in post_proc:
-            post_proc_name = conf["post_proc"]["name"]
+            post_proc_name = conffile["post_proc"]["name"]
         else:
             post_proc_name = ""
 
         if "artifacts" in post_proc:
             artifacts = post_proc["artifacts"]
+
+            # directory for all artifacts (not including MMIF files)
+            cf["artifacts_dir"] = results_dir + "/" + "artifacts"
+
         else:
             artifacts = []
-    else:
-        post_proc = {}
-        post_proc_name = ""
-        artifacts = []
+            cf["artifacts_dir"] = ""
 
 except KeyError as e:
     print("Invalid configuration file at", batch_conf_path)
     print("Error for expected key:", e)
     raise SystemExit
 
+except FileNotFoundError as e:
+    print("Required directory or file not found")
+    print("File not found error:", e)
+    raise SystemExit
+
 
 #########################################################
-# Set up batch directories and files
-
-# Checks to make sure directories and setup file exist
-for dirpath in [results_dir, batch_def_path, media_dir]:
-    if not os.path.exists(dirpath):
-        raise FileNotFoundError("Path does not exist: " + dirpath)
-
-# Results files get a new name every time this script is run
-timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-batch_results_file_base = results_dir + "/" + batch_name + "_" + timestamp + "_runlog"
-batch_results_csv_path  = batch_results_file_base + ".csv"
-batch_results_json_path  = batch_results_file_base + ".json"
+# Check and/or create directories for batch output
 
 # Create list of dirs to create/validate
 dirs = [mmif_dir]
 
 if len(artifacts) > 0:
-    # directory for all artifacts (not including MMIF files)
-    artifacts_dir = results_dir + "/" + "artifacts"
-    dirs.append(artifacts_dir)
 
+    dirs.append(cf["artifacts_dir"])
+    
     # subdirectories for types of artifacts
     for arttype in artifacts:
-        artdir = artifacts_dir + "/" + arttype
+        artdir = cf["artifacts_dir"] + "/" + arttype
         dirs.append(artdir)
-else:
-    artifacts_dir = ""
 
 # Checks to make sure these directories exist
 # If directories do not exist, then create them
@@ -233,50 +298,6 @@ for dirpath in dirs:
     else:
         print("Creating directory: " + dirpath)
         os.mkdir(dirpath)
-
-
-########################################################
-# %%
-# Define helper functions
-# Note:  These functions are simply for wrapping repeated code.  Hence, they
-# use global variables from this file.
-
-def update_batch_results():
-    # Write out results to a CSV file and to a JSON file
-    # Only write out records that have been reached so far
-    # Re-writing after every iteration of the loop
-    
-    # use data structures that are global relative to this script
-    global batch_results_csv_path, batch_results_json_path
-    global batch_l, item_count
-
-    with open(batch_results_csv_path, 'w', newline='') as file:
-        fieldnames = batch_l[0].keys()
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(batch_l[:(item_count-start_after_item)])
-    
-    with open(batch_results_json_path, 'w') as file:
-        json.dump(batch_l[:(item_count-start_after_item)], file, indent=2)
-
-
-def cleanup_media(item_count, item):
-    # Cleanup media, i.e., remove media file for this item
-    # Do this only if the global settings allow it
-    
-    # refer to data structures that are global to this script
-    global cleanup_media_per_item, cleanup_beyond_item
-
-    print()
-    print("# CLEANING UP MEDIA")
-
-    if cleanup_media_per_item and item_count > cleanup_beyond_item:
-        print("Attempting to removing media at", item["media_path"])
-        removed = remove_media(item["media_path"])
-        if removed:
-            print("Media removed.")
-    else:
-        print("Leaving media for this item.")
 
 
 ########################################################
@@ -294,41 +315,41 @@ with open(batch_def_path, encoding='utf-8', newline='') as csvfile:
     batch_l = list(csv.DictReader(csvfile))
 
 # restrict to the appropriate subset
-batch_l = batch_l[start_after_item:end_after_item]
+batch_l = batch_l[cf["start_after_item"]:cf["end_after_item"]]
 
-item_count = start_after_item
+item_count = cf["start_after_item"]
 
 # Main loop
 for item in batch_l:
-    t0 = datetime.datetime.now()
+    ti = datetime.datetime.now()
 
-    t0s = t0.strftime("%Y-%m-%d %H:%M:%S")
+    tis = ti.strftime("%Y-%m-%d %H:%M:%S")
 
     item_count += 1
     print()
     print(" * ")
-    print("*** ITEM #", item_count, ":", item["asset_id"], "[", batch_name, "]", t0s)
+    print("*** ITEM #", item_count, ":", item["asset_id"], "[", cf["batch_name"], "]", tis)
     print(" * ")
 
     ########################################################
-    # initialize new dictionary elements (do only once per item)
-    item["batch_item"] = item_count
-    item["skip_reason"] = ""
-    item["media_filename"] = ""
-    item["media_path"] = ""
-    item["mmif_files"] = []
-    item["mmif_paths"] = []
 
     # set default value for `media_type` if this is not supplied
     if "media_type" not in item:
         item["media_type"] = "Moving Image"
         print("Warning:  Media type not specified. Assuming it is 'Moving Image'.")
 
+    # initialize new dictionary elements for this item
+    item["batch_item"] = item_count
+    item["skip_reason"] = ""
+    item["media_filename"] = ""
+    item["media_path"] = ""
+    item["mmif_files"] = []
+    item["mmif_paths"] = []
     item["proxy_start"] = None
+    item["elapsed_seconds"] = None
 
     # set the index of the MMIF files so far for this item
     mmifi = -1
-
 
     ########################################################
     # Add media to the availability place, if it is not already there,
@@ -362,7 +383,7 @@ for item in batch_l:
         print("Media file for " + item["asset_id"] + " could not be made available.")
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "media"
-        update_batch_results()
+        write_batch_results_log(cf, batch_l, item_count)
         continue
 
 
@@ -380,7 +401,7 @@ for item in batch_l:
         print("Step prerequisite failed: No media filename recorded.")
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-0-prereq"
-        update_batch_results()
+        write_batch_results_log(cf, batch_l, item_count)
         continue
     else:
         print("  -- Step prerequisites passed. --")
@@ -388,11 +409,11 @@ for item in batch_l:
 
     # define MMIF for this stage of this iteration
     mmifi += 1
-    mmif_filename = item["asset_id"] + "_" + batch_id + "_" + str(mmifi) + ".mmif"
+    mmif_filename = item["asset_id"] + "_" + cf["batch_id"] + "_" + str(mmifi) + ".mmif"
     mmif_path = mmif_dir + "/" + mmif_filename
 
     # Check to see if it exists; if not create it
-    if ( os.path.isfile(mmif_path) and not overwrite_mmif):
+    if ( os.path.isfile(mmif_path) and not cf["overwrite_mmif"]):
         print("Will use existing MMIF:    " + mmif_path)
     else:
         print("Will create MMIF file:     " + mmif_path)
@@ -422,8 +443,8 @@ for item in batch_l:
         mmif_check(mmif_path, complain=True)
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-0"
-        cleanup_media(item_count, item)
-        update_batch_results()
+        cleanup_media(cf, item_count, item)
+        write_batch_results_log(cf, batch_l, item_count)
         continue
 
 
@@ -444,7 +465,7 @@ for item in batch_l:
         print("Step prerequisite failed.")
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-1-prereq"
-        update_batch_results()
+        write_batch_results_log(cf, batch_l, item_count)
         continue
     else:
         print("  -- Step prerequisites passed. --")
@@ -452,11 +473,11 @@ for item in batch_l:
     # Define MMIF for this step of the batch
     mmifi += 1
     clamsi = mmifi - 1
-    mmif_filename = item["asset_id"] + "_" + batch_id + "_" + str(mmifi) + ".mmif"
+    mmif_filename = item["asset_id"] + "_" + cf["batch_id"] + "_" + str(mmifi) + ".mmif"
     mmif_path = mmif_dir + "/" + mmif_filename
 
     # Check to see if it exists; if not create it
-    if ( os.path.isfile(mmif_path) and not overwrite_mmif):
+    if ( os.path.isfile(mmif_path) and not cf["overwrite_mmif"]):
         print("Will use existing MMIF:    " + mmif_path)
     else:
         print("Will try making MMIF file: " + mmif_path)
@@ -590,8 +611,8 @@ for item in batch_l:
         mmif_check(mmif_path, complain=True)
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-1"
-        cleanup_media(item_count, item)
-        update_batch_results()
+        cleanup_media(cf, item_count, item)
+        write_batch_results_log(cf, batch_l, item_count)
         continue
 
     ########################################################
@@ -612,7 +633,7 @@ for item in batch_l:
             print("Step prerequisite failed.")
             print("SKIPPING", item["asset_id"])
             item["skip_reason"] = "usemmif-prereq"
-            update_batch_results()
+            write_batch_results_log(cf, batch_l, item_count)
             continue
         else:
             print("  -- Step prerequisites passed. --")
@@ -621,11 +642,9 @@ for item in batch_l:
         # Call separate procedure for appropraite post-processing
         if post_proc_name.lower() == "swt" :
             swt.post_proc_item.run_post(item=item, 
+                                        cf=cf,
                                         post_proc=post_proc, 
-                                        mmif_path=item["mmif_paths"][mmifi], 
-                                        artifacts_dir=artifacts_dir,
-                                        batch_id=batch_id,
-                                        batch_name=batch_name)
+                                        mmif_path=item["mmif_paths"][mmifi])
         else:
             print("Invalid post-processing procedure:", post_proc)
 
@@ -634,28 +653,29 @@ for item in batch_l:
     # Done with this item.  
     # 
 
-    # Clean up
-    cleanup_media(item_count, item)
-
-    # Update results
-    update_batch_results()
-
-    # Print diag info
+    # Record and print diag info
     tn = datetime.datetime.now()
+    item["elapsed_seconds"] = (tn-ti).seconds
     print()
-    print("elapsed time:", (tn-t0).seconds, "seconds")
+    print("elapsed time:", item["elapsed_seconds"], "seconds")
+
+    # Clean up
+    cleanup_media(cf, item_count, item)
+
+    # Update results to reflect this iteration of the loop
+    write_batch_results_log(cf, batch_l, item_count)
+
 
 
 # end of main processing loop
 ########################################################
 
-
+tn = datetime.datetime.now()
 print()
 print("****************************")
-print("Batch complete.")
-print("Batch results recorded in:")
-print(batch_results_csv_path)
-print(batch_results_json_path)
+print()
+print("Batch complete at", t0.strftime("%Y-%m-%d %H:%M:%S"))
+print("Total elapsed time:", (tn-t0).seconds, "seconds")
+print("Results logged in", cf["logs_dir"])
+print()
 
-
-# %%
