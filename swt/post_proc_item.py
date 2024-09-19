@@ -18,19 +18,23 @@ import swt.process_swt
 # Global default values for SWT processing
 # The longest gap without a sample
 max_gap = 180000
+
 # The latest valid start time for the program
 #   (We won't look for the main program slate after this point.)
 #   (And we won't assign a proxy start time after this point.)
 prog_start_max = 150000
 
+# Credits sampling period
+# We might want more than one frame from a long credits scene
+# This is the max milliseonds between samples of credits
+credits_sampling_max = 1000
+
 
 def run_post(item, cf, post_proc, mmif_path):
 
     artifacts_dir = cf["artifacts_dir"]
-    batch_id = cf["batch_id"]
-    batch_name = cf["batch_name"]
 
-    global max_gap, prog_start_max
+    global max_gap, prog_start_max, credits_sampling_max
 
     if "name" in post_proc:
         if post_proc["name"].lower() != "swt":
@@ -41,12 +45,13 @@ def run_post(item, cf, post_proc, mmif_path):
         print("Post-processing error: No post-process or name specified.")
         return False
 
-
-    # Set up for hte particular kinds of artifacts requested 
+    # Set up for the particular kinds of artifacts requested 
     if "artifacts" in post_proc:
         artifacts = post_proc["artifacts"]
     else:
         artifacts = []
+
+    artifacts_dir = cf["artifacts_dir"]
 
     if "data" in artifacts:
         data_dir = artifacts_dir + "/data"
@@ -66,7 +71,7 @@ def run_post(item, cf, post_proc, mmif_path):
         mmif_str = file.read()
 
     # call SWT MMIF processors to get a table of time frames
-    tfs = swt.process_swt.list_tfs(mmif_str, max_gap=max_gap)
+    tfs = swt.process_swt.list_tfs(mmif_str, max_gap=max_gap, credits_sampling_max=credits_sampling_max)
 
     # get metadata_str
     metadata_str = swt.process_swt.get_mmif_metadata_str(mmif_str)
@@ -158,7 +163,8 @@ def run_post(item, cf, post_proc, mmif_path):
                 tfs=tfs, 
                 stdout=False, 
                 output_dirname=visaids_dir,
-                batch_name=batch_name, 
+                batch_id=cf["batch_id"],
+                batch_name=cf["batch_name"], 
                 guid=item["asset_id"],
                 types=scene_types,
                 metadata_str=metadata_str

@@ -3,7 +3,7 @@ process_swt.py
 
 Defines functions that perform processing on MMIF output from SWT
 """
-module_version = "1.11.2"
+module_version = "1.20"
 
 # %%
 # Run import statements
@@ -42,7 +42,11 @@ def get_mmif_metadata_str( mmifstr:str ):
 
 
 
-def list_tfs( mmifstr:str, max_gap:int=0 ):
+def list_tfs( mmifstr:str, 
+              max_gap:int=0, 
+              include_startframe:bool=False,
+              include_endframe:bool=True,
+              credits_sampling_max:int=None):
     """
     Analyzes MMIF file from SWT and returns tabular data.
 
@@ -144,15 +148,19 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
     # sort list of timeFrames by start time
     tfs.sort(key=lambda f:f[2])
 
+    # add frames for first and last timepoints 
+    # (Because gaps have to be between timepoints, and we want to catch
+    # gaps at the beginning and end.)
+    # These may be removed later
+    tfs.insert(0, ['f_0', 'first frame', 0, 0, 0])
+    tfs.append(['f_n', 'last frame', last_time, last_time, last_time])
+
+
     # If this parameter has been passed to the function, then
     # intersperse sample non-labeled frames among labeled timeframes.
     # The max_gap value controls the largest gap without the addtition
     # of an interspersed frame.
     if max_gap: 
-
-        # add frames for first and last timepoints
-        tfs.insert(0, ['f_0', 'first frame', 0, 0, 0])
-        tfs.append(['f_n', 'last frame', last_time, last_time, last_time])
 
         # Samples are primarily useful for their central frame, but they need a 
         # duration to be represented in the tfs data structure
@@ -194,12 +202,24 @@ def list_tfs( mmifstr:str, max_gap:int=0 ):
         tfs += samples
         tfs.sort(key=lambda f:f[2])
 
+
+    # remove first frame and last frame pseudo-annotations
+    remove = []
+    if not include_startframe:
+        remove.append('f_0')
+    if not include_endframe:
+        remove.append('f_n')
+    if len(remove) > 0:
+        tfs = [ row for row in tfs if row[0] not in remove ]
+
     return tfs
+
 
 
 
 def create_aid(video_path: str, 
                tfs: list,
+               batch_id: str = None,
                batch_name: str = None,
                hfilename: str = "",
                guid: str = "",
@@ -224,10 +244,10 @@ def create_aid(video_path: str,
             hfilename = "visaid.html"
 
     if guid:
-        proj_name = guid
+        video_identifier = guid
     else:
         video_fname = video_path[video_path.rfind("/")+1:]
-        proj_name = video_fname
+        video_identifier = video_fname
 
     if len(types) > 0:
         tfs = [ row for row in tfs if row[1] in types ] 
@@ -265,7 +285,7 @@ def create_aid(video_path: str,
 
                 # convert out binary image data to UTF-8 string
                 img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
-                #html_img_tag = f'<img src="data:image/jpeg;base64,{img_str}" />'
+                #html_img_tag = f'<img src="data:image/jpeg;base64,{img_str}" >'
 
 
                 tfsi.append(tfs[next_scene] + [ ftime ] + [ img_str ] )
@@ -280,31 +300,55 @@ def create_aid(video_path: str,
 
     # Get CSS for inclusion in HTML 
     py_dir = os.path.dirname(__file__)
-    css_path = os.path.join(py_dir, "visaid.css")
+    css_path = os.path.join(py_dir, "visaid_embedded_styles.css")
     with open(css_path, "r") as css_file:
         css_str = css_file.read()
 
+    #
     # create HTML string
+    #
+
+    # create batch information HTML
+    if batch_id is not None:
+        batch_info = "<span class='batch-info'><span class='identifier' id='batch-id'>" + batch_id
+        batch_info += " </span>"
+        if batch_name is not None and batch_name != batch_id:
+            batch_info += ( '("' + batch_name + '")' )
+        batch_info += "</span>"
+    else:
+        batch_info = ""
+
     html_top = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>""" + proj_name + """</title>
+<title>""" + video_identifier + """</title>
 <style>
 """ + css_str + """
 </style>
+<!-- 
+The next two elements reference files that are optional.  They are not required 
+for the visaid to display properly.  However, they can be customized to 
+restyle, enhance, or alter a visaid.
+-->
+<link rel='stylesheet' href='visaid_style_override.css'></link>
+<script src='visaid_enhance.js' defer></script>
 </head>
 <body>
-<div class='top'>Visual index from <span class='proj'>""" + proj_name + """</span>
-<br /><span class="version">batch: """ + str(batch_name) + " (visaid version: " + module_version + """)</span>
-<pre class="metadata" id="mmif_metadata">
+<div class='top'>Visual index from <span class='video-id' id='video-id'>""" + video_identifier + """</span>
+<br>""" + batch_info + """
+<pre class="metadata" id="mmif-metadata">
 """ + metadata_str + """
 </pre>
 </div>
 <div class='container'>
 """
     html_end = """
+</div>
+<div class="version" id='visaid-version'>
+visaid version: """ + module_version + """
+<span class="enhance-indicator" id="enhance-indicator"></span>
 </div>
 </body>
 </html>
@@ -329,11 +373,11 @@ def create_aid(video_path: str,
         else:
             html_start = start_str
 
-        html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br />'
-        html_img_tag = f'<img src="data:image/jpeg;base64,{f[6]}" />'
+        html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br>'
+        html_img_tag = f'<img src="data:image/jpeg;base64,{f[6]}" >'
         img_fname = f'{guid}_{length:08}_{f[4]:08}_{f[5]:08}' + ".jpg"
         #img_fname = guid + "_" + str(length) + "_" + str(f[4]) + "_" + str(f[5])
-        html_img_fname = "<br /><span class='img_fname'>" + img_fname + "</span>"
+        html_img_fname = "<br><span class='img-fname'>" + img_fname + "</span>"
 
         html_body += ("<div class='item'>" + 
                       html_cap + 
@@ -349,7 +393,6 @@ def create_aid(video_path: str,
         hfilename = None
         hfilepath = None
     else:
-        #hfilename = "visaid_" + proj_name + ".html"
         hfilepath = output_dirname + "/" + hfilename
         with open(hfilepath, "w") as html_file:
             html_file.write(html_str)
