@@ -15,26 +15,14 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 import swt.process_swt
 
-# Global default values for SWT processing
-# The longest gap without a sample
-max_gap = 180000
-
-# The latest valid start time for the program
+# The latest valid start time for the program (if not set by config)
 #   (We won't look for the main program slate after this point.)
 #   (And we won't assign a proxy start time after this point.)
-prog_start_max = 150000
-
-# Credits sampling period
-# We might want more than one frame from a long credits scene
-# This is the max milliseonds between samples of credits
-credits_sampling_max = 1000
-
+default_prog_start_max = 150000
 
 def run_post(item, cf, post_proc, mmif_path):
 
     artifacts_dir = cf["artifacts_dir"]
-
-    global max_gap, prog_start_max, credits_sampling_max
 
     if "name" in post_proc:
         if post_proc["name"].lower() != "swt":
@@ -56,14 +44,35 @@ def run_post(item, cf, post_proc, mmif_path):
     if "data" in artifacts:
         data_dir = artifacts_dir + "/data"
         infer_data = True
+    else:
+        infer_data = False
 
     if "slates" in artifacts:
         slates_dir = artifacts_dir + "/slates"
         get_slate = True
+    else:
+        get_slate = False
 
     if "visaids" in artifacts:
         visaids_dir = artifacts_dir + "/visaids"
         make_visaid = True
+    else:
+        make_visaid = False
+
+    if "prog_start_max" in post_proc:
+        prog_start_max = post_proc["prog_start_max"]
+    else:
+        prog_start_max = default_prog_start_max
+
+    if "subsampling" in post_proc:
+        subsampling = post_proc["subsampling"]
+    else:
+        subsampling = None
+
+    if "max_gap" in post_proc:
+        max_gap = post_proc["max_gap"]
+    else:
+        max_gap = None
 
 
     # Open MMIF and start processing
@@ -71,7 +80,7 @@ def run_post(item, cf, post_proc, mmif_path):
         mmif_str = file.read()
 
     # call SWT MMIF processors to get a table of time frames
-    tfs = swt.process_swt.list_tfs(mmif_str, max_gap=max_gap, credits_sampling_max=credits_sampling_max)
+    tfs = swt.process_swt.list_tfs(mmif_str, max_gap=max_gap, subsampling=subsampling)
 
     # get metadata_str
     metadata_str = swt.process_swt.get_mmif_metadata_str(mmif_str)
@@ -167,7 +176,9 @@ def run_post(item, cf, post_proc, mmif_path):
                 batch_name=cf["batch_name"], 
                 guid=item["asset_id"],
                 types=scene_types,
-                metadata_str=metadata_str
+                metadata_str=metadata_str,
+                max_gap=max_gap,
+                subsampling=subsampling
                 )
 
         except Exception as e:

@@ -3,7 +3,7 @@ process_swt.py
 
 Defines functions that perform processing on MMIF output from SWT
 """
-module_version = "1.20"
+module_version = "1.30"
 
 # %%
 # Run import statements
@@ -11,6 +11,8 @@ import os
 import io
 import base64
 import json
+
+import pprint
 
 import pandas as pd
 import av
@@ -46,7 +48,7 @@ def list_tfs( mmifstr:str,
               max_gap:int=0, 
               include_startframe:bool=False,
               include_endframe:bool=True,
-              credits_sampling_max:int=None):
+              subsampling:dict=None):
     """
     Analyzes MMIF file from SWT and returns tabular data.
 
@@ -61,7 +63,7 @@ def list_tfs( mmifstr:str,
     4: represenative still time in milliseconds(int)
 
     """
-    
+
     # turn the MMIF string into a Mmif object
     usemmif = Mmif(mmifstr)
 
@@ -111,6 +113,8 @@ def list_tfs( mmifstr:str,
         # add timeFrame points to their list
         for t in ann.get_property("targets"):
             is_rep = t in ann.get_property("representatives")
+
+            # need to cast timepoint back to int from np.int64
             tfpts += [[ tf_id, tf_frameType, t, is_rep ]]
 
     # work-around for v3.0 timePont bug
@@ -139,11 +143,12 @@ def list_tfs( mmifstr:str,
     tfs_tps_df = pd.merge(tfpts_df,tps_df)
 
     # iterate through the timeFrames and use the merged DataFrame to look up times
+    # (need to cast np.int64 values to ordinary int)
     for f in tfs:
         tfrows = tfs_tps_df[ tfs_tps_df["tf_id"] == f[0] ]
-        f[2] = (tfrows["timePoint"]).min()  # start time
-        f[3] = (tfrows["timePoint"]).max()  # end time
-        f[4] = (tfrows[tfrows["is_rep"]]["timePoint"]).min() # rep time
+        f[2] = int( (tfrows["timePoint"]).min() )  # start time
+        f[3] = int( (tfrows["timePoint"]).max() ) # end time
+        f[4] = int( (tfrows[tfrows["is_rep"]]["timePoint"]).min() )# rep time
 
     # sort list of timeFrames by start time
     tfs.sort(key=lambda f:f[2])
@@ -203,15 +208,74 @@ def list_tfs( mmifstr:str,
         tfs.sort(key=lambda f:f[2])
 
 
-    # remove first frame and last frame pseudo-annotations
-    remove = []
-    if not include_startframe:
-        remove.append('f_0')
-    if not include_endframe:
-        remove.append('f_n')
-    if len(remove) > 0:
-        tfs = [ row for row in tfs if row[0] not in remove ]
+   # Add extra samples scenes for longer scenes  (like credits sequences)
+    if subsampling is not None:
 
+        # check for and remove invalid sampling entries
+        for scenetype in subsampling:
+            if not ( subsampling[scenetype] > 0 and subsampling[scenetype] , last_time ):
+                print("Ignoring invalid scene sampling:", scenetype, ":", subsampling[scenetype])
+                del subsampling[scenetype]
+
+        # collect IDs scenes to be removed (because replaced by samples)
+        to_remove = []
+        
+        # collect new rows for the new samples
+        scene_samples = []
+
+        # iterate through scene rows in tfs
+        for row in [row for row in tfs if row[1] in subsampling ]:
+
+            scene_dur = row[3] - row[2]
+            num_samples = int( scene_dur/ subsampling[row[1]] ) + 1
+            
+            # Replace scene with samples only if we need more than one sample
+            if num_samples > 1: 
+
+                new_samples = []
+
+                sample_dur = int(scene_dur/(num_samples - 1))
+
+                sample_start = row[2]  # first sample is at scene start
+
+                for i in range(num_samples):
+                    new_id = row[0] + "_s_" + str(len(new_samples)) 
+                    new_label = row[1] + " sample"
+
+                    if len(new_samples) < (num_samples - 1):
+                        sample_end = sample_start + sample_dur
+                        sample_rep = sample_start
+                    else:
+                        # last sample -- at the endpoint of the credits scene
+                        sample_end = sample_start
+                        sample_rep = sample_start
+
+                    new_row = [ new_id, new_label, sample_start, sample_end, sample_rep ]
+                    new_samples.append(new_row)
+
+                    sample_start = sample_end
+
+                scene_samples += new_samples
+
+                to_remove.append(row[0])
+        
+        # remove original scenes and include credits samples instead
+        if len(to_remove) > 0:
+            tfs = [ row for row in tfs if row[0] not in to_remove ]
+        tfs += scene_samples
+        tfs.sort(key=lambda f:f[2])
+
+
+    # if appropriate, remove first frame and last frame pseudo-annotations
+    to_remove = []
+    if not include_startframe:
+        to_remove.append('f_0')
+    if not include_endframe:
+        to_remove.append('f_n')
+    if len(to_remove) > 0:
+        tfs = [ row for row in tfs if row[0] not in to_remove ]
+
+    # pprint.pprint(tfs) # DIAG
     return tfs
 
 
@@ -226,7 +290,9 @@ def create_aid(video_path: str,
                stdout: bool = False,
                output_dirname: str = ".",
                types: list = [],
-               metadata_str: str = ""
+               metadata_str: str = "",
+               max_gap: int = None,
+               subsampling:dict = None
                ):
     """
     Creates an HTML file (with embedded images) as a visual aid, based on the output
@@ -341,6 +407,13 @@ restyle, enhance, or alter a visaid.
 <pre class="metadata" id="mmif-metadata">
 """ + metadata_str + """
 </pre>
+<pre class="metadata" id="subsampling">
+""" + str(subsampling) + """
+</pre>
+<pre class="metadata" id="max-gap">
+{'max_gap': """ + str(max_gap) + """}
+</pre>
+
 </div>
 <div class='container'>
 """
