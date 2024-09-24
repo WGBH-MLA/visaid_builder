@@ -118,7 +118,7 @@ def main():
         exlist = []
         for row in tfs:
             #if row[1] == 'chyron' or row[1] == 'credits' :
-                exlist.append(row[4])  # representative timepoint for the TimeFrame (in ms)
+            exlist.append(row[4])  # representative timepoint for the TimeFrame (in ms)
 
         # title project based on the name of the video file
         vfilename = os.path.basename(video_path)
@@ -140,7 +140,7 @@ def main():
         # the guid is the filename without the extension.
         vfilename = os.path.basename(video_path)
         vfname, ext = os.path.splitext(vfilename)
-        if ( vfname[:9] == "cpb-aacip" ):
+        if  vfname[:9] == "cpb-aacip" :
             guid = vfname
         else:
             guid = None

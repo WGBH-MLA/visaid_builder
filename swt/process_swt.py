@@ -3,7 +3,6 @@ process_swt.py
 
 Defines functions that perform processing on MMIF output from SWT
 """
-module_version = "1.30"
 
 # %%
 # Run import statements
@@ -12,16 +11,16 @@ import io
 import base64
 import json
 
-import pprint
-
 import pandas as pd
 import av
 
-import mmif
 from mmif import Mmif
 from mmif import AnnotationTypes
 
 import drawer.lilhelp
+
+
+MODULE_VERSION = "1.30"
 
 
 def get_mmif_metadata_str( mmifstr:str ):
@@ -89,7 +88,7 @@ def list_tfs( mmifstr:str,
             ref_prefix = useview.id + ":"
         else:
             ref_prefix = ""
-    except Error as e:
+    except Exception as e:
         print("Error:", e)
         print("Could not get app version.")
         print("Assuming version less than 6.0")
@@ -238,7 +237,7 @@ def list_tfs( mmifstr:str,
 
                 sample_start = row[2]  # first sample is at scene start
 
-                for i in range(num_samples):
+                for _ in range(num_samples):
                     new_id = row[0] + "_s_" + str(len(new_samples)) 
                     new_label = row[1] + " sample"
 
@@ -289,7 +288,7 @@ def create_aid(video_path: str,
                guid: str = "",
                stdout: bool = False,
                output_dirname: str = ".",
-               types: list = [],
+               types: list = None,
                metadata_str: str = "",
                max_gap: int = None,
                subsampling:dict = None
@@ -300,8 +299,6 @@ def create_aid(video_path: str,
 
     If a list of types is passed in, the visaid is limited to those types.
     """
-
-    global module_version
 
     if hfilename == "":
         if guid:
@@ -322,7 +319,7 @@ def create_aid(video_path: str,
     container = av.open(video_path)
     video_stream = next((s for s in container.streams if s.type == 'video'), None)
     if video_stream is None:
-        raise Exception("No video stream found in {}".format(vfilename) ) 
+        raise Exception("No video stream found in {}".format(video_path) ) 
 
     # get technical stats on the video stream; assumes FPS is constant
     fps = video_stream.average_rate.numerator / video_stream.average_rate.denominator
@@ -343,7 +340,7 @@ def create_aid(video_path: str,
         for frame in container.decode(video_stream):
             
             ftime = int(frame.time * 1000)   
-            if ( ftime >= target_time ):
+            if ftime >= target_time :
                 
                 # save frame to memory buffer
                 buf = io.BytesIO()
@@ -402,7 +399,9 @@ restyle, enhance, or alter a visaid.
 <script src='visaid_enhance.js' defer></script>
 </head>
 <body>
-<div class='top'>Visual index from <span class='video-id' id='video-id'>""" + video_identifier + """</span>
+<div class='top'>Visual index from <span class='video-id' id='video-id'>
+""" + video_identifier + """
+</span>
 <br>""" + batch_info + """
 <pre class="metadata" id="mmif-metadata">
 """ + metadata_str + """
@@ -420,7 +419,7 @@ restyle, enhance, or alter a visaid.
     html_end = """
 </div>
 <div class="version" id='visaid-version'>
-visaid version: """ + module_version + """
+visaid version: """ + MODULE_VERSION + """
 <span class="enhance-indicator" id="enhance-indicator"></span>
 </div>
 </body>
@@ -442,7 +441,9 @@ visaid version: """ + module_version + """
             start_sec = str(f[2]/1000)
             #end_sec = str(f[3]/1000)
             end_sec = str(length/1000)
-            html_start = "<a href='https://americanarchive.org/catalog/" + guid + "?proxy_start_time=" + start_sec + "'>" + start_str + "</a>"
+            html_start = ( "<a href='https://americanarchive.org/catalog/" +
+                           guid + "?proxy_start_time=" + start_sec + "'>" + 
+                           start_str + "</a>" )
         else:
             html_start = start_str
 

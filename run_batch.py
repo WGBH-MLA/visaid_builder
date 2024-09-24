@@ -17,8 +17,8 @@ import json
 import datetime
 import warnings
 import subprocess
-import requests
 import argparse
+import requests
 
 from drawer.media_availability import check_avail, make_avail, remove_media
 from drawer.mmif_adjunct import make_blank_mmif, mmif_check
@@ -31,11 +31,13 @@ import swt.post_proc_item
 # Define helper functions
 
 def write_batch_results_log(cf, batch_l, item_count):
-    # Write out results to a CSV file and to a JSON file
-    # Only write out records that have been reached so far
+    """Write out results to a CSV file and to a JSON file
+    Only write out records that have been reached so far
+    """
 
     # Results files get a new name every time this script is run
-    batch_results_log_file_base = cf["logs_dir"] + "/" + cf["batch_id"] + "_" + cf["start_timestamp"] + "_runlog"
+    batch_results_log_file_base = ( cf["logs_dir"] + "/" + cf["batch_id"] + 
+                                    "_" + cf["start_timestamp"] + "_runlog" )
     batch_results_log_csv_path  = batch_results_log_file_base + ".csv"
     batch_results_log_json_path  = batch_results_log_file_base + ".json"
 
@@ -50,8 +52,9 @@ def write_batch_results_log(cf, batch_l, item_count):
 
 
 def cleanup_media(cf, item_count, item):
-    # Cleanup media, i.e., remove media file for this item
-    # Do this only if the global settings allow it
+    """Cleanup media, i.e., remove media file for this item
+    Do this only if the global settings allow it
+    """
     
     print()
     print("# CLEANING UP MEDIA")
@@ -285,17 +288,17 @@ try:
 except KeyError as e:
     print("Invalid configuration file at", batch_conf_path)
     print("Error for expected key:", e)
-    raise SystemExit
+    raise SystemExit from e
 
 except FileNotFoundError as e:
     print("Required directory or file not found")
     print("File not found error:", e)
-    raise SystemExit
+    raise SystemExit from e
 
 except RuntimeError as e:
     print("Failed to configure batch")
     print("Runtime Error:", e)
-    raise SystemExit
+    raise SystemExit from e
 
 
 #########################################################
@@ -446,8 +449,9 @@ for item in batch_l:
         elif item["media_type"] == "Sound":
             mime = "audio"
         else:
-            print("Warning: media type of " + item["asset_id"] + " is `" + item["media_type"] + "`.")
-            print("Using 'video' as the MIME type.")
+            print( "Warning: media type of " + item["asset_id"] + 
+                   " is `" + item["media_type"] + "`." )
+            print( "Using 'video' as the MIME type." )
             mime = "video"
         mmif_str = make_blank_mmif(item["media_filename"], mime)
 
@@ -533,7 +537,7 @@ for item in batch_l:
                 print("Encountered exception:", e)
                 print("Failed to get a response from the CLAMS web service.")
                 print("Check CLAMS web service and resume before batch item:", item_count)
-                raise SystemExit("Exiting script.")
+                raise SystemExit("Exiting script.") from e
 
             print("CLAMS app web serivce response code:", response.status_code)
             
@@ -676,17 +680,19 @@ for item in batch_l:
     # Done with this item.  
     # 
 
-    # Record and print diag info
+    # Record running time
     tn = datetime.datetime.now()
     item["elapsed_seconds"] = (tn-ti).seconds
-    print()
-    print("elapsed time:", item["elapsed_seconds"], "seconds")
 
     # Clean up
     cleanup_media(cf, item_count, item)
 
     # Update results to reflect this iteration of the loop
     write_batch_results_log(cf, batch_l, item_count)
+
+    # print diag info
+    print()
+    print("elapsed time:", item["elapsed_seconds"], "seconds")
 
 
 

@@ -3,24 +3,28 @@ post_proc_item.py
 
 Defines functions for doing post processing of MMIF created by SWT
 """
-module_version = "0.1"
 
 # %%
 # Run import statements
 
-import mmif
 from mmif import Mmif
-from mmif import AnnotationTypes
 
 import drawer.lilhelp
 import swt.process_swt
 
+MODULE_VERSION = "0.1"
+
 # The latest valid start time for the program (if not set by config)
 #   (We won't look for the main program slate after this point.)
 #   (And we won't assign a proxy start time after this point.)
-default_prog_start_max = 150000
+DEFAULT_PROG_START_MAX = 150000
+
 
 def run_post(item, cf, post_proc, mmif_path):
+    """
+    Calls particular methods to run post processing for the item according to the 
+    configuration specified in the `cf` and `post_proc` dictionaries.
+    """
 
     artifacts_dir = cf["artifacts_dir"]
 
@@ -62,7 +66,7 @@ def run_post(item, cf, post_proc, mmif_path):
     if "prog_start_max" in post_proc:
         prog_start_max = post_proc["prog_start_max"]
     else:
-        prog_start_max = default_prog_start_max
+        prog_start_max = DEFAULT_PROG_START_MAX
 
     if "subsampling" in post_proc:
         subsampling = post_proc["subsampling"]
