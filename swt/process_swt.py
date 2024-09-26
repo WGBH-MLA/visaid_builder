@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.30"
+MODULE_VERSION = "1.40"
 
 
 def get_mmif_metadata_str( mmifstr:str ):
@@ -47,7 +47,8 @@ def list_tfs( mmifstr:str,
               max_gap:int=0, 
               include_startframe:bool=False,
               include_endframe:bool=True,
-              subsampling:dict=None):
+              subsampling:dict=None,
+              remove_sampled=False):
     """
     Analyzes MMIF file from SWT and returns tabular data.
 
@@ -216,8 +217,8 @@ def list_tfs( mmifstr:str,
                 print("Ignoring invalid scene sampling:", scenetype, ":", subsampling[scenetype])
                 del subsampling[scenetype]
 
-        # collect IDs scenes to be removed (because replaced by samples)
-        to_remove = []
+        # collect IDs scenes in case we want to remove them (because replaced by samples)
+        sampled_scene_ids = []
         
         # collect new rows for the new samples
         scene_samples = []
@@ -239,7 +240,7 @@ def list_tfs( mmifstr:str,
 
                 for _ in range(num_samples):
                     new_id = row[0] + "_s_" + str(len(new_samples)) 
-                    new_label = row[1] + " sample"
+                    new_label = row[1] + " subsample"
 
                     if len(new_samples) < (num_samples - 1):
                         sample_end = sample_start + sample_dur
@@ -255,26 +256,25 @@ def list_tfs( mmifstr:str,
                     sample_start = sample_end
 
                 scene_samples += new_samples
-
-                to_remove.append(row[0])
+                sampled_scene_ids.append(row[0])
         
-        # remove original scenes and include credits samples instead
-        if len(to_remove) > 0:
-            tfs = [ row for row in tfs if row[0] not in to_remove ]
+        # Add new samples to tfs
         tfs += scene_samples
-        tfs.sort(key=lambda f:f[2])
-
-
+        
     # if appropriate, remove first frame and last frame pseudo-annotations
     to_remove = []
+    if remove_sampled:
+        to_remove += sampled_scene_ids
     if not include_startframe:
         to_remove.append('f_0')
     if not include_endframe:
         to_remove.append('f_n')
+
     if len(to_remove) > 0:
         tfs = [ row for row in tfs if row[0] not in to_remove ]
 
     # pprint.pprint(tfs) # DIAG
+    tfs.sort(key=lambda f:f[2])
     return tfs
 
 
@@ -367,6 +367,13 @@ def create_aid(video_path: str,
     with open(css_path, "r") as css_file:
         css_str = css_file.read()
 
+    # Get JS for inclusion in HTML 
+    py_dir = os.path.dirname(__file__)
+    js_path = os.path.join(py_dir, "visaid_embedded_logic.js")
+    with open(js_path, "r") as js_file:
+        js_str = js_file.read()
+
+
     #
     # create HTML string
     #
@@ -395,7 +402,10 @@ The next two elements reference files that are optional.  They are not required
 for the visaid to display properly.  However, they can be customized to 
 restyle, enhance, or alter a visaid.
 -->
-<link rel='stylesheet' href='visaid_style_override.css'></link>
+<link rel='stylesheet' href='visaid_style_override.css'>
+<script defer>
+""" + js_str + """
+</script>
 <script src='visaid_enhance.js' defer></script>
 </head>
 <body>
@@ -412,7 +422,10 @@ restyle, enhance, or alter a visaid.
 <pre class="metadata" id="max-gap">
 {'max_gap': """ + str(max_gap) + """}
 </pre>
-
+</div>
+<div class='button-container'>
+<button type='button' class='hidden' id='unsamplesVisButton'>Toggle Unlabeled Samples</button>
+<button type='button' class='hidden' id='subsamplesVisButton'>Toggle Scene Subsamples</button>
 </div>
 <div class='container'>
 """
@@ -447,13 +460,18 @@ visaid version: """ + MODULE_VERSION + """
         else:
             html_start = start_str
 
+        div_class = "item"
+        if label.find("subsample") != -1:
+            div_class += " subsample"
+        if label.find("unlabeled sample") != -1:
+            div_class += " unsample"
+        html_div_open = "<div class='" + div_class + "' data-label='" + label + "'>"
         html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br>'
         html_img_tag = f'<img src="data:image/jpeg;base64,{f[6]}" >'
         img_fname = f'{guid}_{length:08}_{f[4]:08}_{f[5]:08}' + ".jpg"
-        #img_fname = guid + "_" + str(length) + "_" + str(f[4]) + "_" + str(f[5])
         html_img_fname = "<br><span class='img-fname'>" + img_fname + "</span>"
 
-        html_body += ("<div class='item'>" + 
+        html_body += (html_div_open + 
                       html_cap + 
                       html_img_tag + "\n" +
                       html_img_fname +

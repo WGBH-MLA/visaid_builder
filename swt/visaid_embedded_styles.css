@@ -36,7 +36,11 @@ span.label {
 span.img-fname {
     font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
     font-size: 55%;
-    color: #a3a3a3 ; 
+    color: #858585 ; 
+}
+div.button-container {
+    margin-top: 5px;
+    margin-bottom: 5px;
 }
 div.container {
     display: flex;
@@ -45,14 +49,41 @@ div.container {
 }
 div.item {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
-    background-color: #d9d7db;
+    background-color: #bababa;
     padding: 12px 12px 4px 12px;
     border-radius: 10px 10px 10px 10px;
-    box-shadow: 2px 2px 2px 0 #38383f7a,
+    box-shadow: 2px 2px 2px 0 #858585,
                 -1px -1px 1px 0 #e2e2e2;
+}
+div.subsample {
+    background-color: #bcd1e3;
+    color: #1d64a1;
+    box-shadow: 4px 4px 2px 0px #d3e2f0,
+               -2px -2px 1px 0px #e2e2e2;
+
+}
+div.unsample {
+    background-color: #d9d7db;
+    color: #a3a3a3;
+    box-shadow: 2px 2px 2px 0 #e2e2e2,
+                -1px -1px 1px 0 #e2e2e2;
+
+}
+div.unsample span.img-fname {
+    color: #a3a3a3;
+}
+button {
+    font-size: small;    
 }
 img {
     width: 240px;
     border: 2px solid black;
     margin-top: 2px;
+}
+a {
+    text-decoration: none;
+    color: inherit;
+}
+.hidden {
+    display: none;
 }
