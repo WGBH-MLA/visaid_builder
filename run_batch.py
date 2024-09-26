@@ -60,7 +60,7 @@ def cleanup_media(cf, item_count, item):
     print("# CLEANING UP MEDIA")
 
     if cf["cleanup_media_per_item"] and item_count > cf["cleanup_beyond_item"]:
-        print("Attempting to removing media at", item["media_path"])
+        print("Attempting to remove media at", item["media_path"])
         removed = remove_media(item["media_path"])
         if removed:
             print("Media removed.")
@@ -692,7 +692,7 @@ for item in batch_l:
 
     # print diag info
     print()
-    print("elapsed time:", item["elapsed_seconds"], "seconds")
+    print("Elapsed time for this item:", item["elapsed_seconds"], "seconds")
 
 
 
