@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.40"
+MODULE_VERSION = "1.41"
 
 
 def get_mmif_metadata_str( mmifstr:str ):
@@ -397,21 +397,20 @@ def create_aid(video_path: str,
 <style>
 """ + css_str + """
 </style>
+<script defer>
+""" + js_str + """
+</script>
 <!-- 
 The next two elements reference files that are optional.  They are not required 
 for the visaid to display properly.  However, they can be customized to 
 restyle, enhance, or alter a visaid.
 -->
 <link rel='stylesheet' href='visaid_style_override.css'>
-<script defer>
-""" + js_str + """
-</script>
 <script src='visaid_enhance.js' defer></script>
 </head>
 <body>
-<div class='top'>Visual index from <span class='video-id' id='video-id'>
-""" + video_identifier + """
-</span>
+<div class='top'>Visual index from 
+<span class='video-id' id='video-id'>""" + video_identifier + """</span>
 <br>""" + batch_info + """
 <pre class="metadata" id="mmif-metadata">
 """ + metadata_str + """
@@ -431,8 +430,8 @@ restyle, enhance, or alter a visaid.
 """
     html_end = """
 </div>
-<div class="version" id='visaid-version'>
-visaid version: """ + MODULE_VERSION + """
+<div class="version">
+visaid version: <span id='visaid-version'>""" + MODULE_VERSION + """</span>
 <span class="enhance-indicator" id="enhance-indicator"></span>
 </div>
 </body>
