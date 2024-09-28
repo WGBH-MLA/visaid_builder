@@ -10,6 +10,12 @@ import time
 import platform
 
 
+# Limit for the size of the files that will be downloaded
+# About 1500MB.  That's roughly 4.5hrs for AAPB standard proxy.
+# Things are weird if we're receiving more than that.
+BYTES_LIMIT = 1500000000 
+
+
 # location of helper bash script
 ci_url_sh_path = './drawer/bash_aux/ci_url.sh'
 
@@ -157,8 +163,6 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
     #     print("Download attempt failed.  Status code: ", response.status_code)
     
     # Since files can be large (up to 700MB) better to write it to disk as we go.
-    bytes_limit = 1000000000 # ~1000MB  # Things are weird if we're receiving more than that
-
     success = False
     with requests.get(ci_url, stream=True) as response:
         if response.status_code == 200:
@@ -172,8 +176,8 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
                         if chunk:  # filter out zero bye keep-alive chunks
                             file.write(chunk)
                             bytes_saved += len(chunk)
-                        if bytes_saved >= bytes_limit:
-                            print("Warning: Received more than limit of", bytes_limit, "bytes.")
+                        if bytes_saved >= BYTES_LIMIT:
+                            print("Warning: Received more than limit of", BYTES_LIMIT, "bytes.")
                             print("Stopping the download.  File may be truncated.")
                             break
                     print("Downloading finished.", bytes_saved, "bytes saved.")
