@@ -282,8 +282,8 @@ def list_tfs( mmifstr:str,
 
 def create_aid(video_path: str, 
                tfs: list,
-               batch_id: str = None,
-               batch_name: str = None,
+               job_id: str = None,
+               job_name: str = None,
                hfilename: str = "",
                guid: str = "",
                stdout: bool = False,
@@ -378,15 +378,15 @@ def create_aid(video_path: str,
     # create HTML string
     #
 
-    # create batch information HTML
-    if batch_id is not None:
-        batch_info = "<span class='batch-info'><span class='identifier' id='batch-id'>" + batch_id
-        batch_info += " </span>"
-        if batch_name is not None and batch_name != batch_id:
-            batch_info += ( '("' + batch_name + '")' )
-        batch_info += "</span>"
+    # create job information HTML
+    if job_id is not None:
+        job_info = "<span class='job-info'><span class='identifier' id='job-id'>" + job_id
+        job_info += " </span>"
+        if job_name is not None and job_name != job_id:
+            job_info += ( '("' + job_name + '")' )
+        job_info += "</span>"
     else:
-        batch_info = ""
+        job_info = ""
 
     html_top = """<!DOCTYPE html>
 <html lang="en">
@@ -411,7 +411,7 @@ restyle, enhance, or alter a visaid.
 <body>
 <div class='top'>Visual index from 
 <span class='video-id' id='video-id'>""" + video_identifier + """</span>
-<br>""" + batch_info + """
+<br>""" + job_info + """
 <pre class="metadata" id="mmif-metadata">
 """ + metadata_str + """
 </pre>

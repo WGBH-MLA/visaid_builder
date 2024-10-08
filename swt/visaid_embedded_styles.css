@@ -14,7 +14,7 @@ span.video-id {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     color:  #6d57db;
 }
-span.batch-info {
+span.job-info {
     font-size: small;
     color: #5e5d5e ; 
 }

@@ -3,7 +3,7 @@ Python scripts for running CLAMS apps and using the output
 
 ## Overview
 
-The `run_batch.py` script runs CLAMS applications against a batch of assets by looping through the items in the batch, taking several steps with each one.  For each item, the script performs the following steps:
+The `run_job.py` script runs CLAMS applications against a batch of assets by looping through the items in the batch, taking several steps with each one.  For each item, the script performs the following steps:
   - checking for media files and downloading missing ones from Sony Ci
   - creating a "blank" MMIF file for the asset
   - running a CLAMS app to create data-laden MMIF
@@ -18,7 +18,7 @@ Clone the repository.  Change to the repository directory and do a `pip install 
 
 ## Usage
 
-The main script is `run_batch.py`.  Run `python run_batch.py -h` for help.
+The main script is `run_job.py`.  Run `python run_job.py -h` for help.
 
 You will need a configuration file, which is a JSON file.  See the `CONFIGURATION.md` file for details.  Several example files are included in the `sample_config` directory.
 

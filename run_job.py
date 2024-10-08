@@ -1,5 +1,5 @@
 """
-run_batch.py
+run_job.py
 
 This script runs CLAMS applications against a batch of assets by looping through 
 the items in the batch, taking several steps with each one.  
@@ -30,24 +30,24 @@ import swt.post_proc_item
 # %%
 # Define helper functions
 
-def write_batch_results_log(cf, batch_l, item_count):
+def write_job_results_log(cf, batch_l, item_count):
     """Write out results to a CSV file and to a JSON file
     Only write out records that have been reached so far
     """
 
     # Results files get a new name every time this script is run
-    batch_results_log_file_base = ( cf["logs_dir"] + "/" + cf["batch_id"] + 
+    job_results_log_file_base = ( cf["logs_dir"] + "/" + cf["job_id"] + 
                                     "_" + cf["start_timestamp"] + "_runlog" )
-    batch_results_log_csv_path  = batch_results_log_file_base + ".csv"
-    batch_results_log_json_path  = batch_results_log_file_base + ".json"
+    job_results_log_csv_path  = job_results_log_file_base + ".csv"
+    job_results_log_json_path  = job_results_log_file_base + ".json"
 
-    with open(batch_results_log_csv_path, 'w', newline='') as file:
+    with open(job_results_log_csv_path, 'w', newline='') as file:
         fieldnames = batch_l[0].keys()
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(batch_l[:(item_count-cf["start_after_item"])])
     
-    with open(batch_results_log_json_path, 'w') as file:
+    with open(job_results_log_json_path, 'w') as file:
         json.dump(batch_l[:(item_count-cf["start_after_item"])], file, indent=2)
 
 
@@ -75,52 +75,48 @@ app_desc="""
 Performs CLAMS processing and post-processing in a loop as specified in a configuration file
 """
 parser = parser = argparse.ArgumentParser(
-        prog='python run_batch.py',
+        prog='python run_job.py',
         description=app_desc,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument("batch_conf_path", metavar="CONFIG",
+parser.add_argument("job_conf_path", metavar="CONFIG",
     help="Path and filename for the JSON configuration file")
 parser.add_argument("batch_def_path", metavar="DEFLIST", nargs="?",
     help="Path and filename for the CSV file defining the list of items to be processed")
-parser.add_argument("batch_id", metavar="BATCHID", nargs="?",
-    help="An identifer string for the batch; no spaces allowed")
-parser.add_argument("batch_name", metavar="BATCHNAME", nargs="?",
-    help="A human-readable name for the batch; may include spaces; not valid without a BATCHID")
+parser.add_argument("job_id", metavar="JOBID", nargs="?",
+    help="An identifer string for the job; no spaces allowed")
+parser.add_argument("job_name", metavar="JOBNAME", nargs="?",
+    help="A human-readable name for the job; may include spaces; not valid without a JOBID")
 
 args = parser.parse_args()
 
-batch_conf_path = args.batch_conf_path
+job_conf_path = args.job_conf_path
 
 if args.batch_def_path is not None:
     cli_batch_def_path = args.batch_def_path
 else:
     cli_batch_def_path = None
 
-if args.batch_id is not None:
-    cli_batch_id = args.batch_id
+if args.job_id is not None:
+    cli_job_id = args.job_id
     
-    if args.batch_name is not None:
-        cli_batch_name = args.batch_name
+    if args.job_name is not None:
+        cli_job_name = args.job_name
     else:
-        cli_batch_name = cli_batch_id
+        cli_job_name = cli_job_id
 else:
-    cli_batch_id = None
-    cli_batch_name = None
+    cli_job_id = None
+    cli_job_name = None
 
 
-
-# %%
-# A hard-coded batch config filename will replace one from the command line
-#batch_conf_path = "./stovetop/Hawaii_35148_35227_35255_TEST/batchconf_02.json"
 
 ########################################################
 # %%
-# Set batch-specific configuration based on values in configuration file
-with open(batch_conf_path, "r") as jsonfile:
+# Set job-specific configuration based on values in configuration file
+with open(job_conf_path, "r") as jsonfile:
     conffile = json.load(jsonfile)
 
-# Dictionaries to store configuation information for this batch
+# Dictionaries to store configuation information for this job
 # These will be based on the conffile dictionary, but checked and normalized
 cf = {}
 post_proc = {}
@@ -134,22 +130,22 @@ cf["start_timestamp"] = t0.strftime("%Y%m%d_%H%M%S")
 
 try: 
 
-    if cli_batch_id is not None:
-        cf["batch_id"] = cli_batch_id
+    if cli_job_id is not None:
+        cf["job_id"] = cli_job_id
     else:
         # This is required to be in the config file if it is not on the command line
         if "id" in conffile:
-            cf["batch_id"] = conffile["id"] 
+            cf["job_id"] = conffile["id"] 
         else:
-            raise RuntimeError("No batch ID specified on commandline or in config file.") 
+            raise RuntimeError("No job ID specified on commandline or in config file.") 
 
 
-    if cli_batch_name is not None:
-        cf["batch_name"] = cli_batch_name
+    if cli_job_name is not None:
+        cf["job_name"] = cli_job_name
     elif "name" in conffile:
-        cf["batch_name"] = conffile["name"]
+        cf["job_name"] = conffile["name"]
     else:
-        cf["batch_name"] = cf["batch_id"]
+        cf["job_name"] = cf["job_id"]
 
 
     # Paths and directories 
@@ -286,7 +282,7 @@ try:
             cf["artifacts_dir"] = ""
 
 except KeyError as e:
-    print("Invalid configuration file at", batch_conf_path)
+    print("Invalid configuration file at", job_conf_path)
     print("Error for expected key:", e)
     raise SystemExit from e
 
@@ -296,13 +292,13 @@ except FileNotFoundError as e:
     raise SystemExit from e
 
 except RuntimeError as e:
-    print("Failed to configure batch")
+    print("Failed to configure job")
     print("Runtime Error:", e)
     raise SystemExit from e
 
 
 #########################################################
-# Check and/or create directories for batch output
+# Check and/or create directories for job output
 
 # Create list of dirs to create/validate
 dirs = [mmif_dir]
@@ -354,7 +350,7 @@ for item in batch_l:
     item_count += 1
     print()
     print(" * ")
-    print("*** ITEM #", item_count, ":", item["asset_id"], "[", cf["batch_name"], "]", tis)
+    print("*** ITEM #", item_count, ":", item["asset_id"], "[", cf["job_name"], "]", tis)
     print(" * ")
 
     ########################################################
@@ -409,7 +405,7 @@ for item in batch_l:
         print("Media file for " + item["asset_id"] + " could not be made available.")
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "media"
-        write_batch_results_log(cf, batch_l, item_count)
+        write_job_results_log(cf, batch_l, item_count)
         continue
 
 
@@ -427,7 +423,7 @@ for item in batch_l:
         print("Step prerequisite failed: No media filename recorded.")
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-0-prereq"
-        write_batch_results_log(cf, batch_l, item_count)
+        write_job_results_log(cf, batch_l, item_count)
         continue
     else:
         print("  -- Step prerequisites passed. --")
@@ -471,7 +467,7 @@ for item in batch_l:
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-0"
         cleanup_media(cf, item_count, item)
-        write_batch_results_log(cf, batch_l, item_count)
+        write_job_results_log(cf, batch_l, item_count)
         continue
 
 
@@ -492,15 +488,15 @@ for item in batch_l:
         print("Step prerequisite failed.")
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-1-prereq"
-        write_batch_results_log(cf, batch_l, item_count)
+        write_job_results_log(cf, batch_l, item_count)
         continue
     else:
         print("  -- Step prerequisites passed. --")
 
-    # Define MMIF for this step of the batch
+    # Define MMIF for this step of the job
     mmifi += 1
     clamsi = mmifi - 1
-    mmif_filename = item["asset_id"] + "_" + cf["batch_id"] + "_" + str(mmifi) + ".mmif"
+    mmif_filename = item["asset_id"] + "_" + cf["job_id"] + "_" + str(mmifi) + ".mmif"
     mmif_path = mmif_dir + "/" + mmif_filename
 
     # Check to see if it exists; if not create it
@@ -515,7 +511,7 @@ for item in batch_l:
             print("Sending request to CLAMS web service...")
 
             if len(clams_params[clamsi]) > 0:
-                # build querystring with parameters in batch configuration
+                # build querystring with parameters in job configuration
                 qsp = "?"
                 for p in clams_params[clamsi]:
                     qsp += p
@@ -639,7 +635,7 @@ for item in batch_l:
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "mmif-1"
         cleanup_media(cf, item_count, item)
-        write_batch_results_log(cf, batch_l, item_count)
+        write_job_results_log(cf, batch_l, item_count)
         continue
 
     ########################################################
@@ -660,7 +656,7 @@ for item in batch_l:
             print("Step prerequisite failed.")
             print("SKIPPING", item["asset_id"])
             item["skip_reason"] = "usemmif-prereq"
-            write_batch_results_log(cf, batch_l, item_count)
+            write_job_results_log(cf, batch_l, item_count)
             continue
         else:
             print("  -- Step prerequisites passed. --")
@@ -688,7 +684,7 @@ for item in batch_l:
     cleanup_media(cf, item_count, item)
 
     # Update results to reflect this iteration of the loop
-    write_batch_results_log(cf, batch_l, item_count)
+    write_job_results_log(cf, batch_l, item_count)
 
     # print diag info
     print()
@@ -703,7 +699,7 @@ tn = datetime.datetime.now()
 print()
 print("****************************")
 print()
-print("Batch complete at", tn.strftime("%Y-%m-%d %H:%M:%S"))
+print("Job complete at", tn.strftime("%Y-%m-%d %H:%M:%S"))
 print("Total elapsed time:", (tn-t0).seconds, "seconds")
 print("Results logged in", cf["logs_dir"])
 print()
