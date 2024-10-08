@@ -62,6 +62,12 @@ def run_post(item, cf, post_proc, mmif_path):
         make_visaid = True
     else:
         make_visaid = False
+    
+    if "reps" in artifacts:
+        reps_dir = artifacts_dir + "/reps"
+        get_reps = True
+    else:
+        get_reps = False
 
     if "prog_start_max" in post_proc:
         prog_start_max = post_proc["prog_start_max"]
@@ -94,6 +100,7 @@ def run_post(item, cf, post_proc, mmif_path):
     # Infer metadata
     #
     if infer_data:
+        print("Attempting to infer data...")
 
         # Calculate some significant datapoints based on table of time frames
         #
@@ -130,6 +137,8 @@ def run_post(item, cf, post_proc, mmif_path):
     # Extract the slate
     #
     if get_slate:
+        print("Attempting to save a slate...")
+
         # The slate rep is the rep timepoint from from the first slate timeframe
         # If there is not slate timeframe, then the value is None
         slate_rep = None
@@ -138,19 +147,17 @@ def run_post(item, cf, post_proc, mmif_path):
             slate_rep = int(slate_tfs[0][4])
 
         if slate_rep is not None:
-            print("Trying to exact a slate...")
-
             try:
-                slate_rslt = drawer.lilhelp.extract_stills( 
-                               item["media_path"], 
-                               [ slate_rep ], 
-                               item["asset_id"],
-                               slates_dir,
-                               verbose=False )
-                slate_filename = slate_rslt[0]
-                slate_path = slate_rslt[1]
-
-                print("Slate saved at", slate_path)
+                count = drawer.lilhelp.extract_stills( 
+                           item["media_path"], 
+                           [ slate_rep ], 
+                           item["asset_id"],
+                           slates_dir,
+                           verbose=False )
+                if count == 1:
+                    print("Slate saved.")
+                else:
+                    print("Warning: Saved", count, "slates.")
 
             except Exception as e:
                 print("Extraction of slate frame at", slate_rep ,"failed.")
@@ -159,11 +166,41 @@ def run_post(item, cf, post_proc, mmif_path):
         else:
             print("No slate found.")
 
+
+    #
+    # Extract representative stills from timeframes
+    #
+    if get_reps:
+        print("Attempting to save representative stills...")
+
+        if len(tfs) > 0:
+            tps = [ tf[4] for tf in tfs ] 
+            tps = list(set(tps))
+            tps.sort()
+
+            try:
+               count = drawer.lilhelp.extract_stills( 
+                          item["media_path"], 
+                          tps, 
+                          item["asset_id"],
+                          reps_dir,
+                          verbose=False )
+
+            except Exception as e:
+               print("Extraction of frame at", slate_rep ,"failed.")
+               print("Error:", e)  
+
+            print("Saved", count, "representaive stills.")
+
+        else:
+            print("No timeframes from which to exact.")
+
+
     #
     # Save a visaid
     #
     if make_visaid:
-        print("Trying to make a visaid...")
+        print("Attempting to make a visaid...")
 
         if "scene_types" in post_proc:
             scene_types = post_proc["scene_types"]

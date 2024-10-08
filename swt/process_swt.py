@@ -25,8 +25,10 @@ MODULE_VERSION = "1.42"
 
 def get_mmif_metadata_str( mmifstr:str ):
     """
-    Takes the metadata object from the first view with TimeFrame annotations
-    Returns prettified serialized JSON for that metadata
+    Takes the metadata object from the first view with TimeFrame annotations.
+    Returns prettified serialized JSON for that metadata.
+    This is a helper function for this module, not a general function for
+    grabbing metadata from MMIF files.
     """
 
     # turn the MMIF string into a Mmif object

@@ -645,7 +645,7 @@ for item in batch_l:
     if post_proc :
 
         print()
-        print("# USING CLAMS OUTPUT")
+        print("# POSTPROCESSING TO USE CLAMS MMIF OUTPUT")
 
         # Check for prereqs
         mmif_status = mmif_check(item["mmif_paths"][mmifi])
