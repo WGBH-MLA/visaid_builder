@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.41"
+MODULE_VERSION = "1.42"
 
 
 def get_mmif_metadata_str( mmifstr:str ):
@@ -393,7 +393,7 @@ def create_aid(video_path: str,
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>""" + video_identifier + """</title>
+<title>""" + video_identifier + """ / Visual Index</title>
 <style>
 """ + css_str + """
 </style>
@@ -408,18 +408,20 @@ restyle, enhance, or alter a visaid.
 <link rel='stylesheet' href='visaid_style_override.css'>
 <script src='visaid_enhance.js' defer></script>
 </head>
+
+
 <body>
-<div class='top'>Visual index from 
+<div class='top'>Visual index of 
 <span class='video-id' id='video-id'>""" + video_identifier + """</span>
 <br>""" + job_info + """
+<pre class="metadata" id="visaid-options">
+{
+'max_gap': """ + str(max_gap) + """,
+'subsampling': """ + str(subsampling) + """
+}
+</pre>
 <pre class="metadata" id="mmif-metadata">
 """ + metadata_str + """
-</pre>
-<pre class="metadata" id="subsampling">
-""" + str(subsampling) + """
-</pre>
-<pre class="metadata" id="max-gap">
-{'max_gap': """ + str(max_gap) + """}
 </pre>
 </div>
 <div class='button-container'>
