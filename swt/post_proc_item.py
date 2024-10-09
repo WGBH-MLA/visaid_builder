@@ -190,10 +190,10 @@ def run_post(item, cf, post_proc, mmif_path):
                print("Extraction of frame at", slate_rep ,"failed.")
                print("Error:", e)  
 
-            print("Saved", count, "representaive stills.")
+            print("Saved", count, "representative stills from", len(tfs), "scenes.")
 
         else:
-            print("No timeframes from which to exact.")
+            print("No scenes from which to extract stills.")
 
 
     #
@@ -201,6 +201,8 @@ def run_post(item, cf, post_proc, mmif_path):
     #
     if make_visaid:
         print("Attempting to make a visaid...")
+
+        visaid_filename = visaid_path = None
 
         if "scene_types" in post_proc:
             scene_types = post_proc["scene_types"]
@@ -221,6 +223,12 @@ def run_post(item, cf, post_proc, mmif_path):
                 max_gap=max_gap,
                 subsampling=subsampling
                 )
+
+            if visaid_path:
+                print("Visual index created at")
+                print(visaid_path)
+            else:
+                print("Creation of visaid failed.")
 
         except Exception as e:
             print("Creation of visaid failed.")

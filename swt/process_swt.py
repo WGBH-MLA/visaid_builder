@@ -491,7 +491,6 @@ visaid version: <span id='visaid-version'>""" + MODULE_VERSION + """</span>
         hfilepath = output_dirname + "/" + hfilename
         with open(hfilepath, "w") as html_file:
             html_file.write(html_str)
-            print("Visual index created at " + hfilepath + ".")
     
     return (hfilename, hfilepath)
    
