@@ -7,6 +7,9 @@ Defines functions for doing post processing of MMIF created by SWT
 # %%
 # Run import statements
 
+import csv
+import json
+
 from mmif import Mmif
 
 import drawer.lilhelp
@@ -68,6 +71,12 @@ def run_post(item, cf, post_proc, mmif_path):
         get_reps = True
     else:
         get_reps = False
+
+    if "ksl" in artifacts:
+        ksl_dir = artifacts_dir + "/ksl"
+        make_ksl_index = True
+    else:
+        make_ksl_index = False
 
     if "prog_start_max" in post_proc:
         prog_start_max = post_proc["prog_start_max"]
@@ -179,21 +188,98 @@ def run_post(item, cf, post_proc, mmif_path):
             tps.sort()
 
             try:
-               count = drawer.lilhelp.extract_stills( 
-                          item["media_path"], 
-                          tps, 
-                          item["asset_id"],
-                          reps_dir,
-                          verbose=False )
+               rep_images = drawer.lilhelp.extract_stills( 
+                            item["media_path"], 
+                            tps, 
+                            item["asset_id"],
+                            reps_dir,
+                            verbose=False )
 
             except Exception as e:
                print("Extraction of frame at", slate_rep ,"failed.")
                print("Error:", e)  
 
-            print("Saved", count, "representative stills from", len(tfs), "scenes.")
+            print("Saved", len(rep_images), "representative stills from", len(tfs), "scenes.")
 
         else:
             print("No scenes from which to extract stills.")
+
+
+    # 
+    # Create KSL-style index of still images extracted
+    #
+    if make_ksl_index:
+        print("Attempting to make a KSL-style index...")
+
+        if not get_reps:
+            print("Cannot make index because representative stills were not extracted.")
+        else:
+
+            # build KSL data for this item
+            ksl_arr = []
+            for fname in rep_images:
+                
+                # extract the requersted frame time from the filename
+                tp = int(fname.split("_")[2])
+
+                # lookup label in tfs array
+                label = [ tf[5] for tf in tfs if tf[4] == tp ][0]
+
+                if label.find(":") != -1:
+                    label, sublabel = label.split(":")
+                else:
+                    sublabel = ""
+
+                row = [ fname, label, sublabel, "Job ID: "+cf["job_id"] ]
+                ksl_arr.append(row) 
+
+            # set name of index 
+            ksl_index_path = ksl_dir + "/img_label_predictions.csv"
+
+            # append to CSV file
+            with open(ksl_index_path, 'a') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerows(ksl_arr)
+            
+            print("Appended", len(ksl_arr), "rows to image index CSV.")
+
+            # Now, to rewrite the JS file
+            # load full array based on updated CSV file
+            full_ksl_arr = []
+            with open(ksl_index_path, 'r') as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    full_ksl_arr.append(row)
+            
+            # check for duplicates and remove them
+            full_ksl_tups = set(tuple(r) for r in full_ksl_arr)
+            if len(full_ksl_arr) != len( full_ksl_tups ):
+                print("Warning: Duplicate items in accumulated KSL array.")
+                full_ksl_arr = [ list(tup) for tup in full_ksl_tups ] 
+
+            full_ksl_arr.sort(key=lambda f:f[0])
+
+            # build JS array file
+            proto_js_arr = [ [r[0], False, r[1], r[2], False, "", ""] for r in full_ksl_arr ]
+
+            # convert array to a JSON string 
+            image_array_j = json.dumps(proto_js_arr)
+
+            # prettify with line breaks
+            image_array_j = image_array_j.replace("[[", "[\n[")
+            image_array_j = image_array_j.replace("], [", "], \n[")
+            image_array_j = image_array_j.replace("]]", "]\n]")
+
+            # add bits around the JSON text to make it valid Javascript
+            image_array_j = "imgArray=\n" + image_array_j
+            image_array_j = image_array_j + "\n;"
+
+            # write Javascript file 
+            array_pathname = ksl_dir + "/img_arr_init.js"
+            with open(array_pathname, "w") as array_file:
+                array_file.write(image_array_j)
+            
+            print("Updated image index JS, now with", len(proto_js_arr), "entries.")
 
 
     #

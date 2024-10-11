@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.42"
+MODULE_VERSION = "1.50"
 
 
 def get_mmif_metadata_str( mmifstr:str ):
@@ -62,7 +62,8 @@ def list_tfs( mmifstr:str,
     1: bin label (string)
     2: start time in milliseconds (int)
     3: stop time in milliseconds (int)
-    4: represenative still time in milliseconds(int)
+    4: representative still time in milliseconds (int)
+    5: representative still point label (string)
 
     """
 
@@ -110,13 +111,12 @@ def list_tfs( mmifstr:str,
         tf_frameType = ann.get_property("frameType")
 
         # add timeFrames to their list; no values for times yet
-        tfs += [[tf_id, tf_frameType, -1, -1, -1]]
+        tfs += [[tf_id, tf_frameType, -1, -1, -1, ""]]
+        
 
         # add timeFrame points to their list
         for t in ann.get_property("targets"):
             is_rep = t in ann.get_property("representatives")
-
-            # need to cast timepoint back to int from np.int64
             tfpts += [[ tf_id, tf_frameType, t, is_rep ]]
 
     # work-around for v3.0 timePont bug
@@ -148,11 +148,28 @@ def list_tfs( mmifstr:str,
     # (need to cast np.int64 values to ordinary int)
     for f in tfs:
         tfrows = tfs_tps_df[ tfs_tps_df["tf_id"] == f[0] ]
-        f[2] = int( (tfrows["timePoint"]).min() )  # start time
-        f[3] = int( (tfrows["timePoint"]).max() ) # end time
-        f[4] = int( (tfrows[tfrows["is_rep"]]["timePoint"]).min() )# rep time
 
-    # sort list of timeFrames by start time
+        # within rows for this time frame, find start and end times
+        tf_start_time = int( (tfrows["timePoint"]).min() )
+        tf_end_time = int( (tfrows["timePoint"]).max() )
+        #tf_rep_time = int( (tfrows[tfrows["is_rep"]]["timePoint"]).min() )
+        #tf_rep_label = ""  
+
+        # narrow down to rows that are rep time points, and choose one
+        tfreprows = tfrows[tfrows["is_rep"]]
+        chosen_row_index = (len(tfreprows) - 1) // 2
+        #print("Num reps:", len(tfreprows), "; chosen index:", chosen_row_index) # DIAG
+        tfreprow = tfreprows.iloc[chosen_row_index]
+        tf_rep_time = int( tfreprow["timePoint"] )
+        tf_rep_label = tfreprow["label"]
+        #print(tf_rep_time, tf_rep_label) # DIAG
+
+        f[2] = tf_start_time
+        f[3] = tf_end_time
+        f[4] = tf_rep_time
+        f[5] = tf_rep_label 
+
+    # sort list of timeFrames by start
     tfs.sort(key=lambda f:f[2])
 
     # add frames for first and last timepoints 
@@ -160,7 +177,7 @@ def list_tfs( mmifstr:str,
     # gaps at the beginning and end.)
     # These may be removed later
     tfs.insert(0, ['f_0', 'first frame', 0, 0, 0])
-    tfs.append(['f_n', 'last frame', last_time, last_time, last_time])
+    tfs.append(['f_n', 'last frame', last_time, last_time, last_time, ""])
 
 
     # If this parameter has been passed to the function, then
@@ -202,7 +219,7 @@ def list_tfs( mmifstr:str,
 
                     tf_id = "s_" + str(sample_counter)
 
-                    samples.append([tf_id, 'unlabeled sample', sample_start, sample_end, sample_rep])
+                    samples.append([tf_id, 'unlabeled sample', sample_start, sample_end, sample_rep, ""])
                     sample_counter += 1
 
         # add samples to timeframes and re-sort
@@ -252,7 +269,7 @@ def list_tfs( mmifstr:str,
                         sample_end = sample_start
                         sample_rep = sample_start
 
-                    new_row = [ new_id, new_label, sample_start, sample_end, sample_rep ]
+                    new_row = [ new_id, new_label, sample_start, sample_end, sample_rep, "" ]
                     new_samples.append(new_row)
 
                     sample_start = sample_end
@@ -337,7 +354,13 @@ def create_aid(video_path: str,
     # time and image data
     if len(tfs) > 0:
         next_scene = 0 
-        target_time = tfs[next_scene][4]
+
+        # create a new list sorted in order of rep frame times 
+        # so we can proceed in sequential order of video frames to be extracted
+        #tfs.sort(key=lambda f:f[4])
+        tfs_s = sorted(tfs, key=lambda f:f[4])
+
+        target_time = tfs_s[next_scene][4]
         
         for frame in container.decode(video_stream):
             
@@ -353,13 +376,16 @@ def create_aid(video_path: str,
                 #html_img_tag = f'<img src="data:image/jpeg;base64,{img_str}" >'
 
 
-                tfsi.append(tfs[next_scene] + [ ftime ] + [ img_str ] )
+                tfsi.append(tfs_s[next_scene] + [ ftime ] + [ img_str ] )
                 
                 next_scene += 1
-                if next_scene < len(tfs):            
-                    target_time = tfs[next_scene][4]
+                if next_scene < len(tfs_s):            
+                    target_time = tfs_s[next_scene][4]
                 else:
                     break
+    
+    # re-sort new array in terms of scene start time
+    tfsi.sort(key=lambda f:f[2])
 
     container.close()
 
@@ -470,8 +496,8 @@ visaid version: <span id='visaid-version'>""" + MODULE_VERSION + """</span>
             div_class += " unsample"
         html_div_open = "<div class='" + div_class + "' data-label='" + label + "'>"
         html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br>'
-        html_img_tag = f'<img src="data:image/jpeg;base64,{f[6]}" >'
-        img_fname = f'{guid}_{length:08}_{f[4]:08}_{f[5]:08}' + ".jpg"
+        html_img_tag = f'<img src="data:image/jpeg;base64,{f[7]}" >'
+        img_fname = f'{guid}_{length:08}_{f[4]:08}_{f[6]:08}' + ".jpg"
         html_img_fname = "<br><span class='img-fname'>" + img_fname + "</span>"
 
         html_body += (html_div_open + 

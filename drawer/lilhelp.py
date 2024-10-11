@@ -41,7 +41,7 @@ def extract_stills(video_path:str,
     `fname` is a string used in the naming of the output files (and output dir, if not specified)
     `dest_path` is the path to an existing directory to put the stills in
 
-    Returns the number of stills actually extracted
+    Returns a list of the names of the image files extracted.
 
     Output filename format:
     F_L_T_A.ext
@@ -140,5 +140,5 @@ def extract_stills(video_path:str,
 
     container.close()
 
-    return stills_count
+    return image_list
 

@@ -112,6 +112,8 @@ else:
 
 ########################################################
 # %%
+print()
+
 # Set job-specific configuration based on values in configuration file
 with open(job_conf_path, "r") as jsonfile:
     conffile = json.load(jsonfile)
@@ -348,6 +350,7 @@ for item in batch_l:
     tis = ti.strftime("%Y-%m-%d %H:%M:%S")
 
     item_count += 1
+    print()
     print()
     print(" * ")
     print("*** ITEM #", item_count, ":", item["asset_id"], "[", cf["job_name"], "]", tis)
