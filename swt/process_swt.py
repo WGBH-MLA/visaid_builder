@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.50"
+MODULE_VERSION = "1.51"
 
 
 def get_mmif_metadata_str( mmifstr:str ):
@@ -384,8 +384,9 @@ def create_aid(video_path: str,
                 else:
                     break
     
-    # re-sort new array in terms of scene start time
-    tfsi.sort(key=lambda f:f[2])
+    # Re-sort new array in terms of scene start time and sort by label name,
+    # (so that subsamples come after the frames from  which they've been sampled.)
+    tfsi.sort(key=lambda f:(f[2],f[1]))
 
     container.close()
 
