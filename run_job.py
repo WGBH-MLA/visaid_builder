@@ -80,9 +80,9 @@ parser = parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument("job_conf_path", metavar="CONFIG",
-    help="Path and filename for the JSON configuration file")
+    help="Path and filename for the JSON job configuration file")
 parser.add_argument("batch_def_path", metavar="DEFLIST", nargs="?",
-    help="Path and filename for the CSV file defining the list of items to be processed")
+    help="Path and filename for the CSV file defining the batch of items to be processed")
 parser.add_argument("job_id", metavar="JOBID", nargs="?",
     help="An identifer string for the job; no spaces allowed")
 parser.add_argument("job_name", metavar="JOBNAME", nargs="?",
