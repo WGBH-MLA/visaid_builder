@@ -210,7 +210,8 @@ try:
         cf["just_get_media"] = True
     elif "just_get_media" in conffile:
         cf["just_get_media"] = conffile["just_get_media"]
-
+    else:
+        cf["just_get_media"] = False
 
     if "start_after_item" in conffile:
         cf["start_after_item"] = conffile["start_after_item"]
