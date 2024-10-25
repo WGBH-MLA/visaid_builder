@@ -72,7 +72,9 @@ def cleanup_media(cf, item_count, item):
 # %%
 
 app_desc="""
-Performs CLAMS processing and post-processing in a loop as specified in a configuration file
+Performs CLAMS processing and post-processing in a loop as specified in a job configuration file.
+
+Note: Any values passed on the command line override values in the configuration file.
 """
 parser = parser = argparse.ArgumentParser(
         prog='python run_job.py',
@@ -80,13 +82,16 @@ parser = parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument("job_conf_path", metavar="CONFIG",
-    help="Path and filename for the JSON job configuration file")
+    help="Path for the JSON job configuration file")
 parser.add_argument("batch_def_path", metavar="DEFLIST", nargs="?",
-    help="Path and filename for the CSV file defining the batch of items to be processed")
+    help="Path for the CSV file defining the batch of items to be processed.")
 parser.add_argument("job_id", metavar="JOBID", nargs="?",
     help="An identifer string for the job; no spaces allowed")
 parser.add_argument("job_name", metavar="JOBNAME", nargs="?",
     help="A human-readable name for the job; may include spaces; not valid without a JOBID")
+parser.add_argument("--just-get-media", action="store_true",
+    help="Just acquire the media listed in the batch definition file.")
+
 
 args = parser.parse_args()
 
@@ -108,7 +113,7 @@ else:
     cli_job_id = None
     cli_job_name = None
 
-
+cli_just_get_media = args.just_get_media
 
 ########################################################
 # %%
@@ -201,6 +206,11 @@ try:
 
 
     # Additional configuration options
+    if cli_just_get_media:
+        cf["just_get_media"] = True
+    elif "just_get_media" in conffile:
+        cf["just_get_media"] = conffile["just_get_media"]
+
 
     if "start_after_item" in conffile:
         cf["start_after_item"] = conffile["start_after_item"]
@@ -409,6 +419,15 @@ for item in batch_l:
         print("SKIPPING", item["asset_id"])
         item["skip_reason"] = "media"
         write_job_results_log(cf, batch_l, item_count)
+        continue
+
+    if cf["just_get_media"]:
+        print()
+        print("Media acquisition successful.")
+        # Update results (so we have a record of any failures)
+        write_job_results_log(cf, batch_l, item_count)
+
+        # continue to next iteration without additional steps
         continue
 
 
