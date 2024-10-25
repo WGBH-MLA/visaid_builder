@@ -130,12 +130,17 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
     # Received the URL
     # Do a little checking; then go get the file
     ci_filename = extract_filename_ci_url(ci_url, ci_id)
-    ci_filename_ext = ci_filename[-3:].lower()
-
+    
     if ci_filename is None:
-        print("Failure: No valid filename returned in SonyCi URL")
+        print("Failure: No valid filename returned in SonyCi URL.")
         return None
-    elif ci_filename_ext not in ["mp3", "mp4"]:
+    elif len(ci_filename) < 3:
+        print("Failure: Filename returned in SonyCi URL was less than 3 characters.")
+    else:
+        ci_filename_ext = ci_filename[-3:].lower()
+
+    # sanity check file extension
+    if ci_filename_ext not in ["mp3", "mp4"]:    
         # We assume all valid media files have MP3 or MP4 extensions
         print("Failure: Media filename", filename, "does not have valid extension.")
         return None
