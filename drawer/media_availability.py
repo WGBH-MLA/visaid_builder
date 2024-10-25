@@ -129,25 +129,27 @@ def make_avail(guid:str, ci_id:str, media_dir_path:str, overwrite:bool = True) -
 
     # Received the URL
     # Do a little checking; then go get the file
-    filename = extract_filename_ci_url(ci_url, ci_id)
+    ci_filename = extract_filename_ci_url(ci_url, ci_id)
+    ci_filename_ext = ci_filename[-3:].lower()
 
-    if filename is None:
+    if ci_filename is None:
         print("Failure: No valid filename returned in SonyCi URL")
         return None
-    elif filename[-4:].lower() not in [".mp3", ".mp4"]:
+    elif ci_filename_ext not in ["mp3", "mp4"]:
         # We assume all valid media files have MP3 or MP4 extensions
         print("Failure: Media filename", filename, "does not have valid extension.")
         return None
 
     # sanity check comparison between guid and filename
-    if filename[10:18] != guid[10:18]:
-        print("Warning: `ci_url.sh` for guid " + guid + " returned " + filename)
+    if ci_filename[10:18] != guid[10:18]:
+        print("Warning: `ci_url.sh` for guid " + guid + " returned " + ci_filename)
 
+    # use normalized media filename instead of whatever name is in SonyCi
+    filename = "cpb-aacip-" + guid[10:] + "." + ci_filename_ext
     filepath = media_dir_path + "/" + filename
 
-
     # Going to download and save the file from the web using the Ci URL
-    print("Will save", filename, "to:")
+    print("Will save", ci_filename, "to:")
     print(filepath)
 
     #print(ci_url)  # DIAG

@@ -252,10 +252,12 @@ try:
 
     if "clams_run_cli" in conffile:
         clams_run_cli = conffile["clams_run_cli"]
+    elif cf["just_get_media"]:
+        clams_run_cli = False
     else:
         clams_run_cli = True
     
-    if not clams_run_cli:
+    if not (clams_run_cli or cf["just_get_media"]):
         # need to know the URLs of the webservices if (but only if) not running
         # in CLI mode
         clams_endpoints = conffile["clams_endpoints"]
