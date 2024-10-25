@@ -37,11 +37,14 @@ def get_mmif_metadata_str( mmifstr:str ):
     # First, get the first view that contains a TimeFrame
     # If none exists, return an empty list.
     if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) > 0:
-        tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+        useview = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+    elif len(usemmif.get_all_views_contain(AnnotationTypes.TimePoint)) > 0:
+        print("Warning: MMIF file contained no views with TimeFrame annotations.  Using metadata from a TimePoint view.")
+        useview = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
     else:
         return ""
 
-    return json.dumps(json.loads(str(tf_view.metadata)), indent=2)
+    return json.dumps(json.loads(str(useview.metadata)), indent=2)
 
 
 
