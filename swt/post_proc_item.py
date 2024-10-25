@@ -99,7 +99,11 @@ def run_post(item, cf, post_proc, mmif_path):
         mmif_str = file.read()
 
     # call SWT MMIF processors to get a table of time frames
-    tfs = swt.process_swt.list_tfs(mmif_str, max_gap=max_gap, subsampling=subsampling)
+    tfs = swt.process_swt.list_tfs(mmif_str, 
+                                   max_gap=max_gap, 
+                                   subsampling=subsampling,
+                                   include_startframe=False,
+                                   include_endframe=True)
 
     # get metadata_str
     metadata_str = swt.process_swt.get_mmif_metadata_str(mmif_str)
@@ -293,7 +297,7 @@ def run_post(item, cf, post_proc, mmif_path):
         if "scene_types" in post_proc:
             scene_types = post_proc["scene_types"]
         else:
-            scene_types = []
+            scene_types = None
 
         try:
             visaid_filename, visaid_path = swt.process_swt.create_aid( 

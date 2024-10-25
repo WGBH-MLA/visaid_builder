@@ -19,6 +19,7 @@ from pprint import pprint
 import swt.process_swt 
 import drawer.lilhelp
 
+MAX_GAP = 180000
 
 def main():
     
@@ -63,17 +64,9 @@ def main():
         extract = args.extract
         visual = args.visual
 
-    # set 'test' commandline shorthand
-    if args.mmif_path == "test":
-        mmif_path = "./mmif/cpb-aacip-37-95w6mnpw_out41_r0500_05.mmif"
-    else:
-        mmif_path = args.mmif_path
-    if args.video_path == "test":
-        video_path = "../../AAPBv/cpb-aacip-37-95w6mnpw.mp4" 
-    else:
-        video_path = args.video_path
-
     # validate positional arguments
+    mmif_path = args.mmif_path
+    video_path = args.video_path
     if not os.path.exists(mmif_path):
         print("Error:  Invalid file path for MMIF file.")
         print("Run with '-h' for help.")
@@ -94,7 +87,10 @@ def main():
     usefile.close()
 
     # Process the serialized MMIF to create the table of time frames
-    tfs = swt.process_swt.list_tfs(mmifstr)
+    if visual:
+        tfs = swt.process_swt.list_tfs(mmifstr, max_gap=MAX_GAP, include_endframe=True)
+    else:
+        tfs = swt.process_swt.list_tfs(mmifstr)
 
     # Display the TimeFrame index
     if display: 
@@ -149,7 +145,8 @@ def main():
             video_path=video_path, 
             tfs=tfs, 
             stdout=stdout, 
-            guid=guid)
+            guid=guid,
+            max_gap=MAX_GAP)
 
         if not stdout:
             print("Done.")

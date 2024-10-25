@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.51"
+MODULE_VERSION = "1.52"
 
 
 def get_mmif_metadata_str( mmifstr:str ):
@@ -37,20 +37,15 @@ def get_mmif_metadata_str( mmifstr:str ):
     # First, get the first view that contains a TimeFrame
     # If none exists, return an empty list.
     if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) > 0:
-        useview = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+        tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
     else:
         return ""
 
-    return json.dumps(json.loads(str(useview.metadata)), indent=2)
+    return json.dumps(json.loads(str(tf_view.metadata)), indent=2)
 
 
 
-def list_tfs( mmifstr:str, 
-              max_gap:int=0, 
-              include_startframe:bool=False,
-              include_endframe:bool=True,
-              subsampling:dict=None,
-              remove_sampled=False):
+def tfs_from_mmif( mmifstr:str ):
     """
     Analyzes MMIF file from SWT and returns tabular data.
 
@@ -66,111 +61,152 @@ def list_tfs( mmifstr:str,
     5: representative still point label (string)
 
     """
+    # turn the MMIF string into a Mmif object
+    usemmif = Mmif(mmifstr)
+
+    # First, get the first view that contains a TimeFrame
+    # If none exists, return an empty list.
+    if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) == 0:
+        print("Warning: MMIF file contained no TimeFrame annotations.")
+        tfs = []
+    else:
+        # get the right views
+        tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+
+        # assume TimePoint annotations are the same view as the TimeFrame annotations
+        tp_view = tf_view
+
+        # Get information about the app version from the TimeFrame view
+        # If version >= 6.0, use view ID prefix for time point refs
+        app = tf_view.metadata.app
+        try:
+            app_ver = float(app[app.rfind("/v")+2:])
+            
+            # For SWT v6.0 and above timepoints targeted by other frames include
+            # a reference to the view from which they came.
+            if app_ver > 5.9999:
+                ref_prefix = tf_view.id + ":"
+            else:
+                ref_prefix = ""
+        except Exception as e:
+            print("Error:", e)
+            print("Could not get app version.")
+            print("Assuming version less than 6.0")
+            ref_prefix = ""
+
+        # Drill down to the annotations we're after, creating generators
+        tfanns = tf_view.get_annotations(AnnotationTypes.TimeFrame)
+        tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
+
+        # Build two lists, one of TimeFrames and one of TimeFrame+Points
+        tfs = []
+        tfpts = []   
+        for ann in tfanns:
+            tf_id = ann.get_property("id")
+            tf_frameType = ann.get_property("frameType")
+
+            # add timeFrames to their list; no values for times yet
+            tfs += [[tf_id, tf_frameType, -1, -1, -1, ""]]
+            
+
+            # add timeFrame points to their list
+            for t in ann.get_property("targets"):
+                is_rep = t in ann.get_property("representatives")
+                tfpts += [[ tf_id, tf_frameType, t, is_rep ]]
+
+        # Build another list for TimePoints
+        tps = []
+        for ann in tpanns:
+            
+            tpt_id = ref_prefix + ann.get_property("id") # new, for v6.0 and above
+
+            tps += [[ tpt_id, 
+                    ann.get_property("label"), 
+                    ann.get_property("timePoint") ]]  
+
+        # create DataFrames from lists and merge
+        tfpts_df = pd.DataFrame(tfpts, columns=['tf_id','frameType','tp_id','is_rep'])
+        tps_df = pd.DataFrame(tps, columns=['tp_id','label','timePoint'])
+        tfs_tps_df = pd.merge(tfpts_df,tps_df)
+
+        # iterate through the timeFrames and use the merged DataFrame to look up times
+        # (need to cast np.int64 values to ordinary int)
+        for f in tfs:
+            tfrows = tfs_tps_df[ tfs_tps_df["tf_id"] == f[0] ]
+
+            # within rows for this time frame, find start and end times
+            tf_start_time = int( (tfrows["timePoint"]).min() )
+            tf_end_time = int( (tfrows["timePoint"]).max() )
+            #tf_rep_time = int( (tfrows[tfrows["is_rep"]]["timePoint"]).min() )
+            #tf_rep_label = ""  
+
+            # narrow down to rows that are rep time points, and choose one
+            tfreprows = tfrows[tfrows["is_rep"]]
+            chosen_row_index = (len(tfreprows) - 1) // 2
+            #print("Num reps:", len(tfreprows), "; chosen index:", chosen_row_index) # DIAG
+            tfreprow = tfreprows.iloc[chosen_row_index]
+            tf_rep_time = int( tfreprow["timePoint"] )
+            tf_rep_label = tfreprow["label"]
+            #print(tf_rep_time, tf_rep_label) # DIAG
+
+            f[2] = tf_start_time
+            f[3] = tf_end_time
+            f[4] = tf_rep_time
+            f[5] = tf_rep_label 
+
+        # sort list of timeFrames by start
+        tfs.sort(key=lambda f:f[2])
+
+    return tfs
+
+
+def last_time_in_mmif( mmifstr:str ):
+    """
+    Analyzes MMIF with timepoints and returns the last time
+    Takes serialized MMIF as a string as input.
+    """
 
     # turn the MMIF string into a Mmif object
     usemmif = Mmif(mmifstr)
 
-    # Get the annotations from the MMIF and do something with them
+    tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+    tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
 
-    # First, get the first view that contains a TimeFrame
-    # If none exists, return an empty list.
-    if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) > 0:
-        useview = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
-    else:
-        return []
-
-    # New, to account for change in SWT v6.0
-    # Get information about the app version.
-    # If version >= 6.0, use view ID prefix for time point refs
-    app = useview.metadata.app
-    try:
-        app_ver = float(app[app.rfind("/v")+2:])
-        
-        # For SWT v6.0 and above timepoints targeted by other frames include
-        # a reference to the view from which they came.
-        if app_ver > 5.9999:
-            ref_prefix = useview.id + ":"
-        else:
-            ref_prefix = ""
-    except Exception as e:
-        print("Error:", e)
-        print("Could not get app version.")
-        print("Assuming version less than 6.0")
-        ref_prefix = ""
-
-
-    # Drill down to the annotations we're after, creating generators
-    tfanns = useview.get_annotations(AnnotationTypes.TimeFrame)
-    tpanns = useview.get_annotations(AnnotationTypes.TimePoint)
-
-    # Build two lists, one of TimeFrames and one of TimeFrame+Points
-    tfs = []
-    tfpts = []   
-    for ann in tfanns:
-        tf_id = ann.get_property("id")
-        tf_frameType = ann.get_property("frameType")
-
-        # add timeFrames to their list; no values for times yet
-        tfs += [[tf_id, tf_frameType, -1, -1, -1, ""]]
-        
-
-        # add timeFrame points to their list
-        for t in ann.get_property("targets"):
-            is_rep = t in ann.get_property("representatives")
-            tfpts += [[ tf_id, tf_frameType, t, is_rep ]]
-
-    # work-around for v3.0 timePont bug
-    if useview.metadata.app == 'http://apps.clams.ai/swt-detection/v3.0' :
-        tP_prop = "timePont"
-    else :
-        tP_prop = "timePoint"
-
-    # Build another list for TimePoints
-    tps = []
     last_time = 0
     for ann in tpanns:
-        
-        tpt_id = ref_prefix + ann.get_property("id") # new, for v6.0 and above
+        if ann.get_property("timePoint") > last_time:
+            last_time = ann.get_property("timePoint")
 
-        tps += [[ tpt_id, 
-                  ann.get_property("label"), 
-                  ann.get_property(tP_prop) ]]  # work-around for v3.0 bug
-        
-        if ann.get_property(tP_prop) > last_time:
-            last_time = ann.get_property(tP_prop)
+    return last_time
 
-    # create DataFrames from lists and merge
-    tfpts_df = pd.DataFrame(tfpts, columns=['tf_id','frameType','tp_id','is_rep'])
-    tps_df = pd.DataFrame(tps, columns=['tp_id','label','timePoint'])
-    tfs_tps_df = pd.merge(tfpts_df,tps_df)
 
-    # iterate through the timeFrames and use the merged DataFrame to look up times
-    # (need to cast np.int64 values to ordinary int)
-    for f in tfs:
-        tfrows = tfs_tps_df[ tfs_tps_df["tf_id"] == f[0] ]
 
-        # within rows for this time frame, find start and end times
-        tf_start_time = int( (tfrows["timePoint"]).min() )
-        tf_end_time = int( (tfrows["timePoint"]).max() )
-        #tf_rep_time = int( (tfrows[tfrows["is_rep"]]["timePoint"]).min() )
-        #tf_rep_label = ""  
+def list_tfs( mmifstr:str, 
+              max_gap:int=0, 
+              include_startframe:bool=False,
+              include_endframe:bool=False,
+              subsampling:dict=None):
+    """
+    Analyzes MMIF file from SWT and returns tabular data.
 
-        # narrow down to rows that are rep time points, and choose one
-        tfreprows = tfrows[tfrows["is_rep"]]
-        chosen_row_index = (len(tfreprows) - 1) // 2
-        #print("Num reps:", len(tfreprows), "; chosen index:", chosen_row_index) # DIAG
-        tfreprow = tfreprows.iloc[chosen_row_index]
-        tf_rep_time = int( tfreprow["timePoint"] )
-        tf_rep_label = tfreprow["label"]
-        #print(tf_rep_time, tf_rep_label) # DIAG
+    Takes serialized MMIF as a string as input.
+    Returns a table (list of lists) representing the timeFrame annotations
 
-        f[2] = tf_start_time
-        f[3] = tf_end_time
-        f[4] = tf_rep_time
-        f[5] = tf_rep_label 
+    If all arguments besides the mmifstr are left as defaults.  The output
+    will be the same as from `tfs_from_mmif(mmifstr)`.
 
-    # sort list of timeFrames by start
-    tfs.sort(key=lambda f:f[2])
+    Columns:
+    0: TimeFrame id (from MMIF file) (string)
+    1: bin label (string)
+    2: start time in milliseconds (int)
+    3: stop time in milliseconds (int)
+    4: representative still time in milliseconds (int)
+    5: representative still point label (string)
+
+    """
+
+    tfs = tfs_from_mmif( mmifstr )
+    last_time = last_time_in_mmif( mmifstr )
 
     # add frames for first and last timepoints 
     # (Because gaps have to be between timepoints, and we want to catch
@@ -178,7 +214,6 @@ def list_tfs( mmifstr:str,
     # These may be removed later
     tfs.insert(0, ['f_0', 'first frame', 0, 0, 0])
     tfs.append(['f_n', 'last frame', last_time, last_time, last_time, ""])
-
 
     # If this parameter has been passed to the function, then
     # intersperse sample non-labeled frames among labeled timeframes.
@@ -227,7 +262,7 @@ def list_tfs( mmifstr:str,
         tfs.sort(key=lambda f:f[2])
 
 
-   # Add extra samples scenes for longer scenes  (like credits sequences)
+    # Add extra samples scenes for longer scenes  (like credits sequences)
     if subsampling is not None:
 
         # check for and remove invalid sampling entries
@@ -282,20 +317,16 @@ def list_tfs( mmifstr:str,
         
     # if appropriate, remove first frame and last frame pseudo-annotations
     to_remove = []
-    if remove_sampled:
-        to_remove += sampled_scene_ids
     if not include_startframe:
         to_remove.append('f_0')
     if not include_endframe:
         to_remove.append('f_n')
-
     if len(to_remove) > 0:
         tfs = [ row for row in tfs if row[0] not in to_remove ]
 
     # pprint.pprint(tfs) # DIAG
     tfs.sort(key=lambda f:f[2])
     return tfs
-
 
 
 
@@ -331,7 +362,7 @@ def create_aid(video_path: str,
         video_fname = video_path[video_path.rfind("/")+1:]
         video_identifier = video_fname
 
-    if len(types) > 0:
+    if types is not None:
         tfs = [ row for row in tfs if row[1] in types ] 
 
     # find the first video stream
