@@ -47,6 +47,60 @@ def get_mmif_metadata_str( mmifstr:str ):
     return json.dumps(json.loads(str(useview.metadata)), indent=2)
 
 
+def get_CLAMS_app_strs( mmifstr:str ):
+    """
+    Takes the metadata object from the first view with TimePoint annotations
+    and the first view with TimeFrame annotations.  Then looks at app metadata
+    for each.
+    
+    Returns an ordered pair consisting of
+       - the app used to create TimePoint annotations
+       - the app used to create TimeFrame annotations
+    """
+    tp_app = ""
+    tf_app = ""
+
+    # turn the MMIF string into a Mmif object
+    usemmif = Mmif(mmifstr)
+    if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) == 0:
+        print("Warning: MMIF file contained no TimeFrame annotations.")
+    else:
+        # get the right views
+        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+        tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+
+        # Get information about the app version from the TimeFrame view
+        tp_app = tp_view.metadata.app
+        tf_app = tf_view.metadata.app
+
+    return (tp_app, tf_app)
+
+
+def get_CLAMS_app_vers( mmifstr:str ):
+    """
+    Takes the metadata object from the first view with TimePoint annotations
+    and the first view with TimeFrame annotations.  Then looks at app metadata
+    for each.
+    
+    Returns an ordered pair consisting of
+       - the version used to create TimePoint annotations
+       - the version used to create TimeFrame annotations
+    """
+    tp_app, tf_app = get_CLAMS_app_strs( mmifstr )
+
+    if tp_app.rfind("/v") != -1:
+        tp_ver = tp_app[tp_app.rfind("/v")+1:]
+    else:
+        tp_ver = ""
+
+    if tf_app.rfind("/v") != -1:
+        tf_ver = tf_app[tf_app.rfind("/v")+1:]
+    else:
+        tf_ver = ""
+    
+    return (tp_ver, tf_ver)
+
+
 
 def tfs_from_mmif( mmifstr:str ):
     """

@@ -9,13 +9,20 @@ Defines functions for doing post processing of MMIF created by SWT
 
 import csv
 import json
+import datetime
 
 from mmif import Mmif
 
 import drawer.lilhelp
 import swt.process_swt
 
-MODULE_VERSION = "0.1"
+MODULE_VERSION = "0.2"
+
+
+# The earliest valid start time for the program (if not set by config)
+#   (We won't bother to set a proxy start time if the computed value is 
+#    less than this.)
+DEFAULT_PROG_START_MIN = 3000
 
 # The latest valid start time for the program (if not set by config)
 #   (We won't look for the main program slate after this point.)
@@ -78,6 +85,11 @@ def run_post(item, cf, post_proc, mmif_path):
     else:
         make_ksl_index = False
 
+    if "prog_start_min" in post_proc:
+        prog_start_min = post_proc["prog_start_min"]
+    else:
+        prog_start_min = DEFAULT_PROG_START_MIN
+
     if "prog_start_max" in post_proc:
         prog_start_max = post_proc["prog_start_max"]
     else:
@@ -138,12 +150,42 @@ def run_post(item, cf, post_proc, mmif_path):
             proxy_start_ms = max(bars_end, slate_begin)
         else:
             proxy_start_ms = bars_end
+        
+        if proxy_start_ms < prog_start_min:
+            proxy_start_ms = 0
 
-        # print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start_ms) # DIAG
+        # print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start_ms) # DIAG        
 
-        item["proxy_start"] = proxy_start_ms / 1000
+        proxy_start = proxy_start_ms // 1000
+        print("Proxy start:", proxy_start)
 
-        print("Proxy start:", item["proxy_start"])
+        # get app names
+        tp_ver, tf_ver = swt.process_swt.get_CLAMS_app_vers(mmif_str)
+
+        data_artifact = [{ 
+            "metadata": {
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                "process": "clams-kitchen/swt/post_proc_item",
+                "process_version": MODULE_VERSION,
+                "job_id": cf["job_id"],                
+                "swt-tp_version": tp_ver,
+                "swt-tf_version": tf_ver,
+                "min_proxy_start_ms": prog_start_min,
+                "max_proxy_start_ms": prog_start_max
+            },
+            "data":{
+                "proxy_start_time": proxy_start
+            }
+        }]
+        # print(data_artifact) # DIAG 
+
+        if (int(proxy_start) == 0):
+            print("Will not create a data artifact for this item.")
+        else:
+            data_artifact_path = data_dir + "/" + item["asset_id"] + "_inferred_data.json"
+            with open(data_artifact_path, "w", newline="") as file:
+                json.dump(data_artifact, file, indent=2)
+            print("Data artifact saved.")
 
 
     #
@@ -161,16 +203,16 @@ def run_post(item, cf, post_proc, mmif_path):
 
         if slate_rep is not None:
             try:
-                count = drawer.lilhelp.extract_stills( 
+                slates = drawer.lilhelp.extract_stills( 
                            item["media_path"], 
                            [ slate_rep ], 
                            item["asset_id"],
                            slates_dir,
                            verbose=False )
-                if count == 1:
+                if len(slates) == 1:
                     print("Slate saved.")
                 else:
-                    print("Warning: Saved", count, "slates.")
+                    print("Warning: Saved", len(slates), "slates.")
 
             except Exception as e:
                 print("Extraction of slate frame at", slate_rep ,"failed.")
@@ -227,7 +269,8 @@ def run_post(item, cf, post_proc, mmif_path):
                 tp = int(fname.split("_")[2])
 
                 # lookup label in tfs array
-                label = [ tf[5] for tf in tfs if tf[4] == tp ][0]
+                #label = [ tf[5] for tf in tfs if tf[4] == tp ][0]
+                label = ""
 
                 if label.find(":") != -1:
                     label, sublabel = label.split(":")
