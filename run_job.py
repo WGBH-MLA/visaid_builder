@@ -4,11 +4,47 @@ run_job.py
 This script runs CLAMS applications against a batch of assets by looping through 
 the items in the batch, taking several steps with each one.  
 
+It uses several data structures that are global for this module.
+
+`cf` - the job configuration dictionary. Most of the values are set by the 
+job configuration file.  Some can be set from the command line.  Some
+are calculated at the beginning of the job.  It has the following keys:
+   - start_timestamp (str)
+   - job_id (str) 
+   - job_name (str) 
+   - logs_dir (str)    
+   - just_get_media (bool)
+   - start_after_item (int)
+   - end_after_item (int)
+   - overwrite_mmif (bool)
+   - cleanup_media_per_item (bool)
+   - cleanup_beyond_item (int)
+   - artifacts_dir (str)
+
+`clams_run_cli` - bool indicating whether to run CLAMS apps as CLI or web service   
+
+`clams_endpoints` - a list of URLS for web service endpoints for CLAMS apps
+
+`clams_images` - a list of names for Docker images for CLAMS apps 
+
+`clams_params` - a list of dictionaries of parameter values for CLAMS apps 
+
+`post_proc` - a dictionary with the parameters for the post-processing routine
+
+`batch_l` - a list of items in the batch.  Each item is a dictionary with the
+following keys:
+   - asset_id (str)
+   - batch_item (int)
+   - skip_reason (str)
+   - media_filename (str)
+   - media_path (str)
+   - mmif_files (list of str)
+   - mmif_paths (list of str)
+   - elapsed_seconds (int)
 """
+
 # %%
 # Import modules
-# required modules not in Python standard library: 
-#   requests, av, pandas, mmif-python, pillow
 
 import os
 import platform
@@ -127,10 +163,6 @@ with open(job_conf_path, "r") as jsonfile:
 # These will be based on the conffile dictionary, but checked and normalized
 cf = {}
 post_proc = {}
-
-# Additional variables related to post-processing config
-post_proc_name = ""
-artifacts = []
 
 t0 = datetime.datetime.now()
 cf["start_timestamp"] = t0.strftime("%Y%m%d_%H%M%S")
@@ -281,19 +313,15 @@ try:
     if "post_proc" in conffile:
         post_proc = conffile["post_proc"]
 
-        if "name" in post_proc:
-            post_proc_name = conffile["post_proc"]["name"]
-        else:
-            post_proc_name = ""
+        if "name" not in post_proc:
+            post_proc["name"] = ""
 
         if "artifacts" in post_proc:
-            artifacts = post_proc["artifacts"]
-
             # directory for all artifacts (not including MMIF files)
             cf["artifacts_dir"] = results_dir + "/" + "artifacts"
 
         else:
-            artifacts = []
+            post_proc["artifacts"] = []
             cf["artifacts_dir"] = ""
 
 except KeyError as e:
@@ -318,12 +346,12 @@ except RuntimeError as e:
 # Create list of dirs to create/validate
 dirs = [mmif_dir]
 
-if len(artifacts) > 0:
+if len(post_proc["artifacts"]) > 0:
 
     dirs.append(cf["artifacts_dir"])
     
     # subdirectories for types of artifacts
-    for arttype in artifacts:
+    for arttype in post_proc["artifacts"]:
         artdir = cf["artifacts_dir"] + "/" + arttype
         dirs.append(artdir)
 
@@ -383,7 +411,6 @@ for item in batch_l:
     item["media_path"] = ""
     item["mmif_files"] = []
     item["mmif_paths"] = []
-    item["proxy_start"] = None
     item["elapsed_seconds"] = None
 
     # set the index of the MMIF files so far for this item
@@ -688,7 +715,7 @@ for item in batch_l:
 
 
         # Call separate procedure for appropraite post-processing
-        if post_proc_name.lower() == "swt" :
+        if post_proc["name"].lower() == "swt" :
             swt.post_proc_item.run_post(item=item, 
                                         cf=cf,
                                         post_proc=post_proc, 
