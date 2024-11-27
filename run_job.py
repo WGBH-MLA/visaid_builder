@@ -31,7 +31,8 @@ are calculated at the beginning of the job.  It has the following keys:
 
 `post_proc` - a dictionary with the parameters for the post-processing routine
 
-`batch_l` - a list of items in the batch.  Each item is a dictionary with the
+`batch_l` - a list of items in the batch.  Each item is a dictionary with keys set
+by the columns of the batch definition list CSV file.  In addition, it includes the
 following keys:
    - asset_id (str)
    - batch_item (int)
@@ -95,7 +96,9 @@ def cleanup_media(cf, item_count, item):
     print()
     print("# CLEANING UP MEDIA")
 
-    if cf["cleanup_media_per_item"] and item_count > cf["cleanup_beyond_item"]:
+    if not cf["media_required"]:
+        print("Job declared media was not required.  Will not attempt to clean up.")
+    elif cf["cleanup_media_per_item"] and item_count > cf["cleanup_beyond_item"]:
         print("Attempting to remove media at", item["media_path"])
         removed = remove_media(item["media_path"])
         if removed:
@@ -238,6 +241,11 @@ try:
 
 
     # Additional configuration options
+    if "media_required" in conffile:
+        cf["media_required"] = conffile["media_required"]
+    else:
+        cf["media_required"] = True
+
     if cli_just_get_media:
         cf["just_get_media"] = True
     elif "just_get_media" in conffile:
@@ -423,42 +431,45 @@ for item in batch_l:
     print()
     print("# MEDIA AVAILABILITY")
 
-    media_path = ""
-
-    media_filename = check_avail(item["asset_id"], media_dir)
-
-    if media_filename is not None:
-        media_path = media_dir + "/" + media_filename
-        print("Media already available:  ", media_path) 
+    if not cf["media_required"]:
+        print("Media declared not required.")
+        print("Will continue.") 
     else:
-        print("Media not yet available; will try to make available.") 
-        if item["sonyci_id"] :
-            media_filename = make_avail(item["asset_id"], item["sonyci_id"], media_dir)
-            if media_filename is not None:
-                media_path = media_dir + "/" + media_filename
+        media_path = ""
+        media_filename = check_avail(item["asset_id"], media_dir)
+
+        if media_filename is not None:
+            media_path = media_dir + "/" + media_filename
+            print("Media already available:  ", media_path) 
         else:
-            print("No Ci ID for " + item["asset_id"])
+            print("Media not yet available; will try to make available.") 
+            if item["sonyci_id"] :
+                media_filename = make_avail(item["asset_id"], item["sonyci_id"], media_dir)
+                if media_filename is not None:
+                    media_path = media_dir + "/" + media_filename
+            else:
+                print("No Ci ID for " + item["asset_id"])
 
-    if media_filename is not None and os.path.isfile(media_path):
-        item["media_filename"] = media_filename
-        item["media_path"] = media_path
-    else:
-        # step failed
-        # print error messages, updated results, continue to next loop iteration
-        print("Media file for " + item["asset_id"] + " could not be made available.")
-        print("SKIPPING", item["asset_id"])
-        item["skip_reason"] = "media"
-        write_job_results_log(cf, batch_l, item_count)
-        continue
+        if media_filename is not None and os.path.isfile(media_path):
+            item["media_filename"] = media_filename
+            item["media_path"] = media_path
+        else:
+            # step failed
+            # print error messages, updated results, continue to next loop iteration
+            print("Media file for " + item["asset_id"] + " could not be made available.")
+            print("SKIPPING", item["asset_id"])
+            item["skip_reason"] = "media"
+            write_job_results_log(cf, batch_l, item_count)
+            continue
 
-    if cf["just_get_media"]:
-        print()
-        print("Media acquisition successful.")
-        # Update results (so we have a record of any failures)
-        write_job_results_log(cf, batch_l, item_count)
+        if cf["just_get_media"]:
+            print()
+            print("Media acquisition successful.")
+            # Update results (so we have a record of any failures)
+            write_job_results_log(cf, batch_l, item_count)
 
-        # continue to next iteration without additional steps
-        continue
+            # continue to next iteration without additional steps
+            continue
 
 
     ########################################################
@@ -467,60 +478,68 @@ for item in batch_l:
 
     print()
     print("# MAKING BLANK MMIF")
-
-    # Check for prereqs
-    if item["media_filename"] == "":
-        # prereqs not satisfied
-        # print error messages, updated results, continue to next loop iteration
-        print("Step prerequisite failed: No media filename recorded.")
-        print("SKIPPING", item["asset_id"])
-        item["skip_reason"] = "mmif-0-prereq"
-        write_job_results_log(cf, batch_l, item_count)
-        continue
-    else:
-        print("  -- Step prerequisites passed. --")
-
-
-    # define MMIF for this stage of this iteration
     mmifi += 1
-    mmif_filename = item["asset_id"] + "_" + str(mmifi) + ".mmif"
-    mmif_path = mmif_dir + "/" + mmif_filename
 
-    # Check to see if it exists; if not create it
-    if ( os.path.isfile(mmif_path) and not cf["overwrite_mmif"]):
-        print("Will use existing MMIF:    " + mmif_path)
+    if not cf["media_required"]:
+        print("Media declared not required, implying that blank MMIF is not required.") 
+        print("Will continue.")
+
+        # add empty strings for filename and path to this MMIF file
+        item["mmif_files"].append("")
+        item["mmif_paths"].append("")
     else:
-        print("Will create MMIF file:     " + mmif_path)
 
-        if item["media_type"] == "Moving Image":
-            mime = "video"
-        elif item["media_type"] == "Sound":
-            mime = "audio"
+        # define MMIF for this stage of this iteration
+        mmif_filename = item["asset_id"] + "_" + str(mmifi) + ".mmif"
+        mmif_path = mmif_dir + "/" + mmif_filename
+
+        # Check to see if it exists; if not create it
+        if ( os.path.isfile(mmif_path) and not cf["overwrite_mmif"]):
+            print("Will use existing MMIF:    " + mmif_path)
         else:
-            print( "Warning: media type of " + item["asset_id"] + 
-                   " is `" + item["media_type"] + "`." )
-            print( "Using 'video' as the MIME type." )
-            mime = "video"
-        mmif_str = make_blank_mmif(item["media_filename"], mime)
+            print("Will create MMIF file:     " + mmif_path)
 
-        with open(mmif_path, "w") as file:
-            num_chars = file.write(mmif_str)
-        if num_chars < len(mmif_str):
-            raise Exception("Tried to write MMIF, but failed.")
-    
-    mmif_status = mmif_check(mmif_path)
-    if 'blank' in mmif_status:
-        item["mmif_files"].append(mmif_filename)
-        item["mmif_paths"].append(mmif_path)
-    else:
-        # step failed
-        # print error messages, updated results, continue to next loop iteration
-        mmif_check(mmif_path, complain=True)
-        print("SKIPPING", item["asset_id"])
-        item["skip_reason"] = "mmif-0"
-        cleanup_media(cf, item_count, item)
-        write_job_results_log(cf, batch_l, item_count)
-        continue
+            # Check for prereqs
+            if cf["media_required"] and item["media_filename"] == "":
+                # prereqs not satisfied
+                # print error messages, updated results, continue to next loop iteration
+                print("Prerequisite failed:  Media required and no media filename recorded.")
+                print("SKIPPING", item["asset_id"])
+                item["skip_reason"] = "mmif-0-prereq"
+                write_job_results_log(cf, batch_l, item_count)
+                continue
+            else:
+                print("Prerequisites passed.")
+
+            if item["media_type"] == "Moving Image":
+                mime = "video"
+            elif item["media_type"] == "Sound":
+                mime = "audio"
+            else:
+                print( "Warning: media type of " + item["asset_id"] + 
+                    " is `" + item["media_type"] + "`." )
+                print( "Using 'video' as the MIME type." )
+                mime = "video"
+            mmif_str = make_blank_mmif(item["media_filename"], mime)
+
+            with open(mmif_path, "w") as file:
+                num_chars = file.write(mmif_str)
+            if num_chars < len(mmif_str):
+                raise Exception("Tried to write MMIF, but failed.")
+        
+        mmif_status = mmif_check(mmif_path)
+        if 'blank' in mmif_status:
+            item["mmif_files"].append(mmif_filename)
+            item["mmif_paths"].append(mmif_path)
+        else:
+            # step failed
+            # print error messages, updated results, continue to next loop iteration
+            mmif_check(mmif_path, complain=True)
+            print("SKIPPING", item["asset_id"])
+            item["skip_reason"] = "mmif-0"
+            cleanup_media(cf, item_count, item)
+            write_job_results_log(cf, batch_l, item_count)
+            continue
 
 
     ########################################################
@@ -529,33 +548,48 @@ for item in batch_l:
     # Save output MMIF file
 
     print()
-    print("# RUNNING CLAMS APP TO CREATE ANNOTATIONS IN MMIF")
-
-    # Check for prereqs
-    mmif_status = mmif_check(item["mmif_paths"][mmifi])
-    if 'valid' not in mmif_status:
-        # prereqs not satisfied
-        # print error messages, updated results, continue to next loop iteration
-        mmif_check(mmif_path, complain=True)
-        print("Step prerequisite failed.")
-        print("SKIPPING", item["asset_id"])
-        item["skip_reason"] = "mmif-1-prereq"
-        write_job_results_log(cf, batch_l, item_count)
-        continue
-    else:
-        print("  -- Step prerequisites passed. --")
-
-    # Define MMIF for this step of the job
+    print("# MAKING ANNOTATION-LADEN MMIF")
     mmifi += 1
     clamsi = mmifi - 1
+
+    # Define MMIF for this step of the job
     mmif_filename = item["asset_id"] + "_" + cf["job_id"] + "_" + str(mmifi) + ".mmif"
     mmif_path = mmif_dir + "/" + mmif_filename
 
-    # Check to see if it exists; if not create it
+    # Decide whether to use existing MMIF file or create a new one
+    make_new_mmif = True
     if ( os.path.isfile(mmif_path) and not cf["overwrite_mmif"]):
-        print("Will use existing MMIF:    " + mmif_path)
-    else:
+        # Check to make sure file isn't implausibly small.
+        # (Sometimes aborted processes leave around 0 byte mmif files.)
+        if ( os.path.getsize(mmif_path) > 100 ):
+            # check to make sure MMIF file is valid
+            if 'valid' in mmif_check(mmif_path):
+                print("Will use existing MMIF:    " + mmif_path)
+                make_new_mmif = False
+            else:
+                print("Existing MMIF file is not valid.  Will overwrite.")
+        else:
+            print("Existing MMIF file is only", 
+                  os.path.getsize(mmif_path), 
+                  "bytes.  Will overwrite.")
+    
+    if make_new_mmif:
+        # Need to make new MMIF file.  Going to run a CLAMS app
         print("Will try making MMIF file: " + mmif_path)
+
+        # Check for prereqs
+        mmif_status = mmif_check(item["mmif_paths"][mmifi-1])
+        if 'valid' not in mmif_status:
+            # prereqs not satisfied
+            # print error messages, updated results, continue to next loop iteration
+            mmif_check(mmif_path, complain=True)
+            print("Prerequisite failed:  Input MMIF is not valid.")
+            print("SKIPPING", item["asset_id"])
+            item["skip_reason"] = "mmif-1-prereq"
+            write_job_results_log(cf, batch_l, item_count)
+            continue
+        else:
+            print("Prerequisites passed.")
 
         if not clams_run_cli :
             ################################################################
@@ -697,7 +731,7 @@ for item in batch_l:
     if post_proc :
 
         print()
-        print("# POSTPROCESSING TO USE CLAMS MMIF OUTPUT")
+        print("# POSTPROCESSING ANNOTATION-LADEN MMIF")
 
         # Check for prereqs
         mmif_status = mmif_check(item["mmif_paths"][mmifi])
@@ -705,13 +739,13 @@ for item in batch_l:
             # prereqs not satisfied
             # print error messages, updated results, continue to next loop iteration
             mmif_check(mmif_path, complain=True)
-            print("Step prerequisite failed.")
+            print("Step prerequisite failed: MMIF contains error views or lacks annotations.")
             print("SKIPPING", item["asset_id"])
             item["skip_reason"] = "usemmif-prereq"
             write_job_results_log(cf, batch_l, item_count)
             continue
         else:
-            print("  -- Step prerequisites passed. --")
+            print("Step prerequisites passed.")
 
 
         # Call separate procedure for appropraite post-processing
