@@ -16,7 +16,7 @@ from mmif import Mmif
 import drawer.lilhelp
 import swt.process_swt
 
-MODULE_VERSION = "0.2"
+MODULE_VERSION = "0.21"
 
 
 # The earliest valid start time for the program (if not set by config)
@@ -142,6 +142,9 @@ def run_post(item, cf, post_proc, mmif_path):
 
         # Proxy starts at the end of the bars or the beginning of the slate,
         # whichever is greater
+        # The main way that this can go wrong is if there is a false positive 
+        # for a slate in the first period of the show, after some substantial
+        # content has already begun playing.
         slate_begin = None
         slate_tfs = [ tf for tf in tfs 
                         if (tf[1] in ['slate'] and tf[3] <= prog_start_max)]
@@ -164,14 +167,17 @@ def run_post(item, cf, post_proc, mmif_path):
 
         data_artifact = [{ 
             "metadata": {
+                "asset_id": item["asset_id"],
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                "job_id": cf["job_id"],
                 "process": "clams-kitchen/swt/post_proc_item",
                 "process_version": MODULE_VERSION,
-                "job_id": cf["job_id"],                
-                "swt-tp_version": tp_ver,
-                "swt-tf_version": tf_ver,
-                "min_proxy_start_ms": prog_start_min,
-                "max_proxy_start_ms": prog_start_max
+                "process_details": {
+                    "swt-tp_version": tp_ver,
+                    "swt-tf_version": tf_ver,
+                    "min_proxy_start_ms": prog_start_min,
+                    "max_proxy_start_ms": prog_start_max
+                }
             },
             "data":{
                 "proxy_start_time": proxy_start
