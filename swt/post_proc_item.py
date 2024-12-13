@@ -16,7 +16,7 @@ from mmif import Mmif
 import drawer.lilhelp
 import swt.process_swt
 
-MODULE_VERSION = "0.21"
+MODULE_VERSION = "0.22"
 
 
 # The earliest valid start time for the program (if not set by config)
@@ -28,6 +28,9 @@ DEFAULT_PROG_START_MIN = 3000
 #   (We won't look for the main program slate after this point.)
 #   (And we won't assign a proxy start time after this point.)
 DEFAULT_PROG_START_MAX = 150000
+
+BARS_BINS = ['bars', 'Bars']
+SLATE_BINS = ['slate', 'Slate', 'S', 'S:H', 'S:C', 'S:D', 'S:B', 'S:G']
 
 
 def run_post(item, cf, post_proc, mmif_path):
@@ -136,7 +139,7 @@ def run_post(item, cf, post_proc, mmif_path):
         # If there is no bars timeframe, then the value is 0
         bars_end = 0
         bars_tfs = [ tf for tf in tfs 
-                        if (tf[1] in ['bars'] and tf[3] <= prog_start_max) ]
+                        if (tf[1] in BARS_BINS and tf[3] <= prog_start_max) ]
         if len(bars_tfs) > 0:
             bars_end = int(bars_tfs[-1][3])
 
@@ -147,7 +150,7 @@ def run_post(item, cf, post_proc, mmif_path):
         # content has already begun playing.
         slate_begin = None
         slate_tfs = [ tf for tf in tfs 
-                        if (tf[1] in ['slate'] and tf[3] <= prog_start_max)]
+                        if (tf[1] in SLATE_BINS and tf[3] <= prog_start_max)]
         if len(slate_tfs) > 0:
             slate_begin = int(slate_tfs[0][2])
             proxy_start_ms = max(bars_end, slate_begin)
@@ -203,7 +206,7 @@ def run_post(item, cf, post_proc, mmif_path):
         # The slate rep is the rep timepoint from from the first slate timeframe
         # If there is not slate timeframe, then the value is None
         slate_rep = None
-        slate_tfs = [ tf for tf in tfs if tf[1] in ['slate'] ]
+        slate_tfs = [ tf for tf in tfs if tf[1] in SLATE_BINS ]
         if len(slate_tfs) > 0:
             slate_rep = int(slate_tfs[0][4])
 

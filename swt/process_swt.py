@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.52"
+MODULE_VERSION = "1.70"
 
 
 def get_mmif_metadata_str( mmifstr:str ):
