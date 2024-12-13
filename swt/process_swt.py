@@ -129,9 +129,7 @@ def tfs_from_mmif( mmifstr:str ):
     else:
         # get the right views
         tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
-
-        # assume TimePoint annotations are the same view as the TimeFrame annotations
-        tp_view = tf_view
+        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
 
         # Get information about the app version from the TimeFrame view
         # If version >= 6.0, use view ID prefix for time point refs
@@ -139,10 +137,10 @@ def tfs_from_mmif( mmifstr:str ):
         try:
             app_ver = float(app[app.rfind("/v")+2:])
             
-            # For SWT v6.0 and above timepoints targeted by other frames include
+            # For SWT v6.0 and above, TimePoints targeted by other frames include
             # a reference to the view from which they came.
             if app_ver > 5.9999:
-                ref_prefix = tf_view.id + ":"
+                ref_prefix = tp_view.id + ":"
             else:
                 ref_prefix = ""
         except Exception as e:
@@ -180,6 +178,8 @@ def tfs_from_mmif( mmifstr:str ):
             tps += [[ tpt_id, 
                     ann.get_property("label"), 
                     ann.get_property("timePoint") ]]  
+
+        #print("Lengths (tfs, tfpts, tps):", (len(tfs), len(tfpts), len(tps))) # DIAG
 
         # create DataFrames from lists and merge
         tfpts_df = pd.DataFrame(tfpts, columns=['tf_id','frameType','tp_id','is_rep'])
