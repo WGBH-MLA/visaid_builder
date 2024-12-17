@@ -297,23 +297,29 @@ try:
         clams_run_cli = False
     else:
         clams_run_cli = True
-    
-    if not (clams_run_cli or cf["just_get_media"]):
-        # need to know the URLs of the webservices if (but only if) not running
-        # in CLI mode
-        clams_endpoints = conffile["clams_endpoints"]
 
-    if clams_run_cli:
+    if cf["just_get_media"]:
+        num_clams_stages = 0
+        clams_endpoints = clams_images = []
+    elif not clams_run_cli:
+        # need to know the URLs of the webservices if (but only if) not running
+        # in CLI mode 
+        clams_endpoints = conffile["clams_endpoints"]
+        clams_images = []
+        num_clams_stages = len(clams_endpoints)
+    else:
         # need to know the docker image if (but only if) running in CLI mode
         clams_images = conffile["clams_images"]
-    else:
-        # ignore clams_images if not running in CLI mode
-        clams_images = ""
+        clams_endpoints = []
+        num_clams_stages = len(clams_images)
 
     if "clams_params" in conffile:
         clams_params = conffile["clams_params"]
     else:
         clams_params = []
+
+    if len(clams_params) != num_clams_stages:
+        raise RuntimeError("Number of CLAMS stages not equal to number of sets of CLAMS params.") 
 
 
     # Post-processing configuration options
@@ -323,14 +329,16 @@ try:
 
         if "name" not in post_proc:
             post_proc["name"] = ""
+    else:
+        post_proc = {}
 
-        if "artifacts" in post_proc:
-            # directory for all artifacts (not including MMIF files)
-            cf["artifacts_dir"] = results_dir + "/" + "artifacts"
-
-        else:
-            post_proc["artifacts"] = []
-            cf["artifacts_dir"] = ""
+    if "artifacts" in post_proc:
+        # directory for all artifacts (not including MMIF files)
+        cf["artifacts_dir"] = results_dir + "/" + "artifacts"
+    else:
+        post_proc["name"] = ""
+        post_proc["artifacts"] = []
+        cf["artifacts_dir"] = ""
 
 except KeyError as e:
     print("Invalid configuration file at", job_conf_path)
@@ -473,8 +481,8 @@ for item in batch_l:
 
 
     ########################################################
-    # MMIF creation #0
-    # Add blank MMIF file, if it's not already there
+    # Create blank MMIF file, if it's not already there
+    # (create MMIF 0)
 
     print()
     print("# MAKING BLANK MMIF")
@@ -529,6 +537,7 @@ for item in batch_l:
         
         mmif_status = mmif_check(mmif_path)
         if 'blank' in mmif_status:
+            print("Blank MMIF file successfully created.")
             item["mmif_files"].append(mmif_filename)
             item["mmif_paths"].append(mmif_path)
         else:
@@ -542,197 +551,219 @@ for item in batch_l:
             continue
 
 
-    ########################################################
-    # MMIF creation #1
-    # Construct CLAMS call and call CLAMS app
-    # Save output MMIF file
+    #############################################################
+    # Construct CLAMS calls and call CLAMS apps, save output MMIF
+    # (create MMIF 1 thru n)
 
     print()
-    print("# MAKING ANNOTATION-LADEN MMIF")
-    mmifi += 1
-    clamsi = mmifi - 1
+    print("# CREATING ANNOTATION-LADEN MMIF WITH CLAMS")
 
-    # Define MMIF for this step of the job
-    mmif_filename = item["asset_id"] + "_" + cf["job_id"] + "_" + str(mmifi) + ".mmif"
-    mmif_path = mmif_dir + "/" + mmif_filename
+    print("Will run", num_clams_stages, "round(s) of CLAMS processing.")
+    clams_failed = False
 
-    # Decide whether to use existing MMIF file or create a new one
-    make_new_mmif = True
-    if ( os.path.isfile(mmif_path) and not cf["overwrite_mmif"]):
-        # Check to make sure file isn't implausibly small.
-        # (Sometimes aborted processes leave around 0 byte mmif files.)
-        if ( os.path.getsize(mmif_path) > 100 ):
-            # check to make sure MMIF file is valid
-            if 'valid' in mmif_check(mmif_path):
-                print("Will use existing MMIF:    " + mmif_path)
-                make_new_mmif = False
+    for i in range(num_clams_stages):
+
+        # Don't run if previous step failed
+        if clams_failed:
+            continue
+
+        mmifi += 1
+        clamsi = mmifi - 1
+        print()
+        print("## Making MMIF #", mmifi)
+
+        # Define MMIF for this step of the job
+        mmif_filename = item["asset_id"] + "_" + cf["job_id"] + "_" + str(mmifi) + ".mmif"
+        mmif_path = mmif_dir + "/" + mmif_filename
+
+        # Decide whether to use existing MMIF file or create a new one
+        make_new_mmif = True
+        if ( os.path.isfile(mmif_path) and not cf["overwrite_mmif"]):
+            # Check to make sure file isn't implausibly small.
+            # (Sometimes aborted processes leave around 0 byte mmif files.)
+            if ( os.path.getsize(mmif_path) > 100 ):
+                # check to make sure MMIF file is valid
+                if 'valid' in mmif_check(mmif_path):
+                    print("Will use existing MMIF:    " + mmif_path)
+                    make_new_mmif = False
+                else:
+                    print("Existing MMIF file is not valid.  Will overwrite.")
             else:
-                print("Existing MMIF file is not valid.  Will overwrite.")
-        else:
-            print("Existing MMIF file is only", 
-                  os.path.getsize(mmif_path), 
-                  "bytes.  Will overwrite.")
-    
-    if make_new_mmif:
-        # Need to make new MMIF file.  Going to run a CLAMS app
-        print("Will try making MMIF file: " + mmif_path)
+                print("Existing MMIF file is only", 
+                    os.path.getsize(mmif_path), 
+                    "bytes.  Will overwrite.")
+        
+        if make_new_mmif:
+            # Need to make new MMIF file.  Going to run a CLAMS app
+            print("Will try making MMIF file: " + mmif_path)
 
-        # Check for prereqs
-        mmif_status = mmif_check(item["mmif_paths"][mmifi-1])
-        if 'valid' not in mmif_status:
-            # prereqs not satisfied
+            # Check for prereqs
+            mmif_status = mmif_check(item["mmif_paths"][mmifi-1])
+            if 'valid' not in mmif_status:
+                # prereqs not satisfied
+                # print error messages, updated results, continue to next loop iteration
+                mmif_check(mmif_path, complain=True)
+                print("Prerequisite failed:  Input MMIF is not valid.")
+                print("SKIPPING", item["asset_id"])
+                item["skip_reason"] = "mmif-1-prereq"
+                write_job_results_log(cf, batch_l, item_count)
+                continue
+            else:
+                print("Prerequisites passed.")
+
+            if not clams_run_cli :
+                ################################################################
+                # Run CLAMS app, assuming the app is already running as a local web service
+                print("Sending request to CLAMS web service...")
+
+                if len(clams_params[clamsi]) > 0:
+                    # build querystring with parameters in job configuration
+                    qsp = "?"
+                    for p in clams_params[clamsi]:
+                        qsp += p
+                        qsp += "="
+                        qsp += str(clams_params[clamsi][p])
+                        qsp += "&"
+                    qsp = qsp[:-1] # remove trailing "&"
+                service = clams_endpoints[clamsi]
+                endpoint = service + qsp
+
+                headers = {'Accept': 'application/json'}
+
+                with open(item["mmif_paths"][mmifi-1], "r") as file:
+                    mmif_str = file.read()
+
+                try:
+                    # actually run the CLAMS app
+                    response = requests.post(endpoint, headers=headers, data=mmif_str)
+                except Exception as e:
+                    print("Encountered exception:", e)
+                    print("Failed to get a response from the CLAMS web service.")
+                    print("Check CLAMS web service and resume before batch item:", item_count)
+                    raise SystemExit("Exiting script.") from e
+
+                print("CLAMS app web serivce response code:", response.status_code)
+                
+                # use the HTTP response as appropriate
+                if response.status_code :
+                    mmif_str = response.text
+                    if response.status_code == 500:
+                        mmif_path += "500"
+
+                # Write out MMIF file
+                if mmif_str != "":
+                    with open(mmif_path, "w") as file:
+                        num_chars = file.write(mmif_str)
+                    if num_chars < len(mmif_str):
+                        raise Exception("Tried to write MMIF, but failed.")
+                    print("MMIF file created.")
+
+            else:
+                ################################################################
+                # Run CLAMS app by calling the Docker image
+                print("Attempting to call Dockerized CLAMS app CLI...")
+
+                input_mmif_filename = item["mmif_files"][mmifi-1]
+                output_mmif_filename = mmif_filename
+
+                # Set the environment-specific path to Docker and Windows-specific additions
+                current_os = platform.system()
+                if current_os == "Windows":
+                    docker_bin_path = "/mnt/c/Program Files/Docker/Docker/resources/bin/docker"
+                    coml_prefix = ["bash"]
+                elif current_os == "Linux":
+                    docker_bin_path = "/usr/bin/docker"
+                    coml_prefix = []
+                else:
+                    raise OSError(f"Unsupported operating system: {current_os}")
+
+                # build shell command as list for `subprocess.run()`
+                coml = [
+                        docker_bin_path, 
+                        "run",
+                        "-v",
+                        mnt_media_dir + '/:/data',
+                        "-v",
+                        mnt_mmif_dir + '/:/mmif',
+                        "-i",
+                        "--rm",
+                        clams_images[clamsi],
+                        "python",
+                        "cli.py"
+                    ]
+
+                coml = coml_prefix + coml
+
+                # If there are parameters, add them to the command list
+                if len(clams_params[clamsi]) > 0:
+                    app_params = []
+                    for p in clams_params[clamsi]:
+                        if type(clams_params[clamsi][p]) != dict:
+                            # parameter is not nested; just add it
+                            app_params.append( "--" + p )
+                            app_params.append( str(clams_params[clamsi][p]) )
+                        else:
+                            # parameter is a dictionary; break it into separately
+                            # specified parameters
+                            for mkey in clams_params[clamsi][p]:
+                                app_params.append( "--" + p )
+                                mvalue = clams_params[clamsi][p][mkey]
+                                app_params.append( mkey + ":" +  mvalue )
+
+                    # Work-around to delimit values passed with --map flag:
+                    # Add a dummy flag
+                    app_params.append("--")
+                
+                    coml += app_params
+
+                coml.append("/mmif/" + input_mmif_filename)
+                coml.append("/mmif/" + output_mmif_filename)
+
+                # print(coml) # DIAG
+                # print( " ".join(coml) ) # DIAG
+
+                # actually run the CLAMS app
+                result = subprocess.run(coml, capture_output=True, text=True)
+
+                if result.stderr:
+                    print("Warning: CLI returned with error.  Contents of stderr:")
+                    print(result.stderr)
+                else:
+                    print("CLAMS app finished without errors.")
+
+
+        # Validate CLAMS app run
+        mmif_status = mmif_check(mmif_path)
+        if ('laden' in mmif_status and 'error-views' not in mmif_status):
+            item["mmif_files"].append(mmif_filename)
+            item["mmif_paths"].append(mmif_path)
+        else:
+            # step failed
             # print error messages, updated results, continue to next loop iteration
             mmif_check(mmif_path, complain=True)
-            print("Prerequisite failed:  Input MMIF is not valid.")
-            print("SKIPPING", item["asset_id"])
-            item["skip_reason"] = "mmif-1-prereq"
-            write_job_results_log(cf, batch_l, item_count)
-            continue
-        else:
-            print("Prerequisites passed.")
-
-        if not clams_run_cli :
-            ################################################################
-            # Run CLAMS app, assuming the app is already running as a local web service
-            print("Sending request to CLAMS web service...")
-
-            if len(clams_params[clamsi]) > 0:
-                # build querystring with parameters in job configuration
-                qsp = "?"
-                for p in clams_params[clamsi]:
-                    qsp += p
-                    qsp += "="
-                    qsp += str(clams_params[clamsi][p])
-                    qsp += "&"
-                qsp = qsp[:-1] # remove trailing "&"
-            service = clams_endpoints[clamsi]
-            endpoint = service + qsp
-
-            headers = {'Accept': 'application/json'}
-
-            with open(item["mmif_paths"][mmifi-1], "r") as file:
-                mmif_str = file.read()
-
-            try:
-                response = requests.post(endpoint, headers=headers, data=mmif_str)
-            except Exception as e:
-                print("Encountered exception:", e)
-                print("Failed to get a response from the CLAMS web service.")
-                print("Check CLAMS web service and resume before batch item:", item_count)
-                raise SystemExit("Exiting script.") from e
-
-            print("CLAMS app web serivce response code:", response.status_code)
+            clams_failed = True
             
-            # use the HTTP response as appropriate
-            if response.status_code :
-                mmif_str = response.text
-                if response.status_code == 500:
-                    mmif_path += "500"
 
-            # Write out MMIF file
-            if mmif_str != "":
-                with open(mmif_path, "w") as file:
-                    num_chars = file.write(mmif_str)
-                if num_chars < len(mmif_str):
-                    raise Exception("Tried to write MMIF, but failed.")
-                print("MMIF file created.")
-
-        else:
-            ################################################################
-            # Run CLAMS app by calling the Docker image
-            print("Attempting to call Dockerized CLAMS app CLI...")
-
-            input_mmif_filename = item["mmif_files"][mmifi-1]
-            output_mmif_filename = mmif_filename
-
-            # Set the environment-specific path to Docker and Windows-specific additions
-            current_os = platform.system()
-            if current_os == "Windows":
-                docker_bin_path = "/mnt/c/Program Files/Docker/Docker/resources/bin/docker"
-                coml_prefix = ["bash"]
-            elif current_os == "Linux":
-                docker_bin_path = "/usr/bin/docker"
-                coml_prefix = []
-            else:
-                raise OSError(f"Unsupported operating system: {current_os}")
-
-            # build shell command as list for `subprocess.run()`
-            coml = [
-                    docker_bin_path, 
-                    "run",
-                    "-v",
-                    mnt_media_dir + '/:/data',
-                    "-v",
-                    mnt_mmif_dir + '/:/mmif',
-                    "-i",
-                    "--rm",
-                    clams_images[clamsi],
-                    "python",
-                    "cli.py"
-                   ]
-
-            coml = coml_prefix + coml
-
-            # If there are parameters, add them to the command list
-            if len(clams_params[clamsi]) > 0:
-                app_params = []
-                for p in clams_params[clamsi]:
-                    if type(clams_params[clamsi][p]) != dict:
-                        # parameter is not nested; just add it
-                        app_params.append( "--" + p )
-                        app_params.append( str(clams_params[clamsi][p]) )
-                    else:
-                        # parameter is a dictionary; break it into separately
-                        # specified parameters
-                        for mkey in clams_params[clamsi][p]:
-                            app_params.append( "--" + p )
-                            mvalue = clams_params[clamsi][p][mkey]
-                            app_params.append( mkey + ":" +  mvalue )
-
-                # Work-around to delimit values passed with --map flag:
-                # Add a dummy flag
-                app_params.append("--")
-            
-                coml += app_params
-
-            coml.append("/mmif/" + input_mmif_filename)
-            coml.append("/mmif/" + output_mmif_filename)
-
-            # print(coml) # DIAG
-            # print( " ".join(coml) ) # DIAG
-
-            result = subprocess.run(coml, capture_output=True, text=True)
-            if result.stderr:
-                print("Warning: CLI returned with error.  Contents of stderr:")
-                print(result.stderr)
-            else:
-                print("CLAMS app finished without errors.")
-
-
-    # Validate CLAMS app run
-    mmif_status = mmif_check(mmif_path)
-    if ('laden' in mmif_status and 'error-views' not in mmif_status):
-        item["mmif_files"].append(mmif_filename)
-        item["mmif_paths"].append(mmif_path)
-    else:
-        # step failed
-        # print error messages, updated results, continue to next loop iteration
-        mmif_check(mmif_path, complain=True)
+    if clams_failed:
         print("SKIPPING", item["asset_id"])
-        item["skip_reason"] = "mmif-1"
+        item["skip_reason"] = "mmif-" + str(mmifi)
         cleanup_media(cf, item_count, item)
         write_job_results_log(cf, batch_l, item_count)
         continue
+
 
     ########################################################
     # Process MMIF and get useful output
     # 
     
-    if post_proc :
+    print()
+    print("# POSTPROCESSING ANNOTATION-LADEN MMIF")
 
-        print()
-        print("# POSTPROCESSING ANNOTATION-LADEN MMIF")
+    if post_proc["name"] == "" :
+        print("No postprocessing procedure named.  Will not postprocess.")
 
+    else:
+        print("Will attempt to run postprocessing procedure:", post_proc["name"])
         # Check for prereqs
         mmif_status = mmif_check(item["mmif_paths"][mmifi])
         if ('laden' not in mmif_status or 'error-views' in mmif_status):
@@ -755,7 +786,7 @@ for item in batch_l:
                                         post_proc=post_proc, 
                                         mmif_path=item["mmif_paths"][mmifi])
         else:
-            print("Invalid post-processing procedure:", post_proc)
+            print("Invalid postprocessing procedure:", post_proc)
 
 
     ########################################################
@@ -782,11 +813,15 @@ for item in batch_l:
 ########################################################
 
 tn = datetime.datetime.now()
+
+num_skips = len( [item for item in batch_l if item["skip_reason"] != ""] )
+
 print()
 print("****************************")
 print()
-print("Job complete at", tn.strftime("%Y-%m-%d %H:%M:%S"))
+print("Job finished at", tn.strftime("%Y-%m-%d %H:%M:%S"))
 print("Total elapsed time:", (tn-t0).seconds, "seconds")
+print("Skipped", num_skips, "items, out of", len(batch_l), "total items.")
 print("Results logged in", cf["logs_dir"])
 print()
 
