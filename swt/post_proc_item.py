@@ -16,7 +16,7 @@ from mmif import Mmif
 import drawer.lilhelp
 import swt.process_swt
 
-MODULE_VERSION = "0.22"
+MODULE_VERSION = "0.23"
 
 
 # The earliest valid start time for the program (if not set by config)
@@ -113,15 +113,21 @@ def run_post(item, cf, post_proc, mmif_path):
     with open(mmif_path, "r") as file:
         mmif_str = file.read()
 
+    tp_view_id, tf_view_id = swt.process_swt.get_swt_view_ids(mmif_str)
+
     # call SWT MMIF processors to get a table of time frames
     tfs = swt.process_swt.list_tfs(mmif_str, 
+                                   tp_view_id=tp_view_id,
+                                   tf_view_id=tf_view_id,
                                    max_gap=max_gap, 
                                    subsampling=subsampling,
                                    include_startframe=False,
                                    include_endframe=True)
 
     # get metadata_str
-    metadata_str = swt.process_swt.get_mmif_metadata_str(mmif_str)
+    metadata_str = swt.process_swt.get_mmif_metadata_str( mmif_str,
+                                                          tp_view_id,
+                                                          tf_view_id )
 
 
     #
@@ -166,7 +172,7 @@ def run_post(item, cf, post_proc, mmif_path):
         print("Proxy start:", proxy_start)
 
         # get app names
-        tp_ver, tf_ver = swt.process_swt.get_CLAMS_app_vers(mmif_str)
+        tp_ver, tf_ver = swt.process_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
 
         data_artifact = [{ 
             "metadata": {

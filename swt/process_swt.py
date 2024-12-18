@@ -20,73 +20,73 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.70"
+MODULE_VERSION = "1.71"
 
-
-def get_mmif_metadata_str( mmifstr:str ):
+def get_swt_view_ids(mmif_str):
     """
-    Takes the metadata object from the first view with TimeFrame annotations.
+    Takes a MMIF string and returns the IDs of the TimePoint containg view and the 
+    TimeFrame containing view relevant to SWT processing
+    
+    NOTE:
+    At this point in time, the implementation of this function is very naive and 
+    assumes that there aren't a bunch of other views in the MMIF.  This function 
+    will need to be updated to something smarter to deal with more heavily laden 
+    MMIF files with multiple views containing TimePoint and TimeFrame annotations.
+    """
+
+    # turn the MMIF string into a Mmif object
+    usemmif = Mmif(mmif_str)
+
+    tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+    tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+
+    return (tp_view.id, tf_view.id)
+
+
+
+def get_mmif_metadata_str( mmif_str:str, tp_view_id:str, tf_view_id:str ):
+    """
+    Takes the metadata object from the view(s) specified.    
     Returns prettified serialized JSON for that metadata.
+    
     This is a helper function for this module, not a general function for
-    grabbing metadata from MMIF files.
+    grabbing metadata from MMIF files. It is useful for extracting the 
+    CLAMS metadata for inclusion in CLAMS consuming procedures.
     """
 
     # turn the MMIF string into a Mmif object
-    usemmif = Mmif(mmifstr)
+    usemmif = Mmif(mmif_str)
 
-    # First, get the first view that contains a TimeFrame
-    # If none exists, return an empty list.
-    if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) > 0:
-        useview = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
-    elif len(usemmif.get_all_views_contain(AnnotationTypes.TimePoint)) > 0:
-        print("Warning: MMIF file contained no views with TimeFrame annotations.  Using metadata from a TimePoint view.")
-        useview = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+    if tp_view_id == tf_view_id:
+        tp_view = usemmif.get_view_by_id(tp_view_id)
+        mstr = "[ " + str(tp_view.metadata) + " ]"
     else:
-        return ""
+        tp_view = usemmif.get_view_by_id(tp_view_id)
+        tf_view = usemmif.get_view_by_id(tf_view_id)
+        mstr = "[ " + str(tp_view.metadata) + ", " + str(tf_view.metadata) + " ]"
 
-    return json.dumps(json.loads(str(useview.metadata)), indent=2)
+    return json.dumps(json.loads(mstr), indent=2)
 
 
-def get_CLAMS_app_strs( mmifstr:str ):
+def get_CLAMS_app_vers( mmif_str:str, tp_view_id:str, tf_view_id:str ):
     """
-    Takes the metadata object from the first view with TimePoint annotations
-    and the first view with TimeFrame annotations.  Then looks at app metadata
-    for each.
+    Takes the metadata from two the relevant views.  Then looks at the
+    app metadata for each to find the version.
     
-    Returns an ordered pair consisting of
-       - the app used to create TimePoint annotations
-       - the app used to create TimeFrame annotations
+    Returns an ordered pair consisting of the version number used to 
+    create each view.
+
+    This is useful for conditional logic, where program execution depends
+    on the version of the CLAMS app used.
     """
-    tp_app = ""
-    tf_app = ""
 
-    # turn the MMIF string into a Mmif object
-    usemmif = Mmif(mmifstr)
-    if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) == 0:
-        print("Warning: MMIF file contained no TimeFrame annotations.")
-    else:
-        # get the right views
-        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
-        tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+    usemmif = Mmif(mmif_str)
+    tp_view = usemmif.get_view_by_id(tp_view_id)
+    tf_view = usemmif.get_view_by_id(tf_view_id)
 
-        # Get information about the app version from the TimeFrame view
-        tp_app = tp_view.metadata.app
-        tf_app = tf_view.metadata.app
-
-    return (tp_app, tf_app)
-
-
-def get_CLAMS_app_vers( mmifstr:str ):
-    """
-    Takes the metadata object from the first view with TimePoint annotations
-    and the first view with TimeFrame annotations.  Then looks at app metadata
-    for each.
-    
-    Returns an ordered pair consisting of
-       - the version used to create TimePoint annotations
-       - the version used to create TimeFrame annotations
-    """
-    tp_app, tf_app = get_CLAMS_app_strs( mmifstr )
+    # Get information about the app version from the TimeFrame view
+    tp_app = tp_view.metadata.app
+    tf_app = tf_view.metadata.app
 
     if tp_app.rfind("/v") != -1:
         tp_ver = tp_app[tp_app.rfind("/v")+1:]
@@ -102,14 +102,17 @@ def get_CLAMS_app_vers( mmifstr:str ):
 
 
 
-def tfs_from_mmif( mmifstr:str ):
+def tfs_from_mmif( mmif_str:str, 
+                   tp_view_id:str="",
+                   tf_view_id:str="" ):
     """
-    Analyzes MMIF file from SWT and returns tabular data.
+    Analyzes MMIF file from SWT, containining TimeFrame and TimePoint
+    annotations, and returns tabular data.
 
     Takes serialized MMIF as a string as input.
     Returns a table (list of lists) representing the timeFrame annotations
 
-    Columns:
+    Output columns:
     0: TimeFrame id (from MMIF file) (string)
     1: bin label (string)
     2: start time in milliseconds (int)
@@ -119,7 +122,7 @@ def tfs_from_mmif( mmifstr:str ):
 
     """
     # turn the MMIF string into a Mmif object
-    usemmif = Mmif(mmifstr)
+    usemmif = Mmif(mmif_str)
 
     # First, get the first view that contains a TimeFrame
     # If none exists, return an empty list.
@@ -127,9 +130,19 @@ def tfs_from_mmif( mmifstr:str ):
         print("Warning: MMIF file contained no TimeFrame annotations.")
         tfs = []
     else:
-        # get the right views
-        tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
-        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+        
+        # Get the correct views for TimePoint and TimeFrame annotations.
+        # If these have not been supplied, make the traditional (simple) 
+        # assumptions about which views to get.
+        if tp_view_id != "":
+            tp_view = usemmif.get_view_by_id(tp_view_id)
+        else:
+            tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+
+        if tf_view_id != "":
+            tf_view = usemmif.get_view_by_id(tf_view_id)
+        else:
+            tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
 
         # Get information about the app version from the TimeFrame view
         # If version >= 6.0, use view ID prefix for time point refs
@@ -217,16 +230,24 @@ def tfs_from_mmif( mmifstr:str ):
     return tfs
 
 
-def last_time_in_mmif( mmifstr:str ):
+
+def last_time_in_mmif( mmif_str:str, tp_view_id:str="" ):
     """
     Analyzes MMIF with timepoints and returns the last time
     Takes serialized MMIF as a string as input.
     """
 
     # turn the MMIF string into a Mmif object
-    usemmif = Mmif(mmifstr)
+    usemmif = Mmif(mmif_str)
 
-    tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+    # Get the right view.  
+    # (If it has not been supplied, make a reasonable assumption about which
+    # one to get.)
+    if tp_view_id != "":
+        tp_view = usemmif.get_view_by_id(tp_view_id)
+    else:
+        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+
     tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
 
     last_time = 0
@@ -238,21 +259,25 @@ def last_time_in_mmif( mmifstr:str ):
 
 
 
-def list_tfs( mmifstr:str, 
+def list_tfs( mmif_str:str, 
+              tp_view_id:str="",
+              tf_view_id:str="",
               max_gap:int=0, 
               include_startframe:bool=False,
               include_endframe:bool=False,
               subsampling:dict=None):
     """
-    Analyzes MMIF file from SWT and returns tabular data.
+    Analyzes MMIF file from SWT, makes requested additions, and returns tabular 
+    data.
 
-    Takes serialized MMIF as a string as input.
+    Takes serialized MMIF as a string as input, along with optional params.
     Returns a table (list of lists) representing the timeFrame annotations
 
-    If all arguments besides the mmifstr are left as defaults.  The output
-    will be the same as from `tfs_from_mmif(mmifstr)`.
+    This function is primarily a wrapper+processingor around `tfs_from_mmif()`.  
+    If all arguments besides the `mmif_str` are left as defaults, then the 
+    output will be the same as from `tfs_from_mmif(mmif_str)`.
 
-    Columns:
+    Output columns:
     0: TimeFrame id (from MMIF file) (string)
     1: bin label (string)
     2: start time in milliseconds (int)
@@ -262,8 +287,9 @@ def list_tfs( mmifstr:str,
 
     """
 
-    tfs = tfs_from_mmif( mmifstr )
-    last_time = last_time_in_mmif( mmifstr )
+    # Run the functions that provide the raw ingreidents for this.
+    tfs = tfs_from_mmif( mmif_str, tp_view_id=tp_view_id, tf_view_id=tf_view_id )
+    last_time = last_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
 
     # add frames for first and last timepoints 
     # (Because gaps have to be between timepoints, and we want to catch
@@ -537,7 +563,7 @@ restyle, enhance, or alter a visaid.
 'subsampling': """ + str(subsampling) + """
 }
 </pre>
-<pre class="metadata" id="mmif-metadata">
+<pre class="metadata" id="mmif-views-metadata">
 """ + metadata_str + """
 </pre>
 </div>
