@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.71"
+MODULE_VERSION = "1.72"
 
 def get_swt_view_ids(mmif_str):
     """
@@ -37,10 +37,21 @@ def get_swt_view_ids(mmif_str):
     # turn the MMIF string into a Mmif object
     usemmif = Mmif(mmif_str)
 
-    tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
-    tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+    tp_views = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)
+    if len(tp_views):
+        tp_view = tp_views[-1]
+        tp_view_id = tp_view.id
+    else:
+        tp_view_id= None
+    
+    tf_views = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)
+    if len(tf_views):
+        tf_view = tf_views[-1]
+        tf_view_id = tf_view.id
+    else:
+        tf_view_id = None
 
-    return (tp_view.id, tf_view.id)
+    return (tp_view_id, tf_view_id)
 
 
 
@@ -57,13 +68,19 @@ def get_mmif_metadata_str( mmif_str:str, tp_view_id:str, tf_view_id:str ):
     # turn the MMIF string into a Mmif object
     usemmif = Mmif(mmif_str)
 
-    if tp_view_id == tf_view_id:
-        tp_view = usemmif.get_view_by_id(tp_view_id)
-        mstr = "[ " + str(tp_view.metadata) + " ]"
+    if tp_view_id is None:
+        tp_str = "{ }"
     else:
         tp_view = usemmif.get_view_by_id(tp_view_id)
+        tp_str = str(tp_view.metadata)
+
+    if tf_view_id is None:
+        tf_str = "{ }"
+    else:
         tf_view = usemmif.get_view_by_id(tf_view_id)
-        mstr = "[ " + str(tp_view.metadata) + ", " + str(tf_view.metadata) + " ]"
+        tf_str = str(tf_view.metadata)
+
+    mstr = "[ " + tp_str + ", " + tf_str + " ]"
 
     return json.dumps(json.loads(mstr), indent=2)
 
@@ -81,22 +98,28 @@ def get_CLAMS_app_vers( mmif_str:str, tp_view_id:str, tf_view_id:str ):
     """
 
     usemmif = Mmif(mmif_str)
-    tp_view = usemmif.get_view_by_id(tp_view_id)
-    tf_view = usemmif.get_view_by_id(tf_view_id)
 
-    # Get information about the app version from the TimeFrame view
-    tp_app = tp_view.metadata.app
-    tf_app = tf_view.metadata.app
-
-    if tp_app.rfind("/v") != -1:
-        tp_ver = tp_app[tp_app.rfind("/v")+1:]
+    # get the app version for TimePoint annotations
+    if tp_view_id is None:
+        tp_ver = None
     else:
-        tp_ver = ""
+        tp_view = usemmif.get_view_by_id(tp_view_id)
+        tp_app = tp_view.metadata.app
+        if tp_app.rfind("/v") != -1:
+            tp_ver = tp_app[tp_app.rfind("/v")+1:]
+        else:
+            tp_ver = ""
 
-    if tf_app.rfind("/v") != -1:
-        tf_ver = tf_app[tf_app.rfind("/v")+1:]
+    # get the app version for TimeFrame annotations
+    if tf_view_id is None:
+        tf_ver = None
     else:
-        tf_ver = ""
+        tf_view = usemmif.get_view_by_id(tf_view_id)
+        tf_app = tf_view.metadata.app
+        if tf_app.rfind("/v") != -1:
+            tf_ver = tf_app[tf_app.rfind("/v")+1:]
+        else:
+            tf_ver = ""
     
     return (tp_ver, tf_ver)
 
@@ -110,7 +133,7 @@ def tfs_from_mmif( mmif_str:str,
     annotations, and returns tabular data.
 
     Takes serialized MMIF as a string as input.
-    Returns a table (list of lists) representing the timeFrame annotations
+    Returns a table (list of lists) representing the TimeFrame annotations
 
     Output columns:
     0: TimeFrame id (from MMIF file) (string)
@@ -124,25 +147,24 @@ def tfs_from_mmif( mmif_str:str,
     # turn the MMIF string into a Mmif object
     usemmif = Mmif(mmif_str)
 
-    # First, get the first view that contains a TimeFrame
-    # If none exists, return an empty list.
+    # If there is no view with a TimeFrame, return an empty list.
     if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) == 0:
         print("Warning: MMIF file contained no TimeFrame annotations.")
         tfs = []
     else:
-        
         # Get the correct views for TimePoint and TimeFrame annotations.
         # If these have not been supplied, make the traditional (simple) 
-        # assumptions about which views to get.
+        # assumptions about which views to get, i.e., the last (end of list)
+        # view that contains annotations of the relevant type.
         if tp_view_id != "":
             tp_view = usemmif.get_view_by_id(tp_view_id)
         else:
-            tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+            tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)[-1]         
 
         if tf_view_id != "":
             tf_view = usemmif.get_view_by_id(tf_view_id)
         else:
-            tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame).pop()
+            tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)[-1]
 
         # Get information about the app version from the TimeFrame view
         # If version >= 6.0, use view ID prefix for time point refs
@@ -246,7 +268,7 @@ def last_time_in_mmif( mmif_str:str, tp_view_id:str="" ):
     if tp_view_id != "":
         tp_view = usemmif.get_view_by_id(tp_view_id)
     else:
-        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint).pop()
+        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)[-1]
 
     tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
 
