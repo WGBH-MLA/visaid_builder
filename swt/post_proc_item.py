@@ -1,7 +1,12 @@
 """
 post_proc_item.py
 
-Defines functions for doing post processing of MMIF created by SWT
+Defines functions for doing post processing of MMIF created by SWT.
+
+Assumes processing takes place in the context of job processing in the style of 
+clams-kitchen, with `item` and `cf` dictionaries passed from the job runner 
+routine.
+
 """
 
 # %%
@@ -16,7 +21,7 @@ from mmif import Mmif
 import drawer.lilhelp
 import swt.process_swt
 
-MODULE_VERSION = "0.23"
+MODULE_VERSION = "0.24"
 
 
 # The earliest valid start time for the program (if not set by config)
@@ -124,8 +129,8 @@ def run_post(item, cf, post_proc, mmif_path):
                                    include_startframe=False,
                                    include_endframe=True)
 
-    # get metadata_str
-    metadata_str = swt.process_swt.get_mmif_metadata_str( mmif_str,
+    # get mmif_metadata_str
+    mmif_metadata_str = swt.process_swt.get_mmif_metadata_str( mmif_str,
                                                           tp_view_id,
                                                           tf_view_id )
 
@@ -357,6 +362,11 @@ def run_post(item, cf, post_proc, mmif_path):
         else:
             scene_types = None
 
+        visaid_options_str = ( "{\n" +
+                               "'max_gap': " + str(max_gap) + ",\n" +
+                               "'subsampling': " + str(subsampling) + "\n" +
+                               "}" )
+
         try:
             visaid_filename, visaid_path = swt.process_swt.create_aid( 
                 video_path=item["media_path"], 
@@ -367,9 +377,8 @@ def run_post(item, cf, post_proc, mmif_path):
                 job_name=cf["job_name"], 
                 guid=item["asset_id"],
                 types=scene_types,
-                metadata_str=metadata_str,
-                max_gap=max_gap,
-                subsampling=subsampling
+                mmif_metadata_str=mmif_metadata_str,
+                visaid_options_str=visaid_options_str
                 )
 
             if visaid_path:

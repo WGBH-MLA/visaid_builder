@@ -20,7 +20,7 @@ from mmif import AnnotationTypes
 import drawer.lilhelp
 
 
-MODULE_VERSION = "1.72"
+MODULE_VERSION = "1.73"
 
 def get_swt_view_ids(mmif_str):
     """
@@ -444,9 +444,8 @@ def create_aid(video_path: str,
                stdout: bool = False,
                output_dirname: str = ".",
                types: list = None,
-               metadata_str: str = "",
-               max_gap: int = None,
-               subsampling:dict = None
+               mmif_metadata_str: str = "",
+               visaid_options_str: str = ""
                ):
     """
     Creates an HTML file (with embedded images) as a visual aid, based on the output
@@ -498,14 +497,45 @@ def create_aid(video_path: str,
 
         target_time = tfs_s[next_scene][4]
         
+        sar = float(video_stream.sample_aspect_ratio)
+        if abs( 1 - sar ) > 0.03:
+            stretch = True
+            print("Sample aspect ratio:", sar, ". Will stretch anamorphic frames.")
+        else:
+            stretch = False
+
+        max_frame_height = 360
+
         for frame in container.decode(video_stream):
             
             ftime = int(frame.time * 1000)   
             if ftime >= target_time :
                 
+                # Check for anamorphic and stretch if necessary
+                if stretch:
+                    if sar > 1.0:
+                        # stretch width
+                        new_width = int( sar * frame.width)
+                        new_height = frame.height
+                    else:
+                        # stretch height
+                        new_width = frame.width
+                        new_height = int(frame.height / sar)
+                    stretched_frame = frame.reformat( width=new_width, height=new_height )
+                else:
+                    stretched_frame = frame
+
+                # reduce frame height, if necessary
+                if stretched_frame.height > max_frame_height:
+                    res_factor = max_frame_height / stretched_frame.height 
+                    new_width = int(stretched_frame.width * res_factor)
+                    res_frame = stretched_frame.reformat( width=new_width, height=max_frame_height )
+                else:
+                    res_frame = stretched_frame
+
                 # save frame to memory buffer
                 buf = io.BytesIO()
-                frame.to_image().save(buf, format="JPEG", quality=75)
+                res_frame.to_image().save(buf, format="JPEG", quality=75)
 
                 # convert out binary image data to UTF-8 string
                 img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
@@ -580,13 +610,10 @@ restyle, enhance, or alter a visaid.
 <span class='video-id' id='video-id'>""" + video_identifier + """</span>
 <br>""" + job_info + """
 <pre class="metadata" id="visaid-options">
-{
-'max_gap': """ + str(max_gap) + """,
-'subsampling': """ + str(subsampling) + """
-}
+""" + visaid_options_str + """
 </pre>
 <pre class="metadata" id="mmif-views-metadata">
-""" + metadata_str + """
+""" + mmif_metadata_str + """
 </pre>
 </div>
 <div class='button-container'>
