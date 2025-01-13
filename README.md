@@ -10,9 +10,9 @@ The `run_job.py` script runs CLAMS applications against a batch of assets by loo
   - performing post-processing on the data-laden MMIF to create useful output
   - cleaning up (removing) downloaded media
 
-The `swt/process_swt.py` module includes functions for processing MMIF produced by the [CLAMS swt-detection app](https://github.com/clamsproject/app-swt-detection).
+The `visaid_procs/process_swt.py` module includes functions for processing MMIF produced by the [CLAMS swt-detection app](https://github.com/clamsproject/app-swt-detection).
 
-The `swt/post_proc_item` module includes functions called by `run_job.py` and calls functions in `swt/process_swt.py` to perform postprocessing on MMIF produced by swt-detection.
+The `visaid_procs/post_proc_item` module includes functions called by `run_job.py` and calls functions in `visaid_procs/process_swt.py` to perform postprocessing on MMIF produced by swt-detection.
 
 ## Installation
 

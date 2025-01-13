@@ -18,10 +18,19 @@ import datetime
 
 from mmif import Mmif
 
-import drawer.lilhelp
-import swt.process_swt
 
-MODULE_VERSION = "0.24"
+try:
+    # if being run from higher level module
+    from . import lilhelp
+    from . import process_swt
+except ImportError:
+    # if run as stand-alone
+    import lilhelp
+    import process_swt
+
+
+
+MODULE_VERSION = "0.25"
 
 
 # The earliest valid start time for the program (if not set by config)
@@ -120,23 +129,23 @@ def run_post(item, cf, post_proc, mmif_path):
     with open(mmif_path, "r") as file:
         mmif_str = file.read()
 
-    tp_view_id, tf_view_id = swt.process_swt.get_swt_view_ids(mmif_str)
+    tp_view_id, tf_view_id = process_swt.get_swt_view_ids(mmif_str)
 
     # call SWT MMIF processors to get a table of time frames
-    tfs = swt.process_swt.list_tfs(mmif_str, 
-                                   tp_view_id=tp_view_id,
-                                   tf_view_id=tf_view_id,
-                                   max_gap=max_gap, 
-                                   subsampling=subsampling,
-                                   include_startframe=False,
-                                   include_endframe=True)
+    tfs = process_swt.list_tfs(mmif_str, 
+                               tp_view_id=tp_view_id,
+                               tf_view_id=tf_view_id,
+                               max_gap=max_gap, 
+                               subsampling=subsampling,
+                               include_startframe=False,
+                               include_endframe=True)
 
     print("SWT scene list of length", len(tfs), "created.")
 
     # get mmif_metadata_str
-    mmif_metadata_str = swt.process_swt.get_mmif_metadata_str( mmif_str,
-                                                          tp_view_id,
-                                                          tf_view_id )
+    mmif_metadata_str = process_swt.get_mmif_metadata_str( mmif_str,
+                                                           tp_view_id,
+                                                           tf_view_id )
 
     #
     # Infer metadata
@@ -180,7 +189,7 @@ def run_post(item, cf, post_proc, mmif_path):
         print("Proxy start:", proxy_start)
 
         # get app names
-        tp_ver, tf_ver = swt.process_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
+        tp_ver, tf_ver = process_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
 
         data_artifact = [{ 
             "metadata": {
@@ -226,7 +235,7 @@ def run_post(item, cf, post_proc, mmif_path):
 
         if slate_rep is not None:
             try:
-                slates = drawer.lilhelp.extract_stills( 
+                slates = lilhelp.extract_stills( 
                            item["media_path"], 
                            [ slate_rep ], 
                            item["asset_id"],
@@ -257,12 +266,12 @@ def run_post(item, cf, post_proc, mmif_path):
             tps.sort()
 
             try:
-               rep_images = drawer.lilhelp.extract_stills( 
-                            item["media_path"], 
-                            tps, 
-                            item["asset_id"],
-                            reps_dir,
-                            verbose=False )
+               rep_images = lilhelp.extract_stills( 
+                  item["media_path"], 
+                  tps, 
+                  item["asset_id"],
+                  reps_dir,
+                  verbose=False )
 
             except Exception as e:
                print("Extraction of frame at", slate_rep ,"failed.")
@@ -371,7 +380,7 @@ def run_post(item, cf, post_proc, mmif_path):
                                "}" )
 
         try:
-            visaid_filename, visaid_path = swt.process_swt.create_aid( 
+            visaid_filename, visaid_path = process_swt.create_aid( 
                 video_path=item["media_path"], 
                 tfs=tfs, 
                 job_id=cf["job_id"],

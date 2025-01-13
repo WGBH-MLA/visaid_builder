@@ -17,10 +17,15 @@ import av
 from mmif import Mmif
 from mmif import AnnotationTypes
 
-import drawer.lilhelp
+try:
+    # if being run from higher level module
+    from . import lilhelp
+except ImportError:
+    # if run as stand-alone
+    import lilhelp
 
 
-MODULE_VERSION = "1.73"
+MODULE_VERSION = "1.74"
 
 def get_swt_view_ids(mmif_str):
     """
@@ -440,7 +445,7 @@ def create_aid(video_path: str,
                job_id: str = None,
                job_name: str = None,
                hfilename: str = "",
-               id_in_filename: bool = True,
+               id_in_filename: bool = False,
                guid: str = "",
                stdout: bool = False,
                output_dirname: str = ".",
@@ -457,7 +462,7 @@ def create_aid(video_path: str,
 
     if hfilename == "":
         if id_in_filename:
-            suffix = "_" + job_id
+            suffix = "_" + str(job_id)
         else:
             suffix = ""
 
@@ -646,8 +651,8 @@ visaid version: <span id='visaid-version'>""" + MODULE_VERSION + """</span>
 
     for f in tfsi:
         label = f[1]
-        start_str = drawer.lilhelp.tconv(f[2], False)
-        end_str = drawer.lilhelp.tconv(f[3], False) 
+        start_str = lilhelp.tconv(f[2], False)
+        end_str = lilhelp.tconv(f[3], False) 
 
         if guid:
             # creating a link for an AAPB segment, which requires both a start time and end time

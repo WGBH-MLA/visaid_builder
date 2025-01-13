@@ -16,8 +16,8 @@ import warnings
 from pprint import pprint
 
 # Import local modules
-import swt.process_swt 
-import drawer.lilhelp
+import process_swt 
+import lilhelp
 
 MAX_GAP = 180000
 
@@ -88,9 +88,9 @@ def main():
 
     # Process the serialized MMIF to create the table of time frames
     if visual:
-        tfs = swt.process_swt.list_tfs(mmifstr, max_gap=MAX_GAP, include_endframe=True)
+        tfs = process_swt.list_tfs(mmifstr, max_gap=MAX_GAP, include_endframe=True)
     else:
-        tfs = swt.process_swt.list_tfs(mmifstr)
+        tfs = process_swt.list_tfs(mmifstr)
 
     # Display the TimeFrame index
     if display: 
@@ -98,8 +98,8 @@ def main():
         tfs_pretty = []
         for f in tfs:
             tfs_pretty += [[ f"{f[2]:08}", 
-                             drawer.lilhelp.tconv(f[2]), 
-                             drawer.lilhelp.tconv(f[3]), 
+                             lilhelp.tconv(f[2]), 
+                             lilhelp.tconv(f[3]), 
                              f[1] ]]
 
         print(len(tfs), "scenes labeled in")
@@ -120,7 +120,7 @@ def main():
         vfilename = os.path.basename(video_path)
         fname, ext = os.path.splitext(vfilename)
         
-        drawer.lilhelp.extract_stills(video_path, exlist, fname)
+        lilhelp.extract_stills(video_path, exlist, fname)
         print("Done.")
 
     # Make visual aid for cataloging
@@ -141,12 +141,12 @@ def main():
         else:
             guid = None
 
-        swt.process_swt.create_aid(
+        process_swt.create_aid(
             video_path=video_path, 
             tfs=tfs, 
             stdout=stdout, 
             guid=guid,
-            max_gap=MAX_GAP)
+            id_in_filename=False)
 
         if not stdout:
             print("Done.")
