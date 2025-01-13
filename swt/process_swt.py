@@ -440,6 +440,7 @@ def create_aid(video_path: str,
                job_id: str = None,
                job_name: str = None,
                hfilename: str = "",
+               id_in_filename: bool = True,
                guid: str = "",
                stdout: bool = False,
                output_dirname: str = ".",
@@ -455,10 +456,16 @@ def create_aid(video_path: str,
     """
 
     if hfilename == "":
-        if guid:
-            hfilename = guid + "_visaid.html"
+        if id_in_filename:
+            suffix = "_" + job_id
         else:
-            hfilename = "visaid.html"
+            suffix = ""
+
+        if guid:
+            hfilename = guid + "_visaid" + suffix + ".html"
+        else:
+            hfilename = "visaid" + suffix + ".html"
+
 
     if guid:
         video_identifier = guid

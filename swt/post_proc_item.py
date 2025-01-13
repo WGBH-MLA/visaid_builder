@@ -114,6 +114,8 @@ def run_post(item, cf, post_proc, mmif_path):
         max_gap = None
 
 
+    print("Attempting to process MMIF into SWT scene list...")
+
     # Open MMIF and start processing
     with open(mmif_path, "r") as file:
         mmif_str = file.read()
@@ -129,11 +131,12 @@ def run_post(item, cf, post_proc, mmif_path):
                                    include_startframe=False,
                                    include_endframe=True)
 
+    print("SWT scene list of length", len(tfs), "created.")
+
     # get mmif_metadata_str
     mmif_metadata_str = swt.process_swt.get_mmif_metadata_str( mmif_str,
                                                           tp_view_id,
                                                           tf_view_id )
-
 
     #
     # Infer metadata
@@ -371,10 +374,11 @@ def run_post(item, cf, post_proc, mmif_path):
             visaid_filename, visaid_path = swt.process_swt.create_aid( 
                 video_path=item["media_path"], 
                 tfs=tfs, 
-                stdout=False, 
-                output_dirname=visaids_dir,
                 job_id=cf["job_id"],
                 job_name=cf["job_name"], 
+                id_in_filename=False,
+                stdout=False, 
+                output_dirname=visaids_dir,
                 guid=item["asset_id"],
                 types=scene_types,
                 mmif_metadata_str=mmif_metadata_str,
