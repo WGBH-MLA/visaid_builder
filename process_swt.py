@@ -4,8 +4,6 @@ process_swt.py
 Defines functions that perform processing on MMIF output from SWT
 """
 
-# %%
-# Run import statements
 import os
 import io
 import base64
@@ -25,7 +23,7 @@ except ImportError:
     import lilhelp
 
 
-MODULE_VERSION = "1.75"
+MODULE_VERSION = "1.76"
 
 def get_swt_view_ids(mmif_str):
     """
@@ -577,7 +575,9 @@ def create_aid(video_path: str,
     js_path = os.path.join(ingredients_dir, "visaid_embedded_logic.js")
     with open(js_path, "r") as js_file:
         js_str = js_file.read()
-
+    html_path = os.path.join(ingredients_dir, "visaid_structure.html")
+    with open(html_path, "r") as html_file:
+        structure_str = html_file.read()
 
     #
     # create HTML string
@@ -593,57 +593,8 @@ def create_aid(video_path: str,
     else:
         job_info = ""
 
-    html_top = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>""" + video_identifier + """ / Visual Index</title>
-<style>
-""" + css_str + """
-</style>
-<script defer>
-""" + js_str + """
-</script>
-<!-- 
-The next two elements reference files that are optional.  They are not required 
-for the visaid to display properly.  However, they can be customized to 
-restyle, enhance, or alter a visaid.
--->
-<link rel='stylesheet' href='visaid_style_override.css'>
-<script src='visaid_enhance.js' defer></script>
-</head>
-
-
-<body>
-<div class='top'>Visual index of 
-<span class='video-id' id='video-id'>""" + video_identifier + """</span>
-<br>""" + job_info + """
-<pre class="metadata" id="visaid-options">
-""" + visaid_options_str + """
-</pre>
-<pre class="metadata" id="mmif-views-metadata">
-""" + mmif_metadata_str + """
-</pre>
-</div>
-<div class='button-container'>
-<button type='button' class='hidden' id='unsamplesVisButton'>Toggle Unlabeled Samples</button>
-<button type='button' class='hidden' id='subsamplesVisButton'>Toggle Scene Subsamples</button>
-</div>
-<div class='container'>
-"""
-    html_end = """
-</div>
-<div class="version">
-visaid version: <span id='visaid-version'>""" + MODULE_VERSION + """</span>
-<span class="enhance-indicator" id="enhance-indicator"></span>
-</div>
-</body>
-</html>
-"""
-    html_body = ""
-
-    # build HTML body
+    # build main body of visaid -- the collection of visaid scenes
+    visaid_body = ""
     if len(tfsi) == 0:
         html_body += ("<div class=''>(No annotated scenes.)</div>")
 
@@ -674,14 +625,25 @@ visaid version: <span id='visaid-version'>""" + MODULE_VERSION + """</span>
         img_fname = f'{guid}_{length:08}_{f[4]:08}_{f[6]:08}' + ".jpg"
         html_img_fname = "<br><span class='img-fname'>" + img_fname + "</span>"
 
-        html_body += (html_div_open + 
-                      html_cap + 
-                      html_img_tag + "\n" +
-                      html_img_fname +
-                      "</div>" + "\n")
-        
+        visaid_body += (html_div_open + 
+                        html_cap + 
+                        html_img_tag + "\n" +
+                        html_img_fname +
+                        "</div>" + "\n")
 
-    html_str = html_top + html_body + html_end
+    html_field_map = {
+        "video_identifier": video_identifier,
+        "css_str": css_str,
+        "js_str": js_str,
+        "video_identifier": video_identifier,
+        "job_info": job_info,
+        "visaid_options_str": visaid_options_str,
+        "mmif_metadata_str": mmif_metadata_str,
+        "visaid_body": visaid_body,
+        "MODULE_VERSION": MODULE_VERSION
+    }
+
+    html_str = structure_str.format_map(html_field_map)
 
     if stdout:
         print(html_str)

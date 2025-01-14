@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{video_identifier} / Visual Index</title>
+<style>
+{css_str}
+</style>
+<script defer>
+{js_str}
+</script>
+<!-- 
+The next two elements reference files that are optional.  They are not required 
+for the visaid to display properly.  However, they can be customized to 
+restyle, enhance, or alter a visaid.
+-->
+<link rel='stylesheet' href='visaid_style_override.css'>
+<script src='visaid_enhance.js' defer></script>
+</head>
+
+
+<body>
+<div class='top'>Visual index of 
+<span class='video-id' id='video-id'>{video_identifier}</span>
+<br>{job_info}
+<pre class="metadata" id="visaid-options">
+{visaid_options_str}
+</pre>
+<pre class="metadata" id="mmif-views-metadata">
+{mmif_metadata_str}
+</pre>
+</div>
+<div class='button-container'>
+<button type='button' class='hidden' id='unsamplesVisButton'>Toggle Unlabeled Samples</button>
+<button type='button' class='hidden' id='subsamplesVisButton'>Toggle Scene Subsamples</button>
+</div>
+<div class='container'>
+
+{visaid_body}
+
+</div>
+<div class="version">
+visaid version: <span id='visaid-version'>{MODULE_VERSION}</span>
+<span class="enhance-indicator" id="enhance-indicator"></span>
+</div>
+</body>
+</html>
