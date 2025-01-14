@@ -25,7 +25,7 @@ except ImportError:
     import lilhelp
 
 
-MODULE_VERSION = "1.74"
+MODULE_VERSION = "1.75"
 
 def get_swt_view_ids(mmif_str):
     """
