@@ -568,15 +568,13 @@ def create_aid(video_path: str,
 
     container.close()
 
-    # Get CSS for inclusion in HTML 
+    # Get ingredient code strings for inclusion in HTML files
     py_dir = os.path.dirname(__file__)
-    css_path = os.path.join(py_dir, "visaid_embedded_styles.css")
+    ingredients_dir = os.path.join(py_dir, "visaid_ingredients")
+    css_path = os.path.join(ingredients_dir, "visaid_embedded_styles.css")
     with open(css_path, "r") as css_file:
         css_str = css_file.read()
-
-    # Get JS for inclusion in HTML 
-    py_dir = os.path.dirname(__file__)
-    js_path = os.path.join(py_dir, "visaid_embedded_logic.js")
+    js_path = os.path.join(ingredients_dir, "visaid_embedded_logic.js")
     with open(js_path, "r") as js_file:
         js_str = js_file.read()
 
