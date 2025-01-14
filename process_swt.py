@@ -631,6 +631,8 @@ def create_aid(video_path: str,
                         html_img_fname +
                         "</div>" + "\n")
 
+    # this dictionary provides values for the placeholder fields in the string read
+    # from the HTML structure file.
     html_field_map = {
         "video_identifier": video_identifier,
         "css_str": css_str,
@@ -643,6 +645,7 @@ def create_aid(video_path: str,
         "MODULE_VERSION": MODULE_VERSION
     }
 
+    # create final HTML string from the structure string and substitution map
     html_str = structure_str.format_map(html_field_map)
 
     if stdout:
