@@ -15,6 +15,13 @@ Clone the repository.  Change to the repository directory and do a `pip install 
 
 ## Usage
 
-For basic usage run `python use_swt.py -h`.
+For basic usage guidance, run `python use_swt.py -h`.
+
+To create a visaid using the sample MMIF file in this repository, download the corresponding [media file](https://drive.google.com/file/d/1-sSZxDUf9ZKCseVL_QBpqwQNAaffXRBu/view?usp=sharing) to the `sample_files` directory.  Then run 
+
+```
+$ python use_swt.py -d -v sample_files/cpb-aacip-4071f72dd46_swt_v72.mmif sample_files/cpb-aacip-4071f72dd46.mp4
+```
+
 
 
