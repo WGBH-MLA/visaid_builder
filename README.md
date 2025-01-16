@@ -1,9 +1,11 @@
 # Visaid Builder
 Routines for processing MMIF files to create visual indexes ("visaids") and other useful output.
 
+These routines require existing MMIF files containing annotations of videos.  MMIF files with relevant annotations can be created with the [CLAMS scenes-with-text detection app](https://github.com/clamsproject/app-swt-detection).
+
 ## Overview
 
-The `use_swt.py` module is a stand-alone (not presupposing any particular workflow or media source) application for creating visaids.
+The `use_swt.py` module is a stand-alone (not presupposing any particular workflow or media source) application for creating visaids from an existing MMIF file and the corresponding media file.
 
 The `process_swt.py` module includes functions for processing MMIF produced by the [CLAMS swt-detection app](https://github.com/clamsproject/app-swt-detection).
 
