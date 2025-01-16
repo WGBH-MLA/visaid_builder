@@ -53,6 +53,8 @@ def run_post(item, cf, post_proc, mmif_path):
     configuration specified in the `cf` and `post_proc` dictionaries.
     """
 
+    errors = []
+
     artifacts_dir = cf["artifacts_dir"]
 
     if "name" in post_proc:
@@ -249,6 +251,7 @@ def run_post(item, cf, post_proc, mmif_path):
             except Exception as e:
                 print("Extraction of slate frame at", slate_rep ,"failed.")
                 print("Error:", e)
+                errors.append("get_slate")
             
         else:
             print("No slate found.")
@@ -274,8 +277,9 @@ def run_post(item, cf, post_proc, mmif_path):
                   verbose=False )
 
             except Exception as e:
-               print("Extraction of frame at", slate_rep ,"failed.")
+               print("Extraction of frame failed.")
                print("Error:", e)  
+               errors.append("get_reps")
 
             print("Saved", len(rep_images), "representative stills from", len(tfs), "scenes.")
 
@@ -398,8 +402,11 @@ def run_post(item, cf, post_proc, mmif_path):
                 print("Visual index created at")
                 print(visaid_path)
             else:
-                print("Creation of visaid failed.")
+                print("Visaid creation procedure completed, but no file path returned.")
 
         except Exception as e:
             print("Creation of visaid failed.")
             print("Error:", e)
+            errors.append("visaid")
+
+    return errors

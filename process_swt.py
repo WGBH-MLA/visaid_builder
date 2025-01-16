@@ -23,7 +23,7 @@ except ImportError:
     import lilhelp
 
 
-MODULE_VERSION = "1.76"
+MODULE_VERSION = "1.77"
 
 def get_swt_view_ids(mmif_str):
     """
@@ -507,7 +507,12 @@ def create_aid(video_path: str,
 
         target_time = tfs_s[next_scene][4]
         
-        sar = float(video_stream.sample_aspect_ratio)
+        if video_stream.sample_aspect_ratio is not None:
+            sar = float(video_stream.sample_aspect_ratio)
+        else:
+            # If SAR cannot be determined, assume it is 1
+            sar = 1.0
+
         if abs( 1 - sar ) > 0.03:
             stretch = True
             print("Sample aspect ratio:", sar, ". Will stretch anamorphic frames.")
