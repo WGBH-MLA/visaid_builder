@@ -17,6 +17,7 @@ from pprint import pprint
 
 # Import local modules
 import process_swt 
+import create_visaid
 import lilhelp
 
 MAX_GAP = 180000
@@ -141,7 +142,7 @@ def main():
         else:
             guid = None
 
-        process_swt.create_aid(
+        create_visaid.create_visaid(
             video_path=video_path, 
             tfs=tfs, 
             stdout=stdout, 
