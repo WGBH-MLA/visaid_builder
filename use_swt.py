@@ -16,7 +16,7 @@ import warnings
 from pprint import pprint
 
 # Import local modules
-import process_swt 
+import proc_swt 
 import create_visaid
 import lilhelp
 
@@ -89,9 +89,9 @@ def main():
 
     # Process the serialized MMIF to create the table of time frames
     if visual:
-        tfs = process_swt.list_tfs(mmifstr, max_gap=MAX_GAP, include_endframe=True)
+        tfs = proc_swt.list_tfs(mmifstr, max_gap=MAX_GAP, include_endframe=True)
     else:
-        tfs = process_swt.list_tfs(mmifstr)
+        tfs = proc_swt.list_tfs(mmifstr)
 
     # Display the TimeFrame index
     if display: 

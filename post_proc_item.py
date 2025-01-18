@@ -7,6 +7,20 @@ Assumes processing takes place in the context of job processing in the style of
 clams-kitchen, with `item` and `cf` dictionaries passed from the job runner 
 routine.
 
+Handles creation artifacts appearing in the VALID_ARTIFACTS global variable.
+
+Handles options passed in via the `params` dict argument to the main function,
+as long as they are defined in one of the option defauls global variables.
+
+Explanation of particular options:
+
+`prog_start_min` - The earliest valid start time for the program.  (We won't 
+bother to set a proxy start time if the computed value is less than this.)
+
+`prog_start_max` - The latest valid start time for the program.  (We won't 
+look for the main program slate after this point. And we won't assign a proxy 
+start time after this point.)
+
 """
 
 # %%
@@ -22,119 +36,136 @@ from mmif import Mmif
 try:
     # if being run from higher level module
     from . import lilhelp
-    from . import process_swt
+    from . import proc_swt
+    from . import create_visaid
 except ImportError:
     # if run as stand-alone
     import lilhelp
-    import process_swt
+    import proc_swt
+    import create_visaid
 
 
 
-MODULE_VERSION = "0.25"
+MODULE_VERSION = "0.30"
 
 
-# The earliest valid start time for the program (if not set by config)
-#   (We won't bother to set a proxy start time if the computed value is 
-#    less than this.)
-DEFAULT_PROG_START_MIN = 3000
+# These are the defaults specific to routines defined in this module.
+POSTPROC_DEFAULTS = { "name": None,
+                      "artifacts": [],
+                      "prog_start_min": 3000,
+                      "prog_start_max": 150000 }
 
-# The latest valid start time for the program (if not set by config)
-#   (We won't look for the main program slate after this point.)
-#   (And we won't assign a proxy start time after this point.)
-DEFAULT_PROG_START_MAX = 150000
+# Names of the artifact types that this module can create
+VALID_ARTIFACTS = [ "data", 
+                    "slates",
+                    "reps",
+                    "ksl",
+                    "visaids" ]
 
+PROC_SWT_DEFAULTS = { "include_only": None,
+                      "exclude": [
+                          "garbage" ],
+                      "max_unsampled_gap": 120100,
+                      "default_subsampling": 15100,
+                      "subsampling": { 
+                          "credits": 1900,
+                          "slate": 7900 },
+                      "include_startframe": False,
+                      "include_endframe": True }
+
+VISAID_DEFAULTS = { "visibility": {
+                        "bars": "on",
+                        "filmed text": "off",
+                        "other text": "on" },
+                    "display_duration": True,
+                    "job_id_in_visaid_filename": False,
+                    "visaid_image_filanames": False,
+                    "aapb_timecode_link": False }
+
+# aliases specific to calculating/inferring proxy start time
 BARS_BINS = ['bars', 'Bars']
 SLATE_BINS = ['slate', 'Slate', 'S', 'S:H', 'S:C', 'S:D', 'S:B', 'S:G']
 
 
-def run_post(item, cf, post_proc, mmif_path):
+def run_post( item:dict, 
+              cf:dict, 
+              params:dict ):
     """
     Calls particular methods to run post processing for the item according to the 
-    configuration specified in the `cf` and `post_proc` dictionaries.
+    configuration specified in the `cf` and `params` dictionaries.
     """
 
     errors = []
 
-    artifacts_dir = cf["artifacts_dir"]
+    # 
+    # Process and validate options passed in
+    # 
 
-    if "name" in post_proc:
-        if post_proc["name"].lower() != "swt":
-            print("Post-processing error: Tried to run", post_proc["name"],
-                  "process with SWT post-processing function.")
-            return False
+    if "name" in params:
+        if params["name"].lower() not in ["swt", "visaid_builder", "visaid-builder", "visaid"]:
+            print("Post-processing error: Tried to run", params["name"],
+                  "process with visaid_builder post-processing function.")
+            errors.append("post_proc_name")
+            return errors
     else:
         print("Post-processing error: No post-process or name specified.")
-        return False
+        errors.append("post_proc_name")
+        return errors
 
     # Set up for the particular kinds of artifacts requested 
-    if "artifacts" in post_proc:
-        artifacts = post_proc["artifacts"]
+    if "artifacts" in params:
+        artifacts = params["artifacts"]
+        artifacts_dir = cf["artifacts_dir"]
     else:
+        print("Warning: No artifacts specified.")  
         artifacts = []
 
-    artifacts_dir = cf["artifacts_dir"]
+    for atype in artifacts:
+        if atype not in VALID_ARTIFACTS:
+            print("Warning: Invalid artifact type '" + atype + "' will not be created.")
+            print("Valid artifact types:", VALID_ARTIFACTS)
 
-    if "data" in artifacts:
-        data_dir = artifacts_dir + "/data"
-        infer_data = True
-    else:
-        infer_data = False
+    # assign options based on input or default values
+    #for key in params:
+    #    if key not in OPTION_DEFAULTS
 
-    if "slates" in artifacts:
-        slates_dir = artifacts_dir + "/slates"
-        get_slate = True
-    else:
-        get_slate = False
 
-    if "visaids" in artifacts:
-        visaids_dir = artifacts_dir + "/visaids"
-        make_visaid = True
+    if "prog_start_min" in params:
+        prog_start_min = params["prog_start_min"]
     else:
-        make_visaid = False
-    
-    if "reps" in artifacts:
-        reps_dir = artifacts_dir + "/reps"
-        get_reps = True
-    else:
-        get_reps = False
+        prog_start_min = POSTPROC_DEFAULTS["prog_start_min"]
 
-    if "ksl" in artifacts:
-        ksl_dir = artifacts_dir + "/ksl"
-        make_ksl_index = True
+    if "prog_start_max" in params:
+        prog_start_max = params["prog_start_max"]
     else:
-        make_ksl_index = False
+        prog_start_max = POSTPROC_DEFAULTS["prog_start_max"]
 
-    if "prog_start_min" in post_proc:
-        prog_start_min = post_proc["prog_start_min"]
-    else:
-        prog_start_min = DEFAULT_PROG_START_MIN
-
-    if "prog_start_max" in post_proc:
-        prog_start_max = post_proc["prog_start_max"]
-    else:
-        prog_start_max = DEFAULT_PROG_START_MAX
-
-    if "subsampling" in post_proc:
-        subsampling = post_proc["subsampling"]
+    if "subsampling" in params:
+        subsampling = params["subsampling"]
     else:
         subsampling = None
 
-    if "max_gap" in post_proc:
-        max_gap = post_proc["max_gap"]
+    if "max_gap" in params:
+        max_gap = params["max_gap"]
+    elif "max_unsampled_gap" in params:
+        max_gap = params["max_unsampled_gap"]
     else:
         max_gap = None
 
-
+    #
+    # Perform foundational processing of MMIF file
+    #
     print("Attempting to process MMIF into SWT scene list...")
 
     # Open MMIF and start processing
+    mmif_path = item["mmif_paths"][-1]
     with open(mmif_path, "r") as file:
         mmif_str = file.read()
 
-    tp_view_id, tf_view_id = process_swt.get_swt_view_ids(mmif_str)
+    tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(mmif_str)
 
     # call SWT MMIF processors to get a table of time frames
-    tfs = process_swt.list_tfs(mmif_str, 
+    tfs = proc_swt.list_tfs(mmif_str, 
                                tp_view_id=tp_view_id,
                                tf_view_id=tf_view_id,
                                max_gap=max_gap, 
@@ -145,15 +176,16 @@ def run_post(item, cf, post_proc, mmif_path):
     print("SWT scene list of length", len(tfs), "created.")
 
     # get mmif_metadata_str
-    mmif_metadata_str = process_swt.get_mmif_metadata_str( mmif_str,
+    mmif_metadata_str = proc_swt.get_mmif_metadata_str( mmif_str,
                                                            tp_view_id,
                                                            tf_view_id )
 
     #
     # Infer metadata
     #
-    if infer_data:
+    if "data" in artifacts:
         print("Attempting to infer data...")
+        data_dir = artifacts_dir + "/data"
 
         # Calculate some significant datapoints based on table of time frames
         #
@@ -191,7 +223,7 @@ def run_post(item, cf, post_proc, mmif_path):
         print("Proxy start:", proxy_start)
 
         # get app names
-        tp_ver, tf_ver = process_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
+        tp_ver, tf_ver = proc_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
 
         data_artifact = [{ 
             "metadata": {
@@ -225,8 +257,9 @@ def run_post(item, cf, post_proc, mmif_path):
     #
     # Extract the slate
     #
-    if get_slate:
+    if "slates" in artifacts:
         print("Attempting to save a slate...")
+        slates_dir = artifacts_dir + "/slates"
 
         # The slate rep is the rep timepoint from from the first slate timeframe
         # If there is not slate timeframe, then the value is None
@@ -260,8 +293,9 @@ def run_post(item, cf, post_proc, mmif_path):
     #
     # Extract representative stills from timeframes
     #
-    if get_reps:
+    if "reps" in artifacts:
         print("Attempting to save representative stills...")
+        reps_dir = artifacts_dir + "/reps"
 
         if len(tfs) > 0:
             tps = [ tf[4] for tf in tfs ] 
@@ -290,8 +324,9 @@ def run_post(item, cf, post_proc, mmif_path):
     # 
     # Create KSL-style index of still images extracted
     #
-    if make_ksl_index:
+    if "ksl" in artifacts:
         print("Attempting to make a KSL-style index...")
+        ksl_dir = artifacts_dir + "/ksl"
 
         if not get_reps:
             print("Cannot make index because representative stills were not extracted.")
@@ -368,13 +403,14 @@ def run_post(item, cf, post_proc, mmif_path):
     #
     # Save a visaid
     #
-    if make_visaid:
+    if "visaids" in artifacts:
         print("Attempting to make a visaid...")
+        visaids_dir = artifacts_dir + "/visaids"
 
         visaid_filename = visaid_path = None
 
-        if "scene_types" in post_proc:
-            scene_types = post_proc["scene_types"]
+        if "scene_types" in params:
+            scene_types = params["scene_types"]
         else:
             scene_types = None
 
@@ -384,16 +420,15 @@ def run_post(item, cf, post_proc, mmif_path):
                                "}" )
 
         try:
-            visaid_filename, visaid_path = process_swt.create_aid( 
+            visaid_filename, visaid_path = create_visaid.create_visaid( 
                 video_path=item["media_path"], 
                 tfs=tfs, 
+                stdout=False, 
+                output_dirname=visaids_dir,
                 job_id=cf["job_id"],
                 job_name=cf["job_name"], 
                 id_in_filename=False,
-                stdout=False, 
-                output_dirname=visaids_dir,
                 guid=item["asset_id"],
-                types=scene_types,
                 mmif_metadata_str=mmif_metadata_str,
                 visaid_options_str=visaid_options_str
                 )
