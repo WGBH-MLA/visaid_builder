@@ -53,7 +53,8 @@ MODULE_VERSION = "0.30"
 POSTPROC_DEFAULTS = { "name": None,
                       "artifacts": [],
                       "prog_start_min": 3000,
-                      "prog_start_max": 150000 }
+                      "prog_start_max": 150000,
+                      "aug_tfs": True }
 
 # Names of the artifact types that this module can create
 VALID_ARTIFACTS = [ "data", 
@@ -61,26 +62,6 @@ VALID_ARTIFACTS = [ "data",
                     "reps",
                     "ksl",
                     "visaids" ]
-
-PROC_SWT_DEFAULTS = { "include_only": None,
-                      "exclude": [
-                          "garbage" ],
-                      "max_unsampled_gap": 120100,
-                      "default_subsampling": 15100,
-                      "subsampling": { 
-                          "credits": 1900,
-                          "slate": 7900 },
-                      "include_startframe": False,
-                      "include_endframe": True }
-
-VISAID_DEFAULTS = { "visibility": {
-                        "bars": "on",
-                        "filmed text": "off",
-                        "other text": "on" },
-                    "display_duration": True,
-                    "job_id_in_visaid_filename": False,
-                    "visaid_image_filanames": False,
-                    "aapb_timecode_link": False }
 
 # aliases specific to calculating/inferring proxy start time
 BARS_BINS = ['bars', 'Bars']
@@ -125,60 +106,87 @@ def run_post( item:dict,
             print("Warning: Invalid artifact type '" + atype + "' will not be created.")
             print("Valid artifact types:", VALID_ARTIFACTS)
 
-    # assign options based on input or default values
-    #for key in params:
-    #    if key not in OPTION_DEFAULTS
+
+    # check params for extra params
+    for key in params:
+        if key not in { **POSTPROC_DEFAULTS, 
+                        **proc_swt.PROC_SWT_DEFAULTS,
+                        **create_visaid.VISAID_DEFAULTS } :
+            print("Warning: `" + key + "` is not a valid config option for this postprocess. Ignoring.")
 
 
-    if "prog_start_min" in params:
-        prog_start_min = params["prog_start_min"]
-    else:
-        prog_start_min = POSTPROC_DEFAULTS["prog_start_min"]
+    # Assign parameter values.
+    # For each of the available parameter keys, if that parameter was passed in, then
+    # use that.  Otherwise, use the defaul value.
+    pp_params = {}
+    for key in POSTPROC_DEFAULTS:
+        if key in params:
+            pp_params[key] = params[key]
+        else:
+            pp_params[key] = POSTPROC_DEFAULTS
 
-    if "prog_start_max" in params:
-        prog_start_max = params["prog_start_max"]
-    else:
-        prog_start_max = POSTPROC_DEFAULTS["prog_start_max"]
+    proc_swt_params = {}
+    for key in proc_swt.PROC_SWT_DEFAULTS:
+        if key in params:
+            proc_swt_params[key] = params[key]
+        else:
+            proc_swt_params[key] = proc_swt.PROC_SWT_DEFAULTS[key]
 
-    if "subsampling" in params:
-        subsampling = params["subsampling"]
-    else:
-        subsampling = None
+    visaid_params = {}
+    for key in create_visaid.VISAID_DEFAULTS:
+        if key in params:
+            visaid_params[key] = params[key]
+        else:
+            visaid_params[key] = create_visaid.VISAID_DEFAULTS[key]
 
-    if "max_gap" in params:
-        max_gap = params["max_gap"]
-    elif "max_unsampled_gap" in params:
-        max_gap = params["max_unsampled_gap"]
-    else:
-        max_gap = None
+
 
     #
     # Perform foundational processing of MMIF file
     #
-    print("Attempting to process MMIF into SWT scene list...")
-
+    
     # Open MMIF and start processing
     mmif_path = item["mmif_paths"][-1]
     with open(mmif_path, "r") as file:
         mmif_str = file.read()
 
+    # Get the right views
     tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(mmif_str)
 
     # call SWT MMIF processors to get a table of time frames
+    """
     tfs = proc_swt.list_tfs(mmif_str, 
                                tp_view_id=tp_view_id,
                                tf_view_id=tf_view_id,
-                               max_gap=max_gap, 
-                               subsampling=subsampling,
+                               max_gap=proc_swt_params["max_unsampled_gap"], 
+                               subsampling=proc_swt_params["subsampling"],
                                include_startframe=False,
                                include_endframe=True)
+    """
 
-    print("SWT scene list of length", len(tfs), "created.")
+    print("Attempting to process MMIF into SWT scene list...")
+    
+    # create TimeFrame table from MMIF file
+    tfs = proc_swt.tfs_from_mmif( mmif_str, 
+                                  tp_view_id=tp_view_id,
+                                  tf_view_id=tf_view_id )
+
+    print("SWT scene list length:", len(tfs) )
+
+    last_time = proc_swt.last_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
+    print("Final TimePoint annotation at:", lilhelp.tconv(last_time))
+
+    # augment TimeFrame table
+    if pp_params["aug_tfs"]:
+        tfs_aug = proc_swt.augment_tfs( tfs, last_time, proc_swt_params )
+        print("Augmented scene list length:", len(tfs_aug) )
+    else:
+        tfs_aug = tfs
 
     # get mmif_metadata_str
     mmif_metadata_str = proc_swt.get_mmif_metadata_str( mmif_str,
-                                                           tp_view_id,
-                                                           tf_view_id )
+                                                        tp_view_id,
+                                                        tf_view_id )
 
     #
     # Infer metadata
@@ -196,7 +204,7 @@ def run_post( item:dict,
         # If there is no bars timeframe, then the value is 0
         bars_end = 0
         bars_tfs = [ tf for tf in tfs 
-                        if (tf[1] in BARS_BINS and tf[3] <= prog_start_max) ]
+                        if (tf[1] in BARS_BINS and tf[3] <= pp_params["prog_start_max"]) ]
         if len(bars_tfs) > 0:
             bars_end = int(bars_tfs[-1][3])
 
@@ -207,14 +215,14 @@ def run_post( item:dict,
         # content has already begun playing.
         slate_begin = None
         slate_tfs = [ tf for tf in tfs 
-                        if (tf[1] in SLATE_BINS and tf[3] <= prog_start_max)]
+                        if (tf[1] in SLATE_BINS and tf[3] <= pp_params["prog_start_max"]) ]
         if len(slate_tfs) > 0:
             slate_begin = int(slate_tfs[0][2])
             proxy_start_ms = max(bars_end, slate_begin)
         else:
             proxy_start_ms = bars_end
         
-        if proxy_start_ms < prog_start_min:
+        if proxy_start_ms < pp_params["prog_start_min"]:
             proxy_start_ms = 0
 
         # print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start_ms) # DIAG        
@@ -230,13 +238,13 @@ def run_post( item:dict,
                 "asset_id": item["asset_id"],
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                 "job_id": cf["job_id"],
-                "process": "clams-kitchen/swt/post_proc_item",
+                "process": "visaid_builder/post_proc_item",
                 "process_version": MODULE_VERSION,
                 "process_details": {
                     "swt-tp_version": tp_ver,
                     "swt-tf_version": tf_ver,
-                    "min_proxy_start_ms": prog_start_min,
-                    "max_proxy_start_ms": prog_start_max
+                    "min_proxy_start_ms": pp_params["prog_start_min"],
+                    "max_proxy_start_ms": pp_params["prog_start_max"]
                 }
             },
             "data":{
@@ -292,13 +300,16 @@ def run_post( item:dict,
 
     #
     # Extract representative stills from timeframes
+    # 
+    # Note:  Key frames are extracted from the augmented TimeFrame table. If 
+    # this is not desired, set the aug_tfs parameter to false.
     #
     if "reps" in artifacts:
         print("Attempting to save representative stills...")
         reps_dir = artifacts_dir + "/reps"
 
-        if len(tfs) > 0:
-            tps = [ tf[4] for tf in tfs ] 
+        if len(tfs_aug) > 0:
+            tps = [ tf[4] for tf in tfs_aug ] 
             tps = list(set(tps))
             tps.sort()
 
@@ -315,7 +326,7 @@ def run_post( item:dict,
                print("Error:", e)  
                errors.append("get_reps")
 
-            print("Saved", len(rep_images), "representative stills from", len(tfs), "scenes.")
+            print("Saved", len(rep_images), "representative stills from", len(tfs_aug), "scenes.")
 
         else:
             print("No scenes from which to extract stills.")
@@ -339,8 +350,8 @@ def run_post( item:dict,
                 # extract the requersted frame time from the filename
                 tp = int(fname.split("_")[2])
 
-                # lookup label in tfs array
-                #label = [ tf[5] for tf in tfs if tf[4] == tp ][0]
+                # lookup label in tfs_aug array
+                #label = [ tf[5] for tf in tfs_aug if tf[4] == tp ][0]
                 label = ""
 
                 if label.find(":") != -1:
@@ -402,6 +413,10 @@ def run_post( item:dict,
 
     #
     # Save a visaid
+    # 
+    # Note:  Visaid is created from the augmented TimeFrame table. If this is not 
+    # desired, set the aug_tfs parameter to false.
+
     #
     if "visaids" in artifacts:
         print("Attempting to make a visaid...")
@@ -415,33 +430,47 @@ def run_post( item:dict,
             scene_types = None
 
         visaid_options_str = ( "{\n" +
-                               "'max_gap': " + str(max_gap) + ",\n" +
-                               "'subsampling': " + str(subsampling) + "\n" +
+                               "'max_unsampled_gap': " + str(proc_swt_params["max_unsampled_gap"]) + ",\n" +
+                               "'subsampling': " + str(proc_swt_params["subsampling"]) + "\n" +
                                "}" )
 
-        try:
-            visaid_filename, visaid_path = create_visaid.create_visaid( 
-                video_path=item["media_path"], 
-                tfs=tfs, 
-                stdout=False, 
-                output_dirname=visaids_dir,
-                job_id=cf["job_id"],
-                job_name=cf["job_name"], 
-                id_in_filename=False,
-                guid=item["asset_id"],
-                mmif_metadata_str=mmif_metadata_str,
-                visaid_options_str=visaid_options_str
-                )
+        visaid_filename, visaid_path = create_visaid.create_visaid( 
+            video_path=item["media_path"], 
+            tfs=tfs_aug, 
+            stdout=False, 
+            output_dirname=visaids_dir,
+            job_id=cf["job_id"],
+            job_name=cf["job_name"], 
+            id_in_filename=False,
+            guid=item["asset_id"],
+            mmif_metadata_str=mmif_metadata_str,
+            visaid_options_str=visaid_options_str
+            )
 
-            if visaid_path:
-                print("Visual index created at")
-                print(visaid_path)
-            else:
-                print("Visaid creation procedure completed, but no file path returned.")
 
-        except Exception as e:
-            print("Creation of visaid failed.")
-            print("Error:", e)
-            errors.append("visaid")
+        # try:
+        #     visaid_filename, visaid_path = create_visaid.create_visaid( 
+        #         video_path=item["media_path"], 
+        #         tfs=tfs_aug, 
+        #         stdout=False, 
+        #         output_dirname=visaids_dir,
+        #         job_id=cf["job_id"],
+        #         job_name=cf["job_name"], 
+        #         id_in_filename=False,
+        #         guid=item["asset_id"],
+        #         mmif_metadata_str=mmif_metadata_str,
+        #         visaid_options_str=visaid_options_str
+        #         )
+
+        #     if visaid_path:
+        #         print("Visual index created at")
+        #         print(visaid_path)
+        #     else:
+        #         print("Visaid creation procedure completed, but no file path returned.")
+
+        # except Exception as e:
+        #     print("Creation of visaid failed.")
+        #     print("Error:", e)
+        #     errors.append("visaid")
 
     return errors

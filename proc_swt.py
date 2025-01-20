@@ -11,7 +11,16 @@ import pandas as pd
 from mmif import Mmif
 from mmif import AnnotationTypes
 
-
+PROC_SWT_DEFAULTS = { "default_to_none": False,
+                      "include_only": None,
+                      "exclude": [],
+                      "max_unsampled_gap": 120100,
+                      "default_subsampling": 15100,
+                      "subsampling": { 
+                          "credits": 1900,
+                          "slate": 7900 },
+                      "include_first_frame": True,
+                      "include_final_frame": True }
 
 
 def get_swt_view_ids(mmif_str):
@@ -75,6 +84,7 @@ def get_mmif_metadata_str( mmif_str:str, tp_view_id:str, tf_view_id:str ):
     mstr = "[ " + tp_str + ", " + tf_str + " ]"
 
     return json.dumps(json.loads(mstr), indent=2)
+
 
 
 def get_CLAMS_app_vers( mmif_str:str, tp_view_id:str, tf_view_id:str ):
@@ -270,6 +280,177 @@ def last_time_in_mmif( mmif_str:str, tp_view_id:str="" ):
             last_time = ann.get_property("timePoint")
 
     return last_time
+
+
+
+def augment_tfs( tfs_in:list, 
+                 last_time: int,
+                 params_in:dict ):
+    """
+    Adds extra rows to the array returned by `tfs_from_mmif()`.  
+    """
+
+    # Warn about spurious parameters
+    for key in params_in:
+        if key not in PROC_SWT_DEFAULTS:
+            print("Warning: `" + key + "` is not a valid parm for tfs augmentation. Ignoring.")
+
+    # Sanatize params
+    params = {}
+    
+    if "default_to_none" in params_in:
+        params["default_to_none"] = params_in["default_to_none"]
+    elif "default_to_none" in PROC_SWT_DEFAULTS:
+        params["default_to_none"] = PROC_SWT_DEFAULTS["default_to_none"]
+    else:
+        params["default_to_none"] = False
+
+    for key in PROC_SWT_DEFAULTS:
+        if key in params_in:
+            params[key] = params_in[key]
+        elif not params["default_to_none"]:
+            params[key] = PROC_SWT_DEFAULTS[key]
+        else:
+            params[key] = None
+
+
+    # Make a copy of the input list, so not to alter it
+    tfs = tfs_in[:]
+
+    # add frames for first and last timepoints 
+    # (Because gaps have to be between timepoints, and we want to catch
+    # gaps at the beginning and end.)
+    # These may be removed later
+    tfs.insert(0, ['f_0', 'first frame', 0, 0, 0, ""])
+    tfs.append(['f_n', 'last frame', last_time, last_time, last_time, ""])
+
+
+    # If this parameter has been passed in with a non-zero valueto the function, 
+    # then intersperse sample non-labeled frames among labeled timeframes.
+    # The max_gap value controls the largest gap without the addtition
+    # of an interspersed frame.
+    if params["max_unsampled_gap"]: 
+        max_gap = params["max_unsampled_gap"]
+
+        # Samples are primarily useful for their central frame, but they need a 
+        # duration to be represented in the tfs data structure
+        sample_dur = max_gap // 2
+
+        sample_counter = 1
+        samples = []
+
+        # Iterate through existing time frames to identify gaps in which to 
+        # insert samples.  Specifically, for each time frame, after the first,
+        # look back to see how much time since the last one.  If that gap is 
+        # bigger than the max_gap, then make a sample.
+        for rnum in range(1, len(tfs)) :
+            
+            # calculate the distance between the start of the current frame
+            # and the end of the previous
+            full_gap = tfs[rnum][2] - tfs[rnum-1][3]
+
+            if full_gap > max_gap :
+
+                # figure out how many and where to sample
+                num_samples = full_gap // max_gap
+                gap_size = full_gap // num_samples
+
+                # collect samples (we'll add them into tfs later)
+                for sample_num in range(num_samples):
+                    gap_start = sample_num * gap_size + tfs[rnum-1][3]
+                    
+                    sample_start = gap_start + (gap_size - sample_dur)//2
+                    sample_end = sample_start + sample_dur
+                    sample_rep = sample_start + sample_dur//2
+
+                    tf_id = "s_" + str(sample_counter)
+
+                    samples.append([tf_id, 'unlabeled sample', sample_start, sample_end, sample_rep, ""])
+                    sample_counter += 1
+
+        # add samples to timeframes and re-sort
+        tfs += samples
+        tfs.sort(key=lambda f:f[2])
+
+
+    # Add extra samples scenes for longer scenes  (like credits sequences)
+    if params["subsampling"] is not None or params["default_subsampling"] is not None:
+
+        subsampling = {}
+        if params["default_subsampling"] is None:
+            subsampling = params["subsampling"]
+        else:
+            bin_labels = set( [ tf[1] for tf in tfs_in ] )
+            for label in bin_labels:
+                subsampling[label] = params["default_subsampling"]
+            if params["subsampling"]:
+                for label in params["subsampling"]:
+                    subsampling[label] = params["subsampling"][label]
+
+
+        # check for and remove invalid sampling entries
+        for scenetype in subsampling:
+            if not ( subsampling[scenetype] > 0 and subsampling[scenetype] , last_time ):
+                print("Ignoring invalid scene sampling:", scenetype, ":", subsampling[scenetype])
+                del subsampling[scenetype]
+
+        # collect IDs scenes in case we want to remove them (because replaced by samples)
+        sampled_scene_ids = []
+        
+        # collect new rows for the new samples
+        scene_samples = []
+
+        # iterate through scene rows in tfs
+        for row in [row for row in tfs if row[1] in subsampling ]:
+
+            scene_dur = row[3] - row[2]
+            num_samples = int( scene_dur/ subsampling[row[1]] ) + 1
+            
+            # Replace scene with samples only if we need more than one sample
+            if num_samples > 1: 
+
+                new_samples = []
+
+                sample_dur = int(scene_dur/(num_samples - 1))
+
+                sample_start = row[2]  # first sample is at scene start
+
+                for _ in range(num_samples):
+                    new_id = row[0] + "_s_" + str(len(new_samples)) 
+                    new_label = row[1] + " subsample"
+
+                    if len(new_samples) < (num_samples - 1):
+                        sample_end = sample_start + sample_dur
+                        sample_rep = sample_start
+                    else:
+                        # last sample -- at the endpoint of the credits scene
+                        sample_end = sample_start
+                        sample_rep = sample_start
+
+                    new_row = [ new_id, new_label, sample_start, sample_end, sample_rep, "" ]
+                    new_samples.append(new_row)
+
+                    sample_start = sample_end
+
+                scene_samples += new_samples
+                sampled_scene_ids.append(row[0])
+        
+        # Add new samples to tfs
+        tfs += scene_samples
+        
+    # if appropriate, remove first frame and last frame pseudo-annotations
+    to_remove = []
+    if not params["include_first_frame"]:
+        to_remove.append('f_0')
+    if not params["include_final_frame"]:
+        to_remove.append('f_n')
+    if len(to_remove) > 0:
+        tfs = [ row for row in tfs if row[0] not in to_remove ]
+
+    # pprint.pprint(tfs) # DIAG
+    tfs.sort(key=lambda f:f[2])
+    return tfs
+
 
 
 

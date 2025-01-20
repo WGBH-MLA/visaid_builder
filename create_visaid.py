@@ -20,17 +20,26 @@ except ImportError:
 
 MODULE_VERSION = "1.80"
 
+VISAID_DEFAULTS = { "visibility": {
+                        "bars": "on",
+                        "filmed text": "off",
+                        "other text": "on" },
+                    "display_duration": True,
+                    "job_id_in_visaid_filename": False,
+                    "visaid_image_filanames": False,
+                    "aapb_timecode_link": False }
+
+
 
 def create_visaid(video_path: str, 
                   tfs: list,
-                  job_id: str = None,
-                  job_name: str = None,
-                  hfilename: str = "",
-                  id_in_filename: bool = False,
-                  guid: str = "",
                   stdout: bool = False,
                   output_dirname: str = ".",
-                  types: list = None,
+                  hfilename: str = "",
+                  job_id: str = None,
+                  job_name: str = None,
+                  id_in_filename: bool = False,
+                  guid: str = "",
                   mmif_metadata_str: str = "",
                   visaid_options_str: str = ""
                   ):
@@ -38,7 +47,6 @@ def create_visaid(video_path: str,
     Creates an HTML file (with embedded images) as a visual aid, based on the output
     of `list_tfs`.
 
-    If a list of types is passed in, the visaid is limited to those types.
     """
 
     if hfilename == "":
@@ -58,9 +66,6 @@ def create_visaid(video_path: str,
     else:
         video_fname = video_path[video_path.rfind("/")+1:]
         video_identifier = video_fname
-
-    if types is not None:
-        tfs = [ row for row in tfs if row[1] in types ] 
 
     # find the first video stream
     container = av.open(video_path)
