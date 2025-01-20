@@ -32,6 +32,7 @@ import datetime
 
 from mmif import Mmif
 
+from pprint import pprint # DIAG
 
 try:
     # if being run from higher level module
@@ -54,7 +55,7 @@ POSTPROC_DEFAULTS = { "name": None,
                       "artifacts": [],
                       "prog_start_min": 3000,
                       "prog_start_max": 150000,
-                      "aug_tfs": True }
+                      "adj_tfs": True }
 
 # Names of the artifact types that this module can create
 VALID_ARTIFACTS = [ "data", 
@@ -176,12 +177,12 @@ def run_post( item:dict,
     last_time = proc_swt.last_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
     print("Final TimePoint annotation at:", lilhelp.tconv(last_time))
 
-    # augment TimeFrame table
-    if pp_params["aug_tfs"]:
-        tfs_aug = proc_swt.augment_tfs( tfs, last_time, proc_swt_params )
-        print("Augmented scene list length:", len(tfs_aug) )
+    # adjust TimeFrame table
+    if pp_params["adj_tfs"]:
+        tfs_adj = proc_swt.adjust_tfs( tfs, last_time, proc_swt_params )
+        print("Adjusted scene list length:", len(tfs_adj) )
     else:
-        tfs_aug = tfs
+        tfs_adj = tfs
 
     # get mmif_metadata_str
     mmif_metadata_str = proc_swt.get_mmif_metadata_str( mmif_str,
@@ -301,15 +302,15 @@ def run_post( item:dict,
     #
     # Extract representative stills from timeframes
     # 
-    # Note:  Key frames are extracted from the augmented TimeFrame table. If 
-    # this is not desired, set the aug_tfs parameter to false.
+    # Note:  Key frames are extracted from the adjusted TimeFrame table. If 
+    # this is not desired, set the adj_tfs parameter to false.
     #
     if "reps" in artifacts:
         print("Attempting to save representative stills...")
         reps_dir = artifacts_dir + "/reps"
 
-        if len(tfs_aug) > 0:
-            tps = [ tf[4] for tf in tfs_aug ] 
+        if len(tfs_adj) > 0:
+            tps = [ tf[4] for tf in tfs_adj ] 
             tps = list(set(tps))
             tps.sort()
 
@@ -326,7 +327,7 @@ def run_post( item:dict,
                print("Error:", e)  
                errors.append("get_reps")
 
-            print("Saved", len(rep_images), "representative stills from", len(tfs_aug), "scenes.")
+            print("Saved", len(rep_images), "representative stills from", len(tfs_adj), "scenes.")
 
         else:
             print("No scenes from which to extract stills.")
@@ -350,8 +351,8 @@ def run_post( item:dict,
                 # extract the requersted frame time from the filename
                 tp = int(fname.split("_")[2])
 
-                # lookup label in tfs_aug array
-                #label = [ tf[5] for tf in tfs_aug if tf[4] == tp ][0]
+                # lookup label in tfs_adj array
+                #label = [ tf[5] for tf in tfs_adj if tf[4] == tp ][0]
                 label = ""
 
                 if label.find(":") != -1:
@@ -414,8 +415,8 @@ def run_post( item:dict,
     #
     # Save a visaid
     # 
-    # Note:  Visaid is created from the augmented TimeFrame table. If this is not 
-    # desired, set the aug_tfs parameter to false.
+    # Note:  Visaid is created from the adjusted TimeFrame table. If this is not 
+    # desired, set the adj_tfs parameter to false.
 
     #
     if "visaids" in artifacts:
@@ -434,43 +435,42 @@ def run_post( item:dict,
                                "'subsampling': " + str(proc_swt_params["subsampling"]) + "\n" +
                                "}" )
 
-        visaid_filename, visaid_path = create_visaid.create_visaid( 
-            video_path=item["media_path"], 
-            tfs=tfs_aug, 
-            stdout=False, 
-            output_dirname=visaids_dir,
-            job_id=cf["job_id"],
-            job_name=cf["job_name"], 
-            id_in_filename=False,
-            guid=item["asset_id"],
-            mmif_metadata_str=mmif_metadata_str,
-            visaid_options_str=visaid_options_str
-            )
+        # visaid_filename, visaid_path = create_visaid.create_visaid( 
+        #     video_path=item["media_path"], 
+        #     tfs=tfs_adj, 
+        #     stdout=False, 
+        #     output_dirname=visaids_dir,
+        #     job_id=cf["job_id"],
+        #     job_name=cf["job_name"], 
+        #     id_in_filename=False,
+        #     guid=item["asset_id"],
+        #     mmif_metadata_str=mmif_metadata_str,
+        #     visaid_options_str=visaid_options_str
+        #     )
 
+        try:
+            visaid_filename, visaid_path = create_visaid.create_visaid( 
+                video_path=item["media_path"], 
+                tfs=tfs_adj, 
+                stdout=False, 
+                output_dirname=visaids_dir,
+                job_id=cf["job_id"],
+                job_name=cf["job_name"], 
+                id_in_filename=False,
+                guid=item["asset_id"],
+                mmif_metadata_str=mmif_metadata_str,
+                visaid_options_str=visaid_options_str
+                )
 
-        # try:
-        #     visaid_filename, visaid_path = create_visaid.create_visaid( 
-        #         video_path=item["media_path"], 
-        #         tfs=tfs_aug, 
-        #         stdout=False, 
-        #         output_dirname=visaids_dir,
-        #         job_id=cf["job_id"],
-        #         job_name=cf["job_name"], 
-        #         id_in_filename=False,
-        #         guid=item["asset_id"],
-        #         mmif_metadata_str=mmif_metadata_str,
-        #         visaid_options_str=visaid_options_str
-        #         )
+            if visaid_path:
+                print("Visual index created at")
+                print(visaid_path)
+            else:
+                print("Visaid creation procedure completed, but no file path returned.")
 
-        #     if visaid_path:
-        #         print("Visual index created at")
-        #         print(visaid_path)
-        #     else:
-        #         print("Visaid creation procedure completed, but no file path returned.")
-
-        # except Exception as e:
-        #     print("Creation of visaid failed.")
-        #     print("Error:", e)
-        #     errors.append("visaid")
+        except Exception as e:
+            print("Creation of visaid failed.")
+            print("Error:", e)
+            errors.append("visaid")
 
     return errors

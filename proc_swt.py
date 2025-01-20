@@ -1,7 +1,11 @@
 """
 process_swt.py
 
-Defines functions that perform processing on MMIF output from SWT
+Defines functions that perform processing on MMIF output from SWT.
+
+The `default_to_none` parameter means that parameters not specified by the calling
+function will have values of `None` instead of the values specified in 
+`PROC_SWT_DEFAULTS`.
 """
 
 import json
@@ -283,9 +287,9 @@ def last_time_in_mmif( mmif_str:str, tp_view_id:str="" ):
 
 
 
-def augment_tfs( tfs_in:list, 
-                 last_time: int,
-                 params_in:dict ):
+def adjust_tfs( tfs_in:list, 
+                last_time: int,
+                params_in:dict ):
     """
     Adds extra rows to the array returned by `tfs_from_mmif()`.  
     """
@@ -293,7 +297,7 @@ def augment_tfs( tfs_in:list,
     # Warn about spurious parameters
     for key in params_in:
         if key not in PROC_SWT_DEFAULTS:
-            print("Warning: `" + key + "` is not a valid parm for tfs augmentation. Ignoring.")
+            print("Warning: `" + key + "` is not a valid parm for tfs adjustment. Ignoring.")
 
     # Sanatize params
     params = {}
@@ -317,10 +321,18 @@ def augment_tfs( tfs_in:list,
     # Make a copy of the input list, so not to alter it
     tfs = tfs_in[:]
 
+    # Go ahead and filter out scene types, according to parameters
+    if params["include_only"] is not None:
+        tfs = [ tf for tf in tfs if tf[1] in params["include_only"] ]
+    
+    if params["exclude"] is not None and len(params["exclude"]) > 0:
+        tfs = [ tf for tf in tfs if tf[1] not in params["exclude"] ]
+
     # add frames for first and last timepoints 
-    # (Because gaps have to be between timepoints, and we want to catch
-    # gaps at the beginning and end.)
-    # These may be removed later
+    # (Because gaps have to be between timepoints, and we want to catch gaps
+    # at the beginning and end.)
+    # These may be removed later, but we may need them for other parts of this
+    # process.
     tfs.insert(0, ['f_0', 'first frame', 0, 0, 0, ""])
     tfs.append(['f_n', 'last frame', last_time, last_time, last_time, ""])
 
