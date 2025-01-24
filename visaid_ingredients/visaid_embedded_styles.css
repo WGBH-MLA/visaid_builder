@@ -4,17 +4,21 @@ body {
     color: black;
     background-color: #f3f3f3;
 }
+.hidden {
+    display: none;
+}
 div.top {
     font-size: large;
-    padding: 12px;
-    margin-bottom: 10px;
+    padding: 8px 8px 4px 10px;
+    margin-bottom: 8px;
     background-color: white;
 }
 span.video-id {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     color:  #6d57db;
 }
-span.job-info {
+span.extra-info {
+    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     font-size: small;
     color: #5e5d5e ; 
 }
@@ -28,15 +32,16 @@ span.identifier {
 pre.metadata {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     font-size: x-small;
-    display: none;
 }
 span.label {
     font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
 }
-span.img-fname {
+div.img-caption {
     font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
     font-size: 55%;
-    color: #858585 ; 
+    color: #858585; 
+    padding: 2px;
+    text-align: center;
 }
 div.button-container {
     margin-top: 5px;
@@ -50,8 +55,8 @@ div.container {
 div.item {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     background-color: #bababa;
-    padding: 10px 10px 4px 10px;
-    border-radius: 8px 8px 8px 8px;
+    padding: 8px 8px 6px 10px;
+    border-radius: 6px 6px 6px 6px;
     box-shadow: 2px 2px 2px 0 #858585,
                 -1px -1px 1px 0 #e2e2e2;
 }
@@ -69,20 +74,19 @@ div.unsample {
                 -1px -1px 1px 0 #e2e2e2;
 
 }
-div.unsample span.img-fname {
+div.unsample span.img-caption {
     color: #a3a3a3;
 }
 button {
-    font-size: small;    
+    font-size: small;
+    margin-right: 6px;    
 }
 img {
+    display: block;
     width: 240px;
     border: 2px solid black;
     margin-top: 2px;
 }
 a {
     color: inherit;
-}
-.hidden {
-    display: none;
 }

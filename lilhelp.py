@@ -123,7 +123,7 @@ def extract_stills(video_path:str,
             stills_count += 1
         """
         # Grab the still for each target mentioned (even if it's the same still)
-        while ( ftime >= target_time ):
+        while ( ftime+15 >= target_time ):
             ifilename =  f'{fname}_{length:08}_{target_time:08}_{ftime:08}' + "." + filetype_ext
             ipathname = stills_dir + ifilename
             frame.to_image().save(ipathname)

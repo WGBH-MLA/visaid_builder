@@ -7,6 +7,7 @@ Defines function for creating a visaid from a list of scene TimeFrames
 import os
 import io
 import base64
+import json
 
 import av
 
@@ -20,52 +21,68 @@ except ImportError:
 
 MODULE_VERSION = "1.80"
 
-VISAID_DEFAULTS = { "visibility": {
-                        "bars": "on",
-                        "filmed text": "off",
-                        "other text": "on" },
-                    "display_duration": True,
-                    "job_id_in_visaid_filename": False,
-                    "visaid_image_filanames": False,
+VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
+                    "display_video_duration": True,
+                    "display_job_info": True,
+                    "display_image_ms": True,
                     "aapb_timecode_link": False }
 
+MAX_STORED_FRAME_HEIGHT = 360
 
 
-def create_visaid(video_path: str, 
-                  tfs: list,
-                  stdout: bool = False,
-                  output_dirname: str = ".",
-                  hfilename: str = "",
-                  job_id: str = None,
-                  job_name: str = None,
-                  id_in_filename: bool = False,
-                  guid: str = "",
-                  mmif_metadata_str: str = "",
-                  visaid_options_str: str = ""
-                  ):
+
+def create_visaid(video_path:str, 
+                  tfs:list,
+                  stdout:bool = False,
+                  output_dirname:str = ".",
+                  hfilename:str = "",
+                  job_id:str = None,
+                  job_name:str = None,
+                  item_id:str = "",
+                  proc_swt_params:dict = {},
+                  visaid_params:dict = {},
+                  mmif_metadata_str: str = ""
+                  ):                  
     """
     Creates an HTML file (with embedded images) as a visual aid, based on the output
     of `list_tfs`.
 
     """
 
+    # Warn about spurious options
+    for key in visaid_params:
+        if key not in VISAID_DEFAULTS:
+            print("Warning: `" + key + "` is not a valid visaid option. Ignoring.")
+
+    # Process params/options
+    params = {}
+    for key in VISAID_DEFAULTS:
+        if key in visaid_params:
+            params[key] = visaid_params[key]
+        else:
+            params[key] = VISAID_DEFAULTS[key]
+
+    # Consruct output visaid filename
     if hfilename == "":
-        if id_in_filename:
+        if params["job_id_in_visaid_filename"]:
             suffix = "_" + str(job_id)
         else:
             suffix = ""
-
-        if guid:
-            hfilename = guid + "_visaid" + suffix + ".html"
+        if item_id:
+            hfilename = item_id + "_visaid" + suffix + ".html"
         else:
             hfilename = "visaid" + suffix + ".html"
 
-
-    if guid:
-        video_identifier = guid
+    # Construct video identifier string to display in visaid
+    if item_id:
+        video_identifier = item_id
     else:
         video_fname = video_path[video_path.rfind("/")+1:]
         video_identifier = video_fname
+
+    # 
+    # Begin analyzing video in terms of tfs table
+    #
 
     # find the first video stream
     container = av.open(video_path)
@@ -75,9 +92,21 @@ def create_visaid(video_path: str,
 
     # get technical stats on the video stream; assumes FPS is constant
     fps = video_stream.average_rate.numerator / video_stream.average_rate.denominator
-    
+
+    # determine whether anamorphic stills will need to be stretched
+    if video_stream.sample_aspect_ratio is not None:
+        sar = float(video_stream.sample_aspect_ratio)
+    else:
+        # If SAR cannot be determined, assume it is 1
+        sar = 1.0
+    if abs( 1 - sar ) > 0.03:
+        stretch = True
+        print("Sample aspect ratio:", sar, ". Will stretch anamorphic frames.")
+    else:
+        stretch = False
+
     # calculate duration in ms
-    length = int((video_stream.frames / fps) * 1000)
+    media_length = int((video_stream.frames / fps) * 1000)
 
     # table like tfs, but with images
     tfsi = []
@@ -86,33 +115,23 @@ def create_visaid(video_path: str,
     # Use rows from the tfs table, but add additional columns for actual frame 
     # time and image data
     if len(tfs) > 0:
-        next_scene = 0 
 
         # create a new list sorted in order of rep frame times 
         # so we can proceed in sequential order of video frames to be extracted
         #tfs.sort(key=lambda f:f[4])
         tfs_s = sorted(tfs, key=lambda f:f[4])
 
+        # initialize target scene and still 
+        next_scene = 0 
         target_time = tfs_s[next_scene][4]
-        
-        if video_stream.sample_aspect_ratio is not None:
-            sar = float(video_stream.sample_aspect_ratio)
-        else:
-            # If SAR cannot be determined, assume it is 1
-            sar = 1.0
-
-        if abs( 1 - sar ) > 0.03:
-            stretch = True
-            print("Sample aspect ratio:", sar, ". Will stretch anamorphic frames.")
-        else:
-            stretch = False
-
-        max_frame_height = 360
-
+      
+        # loop through video frames to capture targets
         for frame in container.decode(video_stream):
             
             ftime = int(frame.time * 1000)   
-            if ftime >= target_time :
+
+            # look for the frame nearest to the target
+            if ftime+15 >= target_time :
                 
                 # Check for anamorphic and stretch if necessary
                 if stretch:
@@ -128,11 +147,11 @@ def create_visaid(video_path: str,
                 else:
                     stretched_frame = frame
 
-                # reduce frame height, if necessary
-                if stretched_frame.height > max_frame_height:
-                    res_factor = max_frame_height / stretched_frame.height 
+                # Reduce frame height, if necessary
+                if stretched_frame.height > MAX_STORED_FRAME_HEIGHT:
+                    res_factor = MAX_STORED_FRAME_HEIGHT / stretched_frame.height 
                     new_width = int(stretched_frame.width * res_factor)
-                    res_frame = stretched_frame.reformat( width=new_width, height=max_frame_height )
+                    res_frame = stretched_frame.reformat( width=new_width, height=MAX_STORED_FRAME_HEIGHT )
                 else:
                     res_frame = stretched_frame
 
@@ -142,8 +161,6 @@ def create_visaid(video_path: str,
 
                 # convert out binary image data to UTF-8 string
                 img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
-                #html_img_tag = f'<img src="data:image/jpeg;base64,{img_str}" >'
-
 
                 tfsi.append(tfs_s[next_scene] + [ ftime ] + [ img_str ] )
                 
@@ -152,12 +169,13 @@ def create_visaid(video_path: str,
                     target_time = tfs_s[next_scene][4]
                 else:
                     break
-    
-    # Re-sort new array in terms of scene start time and sort by label name,
-    # (so that subsamples come after the frames from  which they've been sampled.)
-    tfsi.sort(key=lambda f:(f[2],f[1]))
 
+    # Done with the video media itself
     container.close()
+
+    # Re-sort new array in terms of scene start time, then by TimeFrame id,
+    # (so that subsamples come after the scenes from which they've been sampled.)
+    tfsi.sort(key=lambda f:(f[2],f[0]))
 
     # Get ingredient code strings for inclusion in HTML files
     py_dir = os.path.dirname(__file__)
@@ -173,20 +191,31 @@ def create_visaid(video_path: str,
         structure_str = html_file.read()
 
     #
-    # create HTML string
+    # Build additional HTML strings to include in visaid HTML structure
     #
 
     # create job information HTML
-    if job_id is not None:
-        job_info = "<span class='job-info'><span class='identifier' id='job-id'>" + job_id
-        job_info += " </span>"
+    if params["display_job_info"] and job_id is not None:
+        job_info = "<br><span class='extra-info'>JOB: <span class='identifier' id='job-id'>"
+        job_info += job_id + "</span> "
         if job_name is not None and job_name != job_id:
             job_info += ( '("' + job_name + '")' )
         job_info += "</span>"
     else:
         job_info = ""
 
-    # build main body of visaid -- the collection of visaid scenes
+    # create media duration HTML
+    if params["display_video_duration"]:
+        video_duration = "<span class='extra-info'>["
+        video_duration += lilhelp.tconv(media_length, frac=False)
+        video_duration += "]</span>"
+    else:
+        video_duration = ""
+
+    # create metadata about process and visaid options
+    visaid_options_str = json.dumps( [proc_swt_params,visaid_params], indent=2 )
+
+    # build HTML strig for main body of visaid -- the collection of visaid scenes
     visaid_body = ""
     if len(tfsi) == 0:
         html_body += ("<div class=''>(No annotated scenes.)</div>")
@@ -196,13 +225,11 @@ def create_visaid(video_path: str,
         start_str = lilhelp.tconv(f[2], False)
         end_str = lilhelp.tconv(f[3], False) 
 
-        if guid:
-            # creating a link for an AAPB segment, which requires both a start time and end time
+        if params["aapb_timecode_link"] and item_id:
+            # creating a link to the AAPB
             start_sec = str(f[2]/1000)
-            #end_sec = str(f[3]/1000)
-            end_sec = str(length/1000)
             html_start = ( "<a href='https://americanarchive.org/catalog/" +
-                           guid + "?proxy_start_time=" + start_sec + "'>" + 
+                           item_id + "?proxy_start_time=" + start_sec + "'>" + 
                            start_str + "</a>" )
         else:
             html_start = start_str
@@ -215,32 +242,40 @@ def create_visaid(video_path: str,
         html_div_open = "<div class='" + div_class + "' data-label='" + label + "'>"
         html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br>'
         html_img_tag = f'<img src="data:image/jpeg;base64,{f[7]}" >'
-        img_fname = f'{guid}_{length:08}_{f[4]:08}_{f[6]:08}' + ".jpg"
-        html_img_fname = "<br><span class='img-fname'>" + img_fname + "</span>"
+        img_fname = f'{item_id}_{media_length:08}_{f[4]:08}_{f[6]:08}' + ".jpg"
+        html_img_fname = "<span class='img-fname hidden'>" + img_fname + "<br></span>"
+        if params["display_image_ms"]:
+            html_img_ms = f"<span class='img-ms'>{f[4]:08} {f[6]:08}</span>"
+        else:
+            html_img_ms = f"<span class='img-ms hidden'><br>{f[4]:08} {f[6]:08}</span>"
 
         visaid_body += (html_div_open + 
                         html_cap + 
                         html_img_tag + "\n" +
+                        "<div class='img-caption'>" +
                         html_img_fname +
-                        "</div>" + "\n")
+                        html_img_ms + 
+                        "</div></div>" + "\n")
 
-    # this dictionary provides values for the placeholder fields in the string read
-    # from the HTML structure file.
+    # Map values from Python variables into HTML placeholders.
+    # (This dictionary provides values for the placeholder fields in the string read
+    # from the HTML structure file.)
     html_field_map = {
         "video_identifier": video_identifier,
         "css_str": css_str,
         "js_str": js_str,
-        "video_identifier": video_identifier,
         "job_info": job_info,
+        "video_duration": video_duration,
         "visaid_options_str": visaid_options_str,
         "mmif_metadata_str": mmif_metadata_str,
         "visaid_body": visaid_body,
         "MODULE_VERSION": MODULE_VERSION
     }
 
-    # create final HTML string from the structure string and substitution map
+    # Create final HTML string from the structure string and substitution map
     html_str = structure_str.format_map(html_field_map)
 
+    # Write output to stdout or to a file
     if stdout:
         print(html_str)
         hfilename = None

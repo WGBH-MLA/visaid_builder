@@ -155,15 +155,6 @@ def run_post( item:dict,
     tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(mmif_str)
 
     # call SWT MMIF processors to get a table of time frames
-    """
-    tfs = proc_swt.list_tfs(mmif_str, 
-                               tp_view_id=tp_view_id,
-                               tf_view_id=tf_view_id,
-                               max_gap=proc_swt_params["max_unsampled_gap"], 
-                               subsampling=proc_swt_params["subsampling"],
-                               include_startframe=False,
-                               include_endframe=True)
-    """
 
     print("Attempting to process MMIF into SWT scene list...")
     
@@ -173,16 +164,19 @@ def run_post( item:dict,
                                   tf_view_id=tf_view_id )
 
     print("SWT scene list length:", len(tfs) )
+    # pprint(tfs) # DIAG
 
-    last_time = proc_swt.last_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
-    print("Final TimePoint annotation at:", lilhelp.tconv(last_time))
+    first_time, final_time = proc_swt.first_final_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
+    print(f"First TimePoint annotation at {lilhelp.tconv(first_time, frac=False)} ({first_time} ms).")
+    print(f"Final TimePoint annotation at {lilhelp.tconv(final_time, frac=False)} ({final_time} ms).")
 
     # adjust TimeFrame table
     if pp_params["adj_tfs"]:
-        tfs_adj = proc_swt.adjust_tfs( tfs, last_time, proc_swt_params )
+        tfs_adj = proc_swt.adjust_tfs( tfs, first_time, final_time, proc_swt_params )
         print("Adjusted scene list length:", len(tfs_adj) )
     else:
         tfs_adj = tfs
+    # pprint(tfs_adj) # DIAG
 
     # get mmif_metadata_str
     mmif_metadata_str = proc_swt.get_mmif_metadata_str( mmif_str,
@@ -326,6 +320,7 @@ def run_post( item:dict,
                print("Extraction of frame failed.")
                print("Error:", e)  
                errors.append("get_reps")
+               rep_images = []
 
             print("Saved", len(rep_images), "representative stills from", len(tfs_adj), "scenes.")
 
@@ -336,11 +331,15 @@ def run_post( item:dict,
     # 
     # Create KSL-style index of still images extracted
     #
+    # This works by keeping a running CSV file of all the image reps made as part
+    # of this job.  After each item in the job, it uses the running CSV file to 
+    # re-create the JavaScript file that serves as the KSL index.
+    #
     if "ksl" in artifacts:
-        print("Attempting to make a KSL-style index...")
+        print("Attempting to index representatives in a KSL-style index...")
         ksl_dir = artifacts_dir + "/ksl"
 
-        if not get_reps:
+        if not "reps" in artifacts:
             print("Cannot make index because representative stills were not extracted.")
         else:
 
@@ -425,52 +424,42 @@ def run_post( item:dict,
 
         visaid_filename = visaid_path = None
 
-        if "scene_types" in params:
-            scene_types = params["scene_types"]
+        visaid_filename, visaid_path = create_visaid.create_visaid( 
+            video_path=item["media_path"], 
+            tfs=tfs_adj, 
+            stdout=False, 
+            output_dirname=visaids_dir,
+            job_id=cf["job_id"],
+            job_name=cf["job_name"], 
+            item_id=item["asset_id"],
+            proc_swt_params=proc_swt_params,
+            visaid_params=visaid_params,
+            mmif_metadata_str=mmif_metadata_str
+            )
+
+        # try:
+        #     visaid_filename, visaid_path = create_visaid.create_visaid( 
+        #         video_path=item["media_path"], 
+        #         tfs=tfs_adj, 
+        #         stdout=False, 
+        #         output_dirname=visaids_dir,
+        #         job_id=cf["job_id"],
+        #         job_name=cf["job_name"], 
+        #         item_id=item["asset_id"],
+        #         proc_swt_params=proc_swt_params,
+        #         visaid_params=visaid_params,
+        #         mmif_metadata_str=mmif_metadata_str
+        #         )
+        # except Exception as e:
+        #     print("Creation of visaid failed.")
+        #     print("Error:", e)
+        #     errors.append("visaid")
+
+        if visaid_path:
+            print("Visual index created at")
+            print(visaid_path)
         else:
-            scene_types = None
-
-        visaid_options_str = ( "{\n" +
-                               "'max_unsampled_gap': " + str(proc_swt_params["max_unsampled_gap"]) + ",\n" +
-                               "'subsampling': " + str(proc_swt_params["subsampling"]) + "\n" +
-                               "}" )
-
-        # visaid_filename, visaid_path = create_visaid.create_visaid( 
-        #     video_path=item["media_path"], 
-        #     tfs=tfs_adj, 
-        #     stdout=False, 
-        #     output_dirname=visaids_dir,
-        #     job_id=cf["job_id"],
-        #     job_name=cf["job_name"], 
-        #     id_in_filename=False,
-        #     guid=item["asset_id"],
-        #     mmif_metadata_str=mmif_metadata_str,
-        #     visaid_options_str=visaid_options_str
-        #     )
-
-        try:
-            visaid_filename, visaid_path = create_visaid.create_visaid( 
-                video_path=item["media_path"], 
-                tfs=tfs_adj, 
-                stdout=False, 
-                output_dirname=visaids_dir,
-                job_id=cf["job_id"],
-                job_name=cf["job_name"], 
-                id_in_filename=False,
-                guid=item["asset_id"],
-                mmif_metadata_str=mmif_metadata_str,
-                visaid_options_str=visaid_options_str
-                )
-
-            if visaid_path:
-                print("Visual index created at")
-                print(visaid_path)
-            else:
-                print("Visaid creation procedure completed, but no file path returned.")
-
-        except Exception as e:
-            print("Creation of visaid failed.")
-            print("Error:", e)
+            print("Visaid creation procedure completed, but no file path returned.")
             errors.append("visaid")
 
     return errors
