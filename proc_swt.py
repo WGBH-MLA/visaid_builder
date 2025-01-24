@@ -343,6 +343,9 @@ def adjust_tfs( tfs_in:list,
     tfs.append(['f_n', 'last frame analyzed', final_time, final_time, final_time, ""])
 
 
+    #
+    # Gap sampling
+    # 
     # If this parameter has been passed in with a non-zero valueto the function, 
     # then intersperse sample non-labeled frames among labeled timeframes.
     # The max_gap value controls the largest gap without the addtition
@@ -390,8 +393,10 @@ def adjust_tfs( tfs_in:list,
         tfs += samples
         tfs.sort(key=lambda f:f[2])
 
-
-    # Add extra samples scenes for longer scenes  (like credits sequences)
+    # 
+    # Scene subsampling
+    # (Add extra samples scenes for longer scenes (especially, e.g., credits sequences) )
+    #
     if params["subsampling"] is not None or params["default_subsampling"] is not None:
 
         subsampling = {}
@@ -415,49 +420,46 @@ def adjust_tfs( tfs_in:list,
                 print("Ignoring invalid scene sampling:", scenetype, ":", subsampling[scenetype])
                 del subsampling[scenetype]
 
-        # collect IDs scenes in case we want to remove them (because replaced by samples)
-        sampled_scene_ids = []
-        
         # collect new rows for the new samples
-        scene_samples = []
+        new_scenes = []
 
-        # iterate through scene rows in tfs for which subsampling is relevant
-        for row in [row for row in tfs if row[1] in subsampling ]:
+        # iterate through scene rows of tfs for which the label is subejct to subsampling
+        for tf in [ tf for tf in tfs if tf[1] in subsampling]:
 
-            scene_dur = row[3] - row[2]
-            num_samples = int( scene_dur/ subsampling[row[1]] ) + 1
-            
-            # Replace scene with samples only if we need more than one sample
-            if num_samples > 1: 
+            # duration for the entire scene
+            scene_dur = tf[3] - tf[2]
 
-                new_samples = []
+            # check to see whether this scene meets the subsampling threshold for its label
+            if scene_dur > subsampling[tf[1]] :
 
-                sample_dur = int( scene_dur/(num_samples - 1) )
+                # We want enough subsample scenes so that each is shorter than the 
+                # subsampling threshold.
+                # Example: 36s scene with 10s subsampling -> 4 x 9s subsample scenes
+                num_subsamples = ( scene_dur // subsampling[tf[1]] ) + 1        
+                subsample_dur = scene_dur // num_subsamples
 
-                sample_start = row[2]  # first sample is at scene start
+                subsamples = []   # subsample scenes to be collected for this scene
+                next_start = tf[2]  # first subsample starts at scene start
+                
+                for _ in range(num_subsamples):
+                    subsample_id = tf[0] + "_s_" + str(len(subsamples))
+                    subsample_label = tf[1] + " subsample"
+                    subsample_start = next_start
+                    subsample_end = next_start + subsample_dur
+                    subsample_rep = next_start + ( subsample_dur // 2 )
 
-                for _ in range(num_samples):
-                    new_id = row[0] + "_s_" + str(len(new_samples)) 
-                    new_label = row[1] + " subsample"
+                    subsample = [ subsample_id, subsample_label, 
+                                  subsample_start, subsample_end, 
+                                  subsample_rep, "" ]
+                    subsamples.append(subsample)
+                    next_start = subsample_end
+                
+                # Doen with this scene.  Add new samples to list of new scenes
+                new_scenes += subsamples
 
-                    if len(new_samples) < (num_samples - 1):
-                        sample_end = sample_start + sample_dur
-                        sample_rep = sample_start
-                    else:
-                        # last sample -- at the endpoint of the subsampled scene
-                        sample_end = sample_start
-                        sample_rep = sample_start
+        # Done iterating through labeled scenes.  Add the new scenes the main list.
+        tfs += new_scenes
 
-                    new_row = [ new_id, new_label, sample_start, sample_end, sample_rep, "" ]
-                    new_samples.append(new_row)
-
-                    sample_start = sample_end
-
-                scene_samples += new_samples
-                sampled_scene_ids.append(row[0])
-        
-        # Add new samples to tfs
-        tfs += scene_samples
         
     # if appropriate, remove first frame and final frame pseudo-annotations
     to_remove = []
