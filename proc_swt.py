@@ -41,7 +41,6 @@ def get_swt_view_ids(mmif_str):
     MMIF files with multiple views containing TimePoint and TimeFrame annotations.
     """
 
-    # turn the MMIF string into a Mmif object
     usemmif = Mmif(mmif_str)
 
     tp_views = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)
@@ -68,11 +67,10 @@ def get_mmif_metadata_str( mmif_str:str, tp_view_id:str, tf_view_id:str ):
     Returns prettified serialized JSON for that metadata.
     
     This is a helper function for this module, not a general function for
-    grabbing metadata from MMIF files. It is useful for extracting the 
-    CLAMS metadata for inclusion in CLAMS consuming procedures.
+    grabbing metadata from MMIF files. It is useful for extracting serialized
+    CLAMS metadata for inclusion or display in CLAMS consuming procedures.
     """
 
-    # turn the MMIF string into a Mmif object
     usemmif = Mmif(mmif_str)
 
     if tp_view_id is None:
@@ -98,11 +96,11 @@ def get_CLAMS_app_vers( mmif_str:str, tp_view_id:str, tf_view_id:str ):
     Takes the metadata from two the relevant views.  Then looks at the
     app metadata for each to find the version.
     
-    Returns an ordered pair consisting of the version number used to 
-    create each view.
+    Returns an ordered pair comprising the version numbers used to create
+    the views.
 
     This is useful for conditional logic, where program execution depends
-    on the version of the CLAMS app used.
+    on the version(s) of the CLAMS app used.
     """
 
     usemmif = Mmif(mmif_str)
@@ -139,12 +137,10 @@ def first_final_time_in_mmif( mmif_str:str, tp_view_id:str="" ):
     Analyzes MMIF with TimePoints and returns the times of the first and final ones.
     """
 
-    # turn the MMIF string into a Mmif object
     usemmif = Mmif(mmif_str)
 
     # Get the right view.  
-    # (If it has not been supplied, make a reasonable assumption about which
-    # one to get.)
+    # (If it has not been supplied, make a reasonable assumption about which one.)
     if tp_view_id != "":
         tp_view = usemmif.get_view_by_id(tp_view_id)
     else:
@@ -168,22 +164,21 @@ def tfs_from_mmif( mmif_str:str,
                    tp_view_id:str="",
                    tf_view_id:str="" ):
     """
-    Analyzes MMIF file from SWT, containining TimeFrame and TimePoint
-    annotations, and returns tabular data.
+    Analyzes MMIF file from SWT, combining  TimeFrame and TimePoint annotations, 
+    and returns tabular data.
 
     Takes serialized MMIF as a string as input.
     Returns a table (list of lists) representing the TimeFrame annotations
 
-    Columns of returned table:
-    0: TimeFrame id (from MMIF file) (string)
-    1: bin label (string)
-    2: start time in milliseconds (int)
-    3: end time in milliseconds (int)
-    4: representative still time in milliseconds (int)
-    5: representative still point label (string)
-
+    Columns of returned "tfs" table of scene time frames:
+        0: TimeFrame id (from MMIF file) (string)
+        1: bin label (string)
+        2: start time in milliseconds (int)
+        3: end time in milliseconds (int)
+        4: representative still time in milliseconds (int)
+        5: representative still point label (string)
     """
-    # turn the MMIF string into a Mmif object
+
     usemmif = Mmif(mmif_str)
 
     # If there is no view with a TimeFrame, return an empty list.
@@ -192,9 +187,9 @@ def tfs_from_mmif( mmif_str:str,
         tfs = []
     else:
         # Get the correct views for TimePoint and TimeFrame annotations.
-        # If these have not been supplied, make the traditional (simple) 
-        # assumptions about which views to get, i.e., the last (end of list)
-        # view that contains annotations of the relevant type.
+        # If these have not been supplied, make simple assumptions about which 
+        # views to get, i.e., the last (end of list) view that contains 
+        # annotations of the relevant type.
         if tp_view_id != "":
             tp_view = usemmif.get_view_by_id(tp_view_id)
         else:
@@ -227,65 +222,69 @@ def tfs_from_mmif( mmif_str:str,
         tfanns = tf_view.get_annotations(AnnotationTypes.TimeFrame)
         tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
 
-        # Build two lists, one of TimeFrames and one of TimeFrame+Points
+        # Go through the TimeFrame annotations
+        # Build two lists, one of TimeFrames and one of TimeFrame + target TimePoints
         tfs = []
         tfpts = []   
         for ann in tfanns:
             tf_id = ann.get_property("id")
             tf_frameType = ann.get_property("frameType")
 
-            # add timeFrames to their list; no values for times yet
+            # Add timeFrames to the main table of scenes.
+            # As of yet, there are no values for the times.  
+            # These will be added later, on the basis of the join between the 
+            # TimeFrames and their target TimePoints.
             tfs += [[tf_id, tf_frameType, -1, -1, -1, ""]]
-            
 
-            # add timeFrame points to their list
-            for t in ann.get_property("targets"):
-                is_rep = t in ann.get_property("representatives")
-                tfpts += [[ tf_id, tf_frameType, t, is_rep ]]
+            # Add target TimePoints of each TimeFrame to a list of their own.
+            for tp_id in ann.get_property("targets"):
+                is_rep = tp_id in ann.get_property("representatives")
+                tfpts += [[ tf_id, tf_frameType, tp_id, is_rep ]]
 
-        # Build another list for TimePoints
+        # Go through the TimePoint annotations
+        # Build a list for putre TimePoints
         tps = []
         for ann in tpanns:
             
-            tpt_id = ref_prefix + ann.get_property("id") # new, for v6.0 and above
+            # Compose the TimePoint id for purposes of joining view id and annotation id
+            # (As of SWT v6.0 and above, this is necessary.)
+            tpt_id = ref_prefix + ann.get_property("id") 
 
             tps += [[ tpt_id, 
-                    ann.get_property("label"), 
-                    ann.get_property("timePoint") ]]  
+                      ann.get_property("label"), 
+                      ann.get_property("timePoint") ]]  
 
         #print("Lengths (tfs, tfpts, tps):", (len(tfs), len(tfpts), len(tps))) # DIAG
 
-        # create DataFrames from lists and merge
+        # Create DataFrames from lists and perform a merge (join)
         tfpts_df = pd.DataFrame(tfpts, columns=['tf_id','frameType','tp_id','is_rep'])
         tps_df = pd.DataFrame(tps, columns=['tp_id','label','timePoint'])
         tfs_tps_df = pd.merge(tfpts_df,tps_df)
 
-        # iterate through the timeFrames and use the merged DataFrame to look up times
+        # Iterate through the scenes in tfs and use the merged DataFrame to look up times
         # (need to cast np.int64 values to ordinary int)
-        for f in tfs:
-            tfrows = tfs_tps_df[ tfs_tps_df["tf_id"] == f[0] ]
+        for tf in tfs:
+
+            # perform lookup
+            tfrows = tfs_tps_df[ tfs_tps_df["tf_id"] == tf[0] ]
 
             # within rows for this time frame, find start and end times
             tf_start_time = int( (tfrows["timePoint"]).min() )
             tf_end_time = int( (tfrows["timePoint"]).max() )
-            #tf_rep_time = int( (tfrows[tfrows["is_rep"]]["timePoint"]).min() )
-            #tf_rep_label = ""  
 
-            # narrow down to rows that are rep time points, and choose one
+            # narrow down to rows that are rep time points, and choose one from the middle
             tfreprows = tfrows[tfrows["is_rep"]]
             chosen_row_index = (len(tfreprows) - 1) // 2
-            #print("Num reps:", len(tfreprows), "; chosen index:", chosen_row_index) # DIAG
             tfreprow = tfreprows.iloc[chosen_row_index]
             tf_rep_time = int( tfreprow["timePoint"] )
             tf_rep_label = tfreprow["label"]
-            #print(tf_rep_time, tf_rep_label) # DIAG
 
-            f[2] = tf_start_time
-            f[3] = tf_end_time
-            f[4] = tf_rep_time
-            f[5] = tf_rep_label 
+            tf[2] = tf_start_time
+            tf[3] = tf_end_time
+            tf[4] = tf_rep_time
+            tf[5] = tf_rep_label 
 
-        # sort list of timeFrames by start
+        # sort list of timeFrames by start time
         tfs.sort(key=lambda f:f[2])
 
     return tfs
@@ -297,7 +296,11 @@ def adjust_tfs( tfs_in:list,
                 final_time:int,
                 params_in:dict ):
     """
-    Adds extra rows to the array returned by `tfs_from_mmif()`.  
+    Adds and/or removes rows to the array returned by `tfs_from_mmif()`.  
+
+    The data structure for the table output is the same as in the input `tfs` table.
+
+    Ajdustments are made on the basis of the parameter values passed in.
     """
 
     # Warn about spurious parameters
@@ -305,9 +308,11 @@ def adjust_tfs( tfs_in:list,
         if key not in PROC_SWT_DEFAULTS:
             print("Warning: `" + key + "` is not a valid param for tfs adjustment. Ignoring.")
 
-    # Sanatize params
+    # Set parameters not passed in to their defaul values
+    # If "default_to_none" is True, then parameters not explicitly passed in will be 
+    # assigned the `None` value.
     params = {}
-    
+
     if "default_to_none" in params_in:
         params["default_to_none"] = params_in["default_to_none"]
     elif "default_to_none" in PROC_SWT_DEFAULTS:
@@ -318,10 +323,10 @@ def adjust_tfs( tfs_in:list,
     for key in PROC_SWT_DEFAULTS:
         if key in params_in:
             params[key] = params_in[key]
-        elif not params["default_to_none"]:
-            params[key] = PROC_SWT_DEFAULTS[key]
-        else:
+        elif params["default_to_none"]:
             params[key] = None
+        else:
+            params[key] = PROC_SWT_DEFAULTS[key]
 
 
     # Make a copy of the input list, so not to alter it
@@ -334,36 +339,45 @@ def adjust_tfs( tfs_in:list,
     if params["exclude"] is not None and len(params["exclude"]) > 0:
         tfs = [ tf for tf in tfs if tf[1] not in params["exclude"] ]
 
-    # add frames for first and final timepoints 
-    # (Because gaps have to be between timepoints, and we want to catch gaps
-    # at the beginning and end.)
-    # These may be removed later, but we may need them for other parts of this
-    # process.
-    tfs.insert(0, ['f_0', 'first frame analyzed', first_time, first_time, first_time, ""])
-    tfs.append(['f_n', 'last frame analyzed', final_time, final_time, final_time, ""])
+    # Add frames for first and final timepoints.
+    # These may be removed later, but we add them for now.
+    # (The main reason for this is that we want to be able to find gaps where
+    # there are no scene annotations, including the beginning and end of the video.
+    # Logically, scene gaps must be between seens.  So we need beginning and ending
+    # scenes in order to catch the gaps.)
+    tfs.insert(0, ['f_0', 'first frame checked', first_time, first_time, first_time, ""])
+    tfs.append(['f_n', 'last frame checked', final_time, final_time, final_time, ""])
 
 
     #
     # Gap sampling
     # 
-    # If this parameter has been passed in with a non-zero valueto the function, 
-    # then intersperse sample non-labeled frames among labeled timeframes.
-    # The max_gap value controls the largest gap without the addtition
-    # of an interspersed frame.
+    # If this parameter has been passed in with a non-zero value to the function, 
+    # then intersperse sampled of non-labeled scenes among labeled scenes.
+    #
+    # The "max_unsampled_gap" value controls the largest gap between scenes that does
+    # not trigger the addtition of interspersed samples.
+    # 
     if params["max_unsampled_gap"]: 
         max_gap = params["max_unsampled_gap"]
 
-        # Samples are primarily useful for their central frame, but they need a 
-        # duration to be represented in the tfs data structure
+        # Samples scenes are primarily useful for their central frame, but they need a 
+        # duration to be represented in the tfs data structure.
+        #
+        # As long as the duration is less than the maximum gap, then the choice of sample
+        # duration is somewhat arbitrary.
         sample_dur = max_gap // 2
 
-        sample_counter = 1
+        # collect samples to add to the main table of scenes
         samples = []
+
+        # index for use in the scene's id and label
+        next_sample_num = 1
 
         # Iterate through existing time frames to identify gaps in which to 
         # insert samples.  Specifically, for each time frame, after the first,
         # look back to see how much time since the last one.  If that gap is 
-        # bigger than the max_gap, then make a sample.
+        # bigger than the max_gap, then make one or more samples.
         for rnum in range(1, len(tfs)) :
             
             # calculate the distance between the start of the current frame
@@ -372,26 +386,30 @@ def adjust_tfs( tfs_in:list,
 
             if full_gap > max_gap :
 
-                # figure out how many and where to sample
+                # Figure out how many samples to make
                 num_samples = full_gap // max_gap
+
+                # Calculate the size of the gaps within which we'll locate new samples
                 gap_size = full_gap // num_samples
 
                 # collect samples (we'll add them into tfs later)
-                for sample_num in range(num_samples):
-                    gap_start = sample_num * gap_size + tfs[rnum-1][3]
-                    
+                for sample_count in range(num_samples):
+
+                    # gap starts from the end of the last main scene, then offset by the
+                    # samples we've already made in this full gap
+                    gap_start = tfs[rnum-1][3] + ( sample_count * gap_size )
+
+                    sample_id = "s_" + str(next_sample_num)                    
+                    sample_label = "unlabeled sample"
                     sample_start = gap_start + (gap_size - sample_dur)//2
                     sample_end = sample_start + sample_dur
                     sample_rep = sample_start + sample_dur//2
 
-                    tf_id = "s_" + str(sample_counter)
+                    samples.append([sample_id, sample_label, sample_start, sample_end, sample_rep, ""])
+                    next_sample_num += 1
 
-                    samples.append([tf_id, 'unlabeled sample', sample_start, sample_end, sample_rep, ""])
-                    sample_counter += 1
-
-        # add all the samples collected to the tfs list and re-sort
+        # add all the samples collected to the tfs list 
         tfs += samples
-        tfs.sort(key=lambda f:f[2])
 
     # 
     # Scene subsampling
@@ -399,6 +417,7 @@ def adjust_tfs( tfs_in:list,
     #
     if params["subsampling"] is not None or params["default_subsampling"] is not None:
 
+        # First, collect the subsampling thresholds for each scene type
         subsampling = {}
         if params["default_subsampling"] is None:
             # no default subsampling; just use subsampling specified in params dictionary
@@ -414,7 +433,7 @@ def adjust_tfs( tfs_in:list,
                 for label in params["subsampling"]:
                     subsampling[label] = params["subsampling"][label]
 
-        # check for and remove invalid subsampling values
+        # Check for and remove invalid subsampling threshold values
         for scenetype in subsampling:
             if not ( subsampling[scenetype] > 0 and subsampling[scenetype] < final_time ):
                 print("Ignoring invalid scene sampling:", scenetype, ":", subsampling[scenetype])
@@ -439,7 +458,7 @@ def adjust_tfs( tfs_in:list,
                 subsample_dur = scene_dur // num_subsamples
 
                 subsamples = []   # subsample scenes to be collected for this scene
-                next_start = tf[2]  # first subsample starts at scene start
+                next_start = tf[2]  # first subsample starts at start of the long scene
                 
                 for _ in range(num_subsamples):
                     subsample_id = tf[0] + "_s_" + str(len(subsamples))
@@ -452,16 +471,17 @@ def adjust_tfs( tfs_in:list,
                                   subsample_start, subsample_end, 
                                   subsample_rep, "" ]
                     subsamples.append(subsample)
+
                     next_start = subsample_end
                 
-                # Doen with this scene.  Add new samples to list of new scenes
+                # Done with this scene.  Add new samples to running list of new scenes
                 new_scenes += subsamples
 
         # Done iterating through labeled scenes.  Add the new scenes the main list.
         tfs += new_scenes
 
         
-    # if appropriate, remove first frame and final frame pseudo-annotations
+    # If appropriate, remove first frame and final scenes (which were inserted above)
     to_remove = []
     if not params["include_first_time"]:
         to_remove.append('f_0')
@@ -470,7 +490,6 @@ def adjust_tfs( tfs_in:list,
     if len(to_remove) > 0:
         tfs = [ row for row in tfs if row[0] not in to_remove ]
 
-    # pprint.pprint(tfs) # DIAG
     tfs.sort(key=lambda f:f[2])
     return tfs
 

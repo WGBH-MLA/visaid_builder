@@ -1,7 +1,15 @@
 """
 create_visaid.py
 
-Defines function for creating a visaid from a list of scene TimeFrames
+Defines a function for creating a visaid from a list of scene TimeFrames.
+
+The main required parameters are the path to the video file and a table
+(list of lists) in the style of the `tfs` tables created by the proc_swt module.
+
+This function reads and depends on the display ingredients in these files:
+   visaid_ingredients/visaid_embedded_logic.js
+   visaid_ingredients/visaid_embedded_styles.css
+   visaid_ingredients/visaid_structure.html
 """
 
 import os
@@ -25,10 +33,8 @@ VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
                     "display_video_duration": True,
                     "display_job_info": True,
                     "display_image_ms": True,
-                    "aapb_timecode_link": False }
-
-MAX_STORED_FRAME_HEIGHT = 360
-
+                    "aapb_timecode_link": False,
+                    "max_img_height": 360 }
 
 
 def create_visaid(video_path:str, 
@@ -49,12 +55,12 @@ def create_visaid(video_path:str,
 
     """
 
-    # Warn about spurious options
+    # Warn about spurious parameter keys
     for key in visaid_params:
         if key not in VISAID_DEFAULTS:
             print("Warning: `" + key + "` is not a valid visaid option. Ignoring.")
 
-    # Process params/options
+    # Process parameters, using defaults where appropriate
     params = {}
     for key in VISAID_DEFAULTS:
         if key in visaid_params:
@@ -64,14 +70,15 @@ def create_visaid(video_path:str,
 
     # Consruct output visaid filename
     if hfilename == "":
+        if item_id:
+            prefix = item_id + "_"
+        else:
+            prefix = ""
         if params["job_id_in_visaid_filename"]:
             suffix = "_" + str(job_id)
         else:
             suffix = ""
-        if item_id:
-            hfilename = item_id + "_visaid" + suffix + ".html"
-        else:
-            hfilename = "visaid" + suffix + ".html"
+        hfilename = prefix + "visaid" + suffix + ".html"
 
     # Construct video identifier string to display in visaid
     if item_id:
@@ -108,17 +115,18 @@ def create_visaid(video_path:str,
     # calculate duration in ms
     media_length = int((video_stream.frames / fps) * 1000)
 
-    # table like tfs, but with images
+    # Table like tfs, but with an extra columns. 
+    # Uses rows from the tfs table, but adds additional columns for actual frame 
+    # time and base64 image data.
+
     tfsi = []
 
-    # Build up tfsi table.
-    # Use rows from the tfs table, but add additional columns for actual frame 
-    # time and image data
+    # Build up tfsi table by adding rows based on tfs rows.
     if len(tfs) > 0:
 
-        # create a new list sorted in order of rep frame times 
-        # so we can proceed in sequential order of video frames to be extracted
-        #tfs.sort(key=lambda f:f[4])
+        # Create a new list sorted in order of rep frame times .
+        # Because we need to proceed in order of video frames to be extracted
+        # (not necessarily the order of the scene start times).
         tfs_s = sorted(tfs, key=lambda f:f[4])
 
         # initialize target scene and still 
@@ -136,38 +144,40 @@ def create_visaid(video_path:str,
                 # Check for anamorphic and stretch if necessary
                 if stretch:
                     if sar > 1.0:
-                        # stretch width
+                        # stretch the width
                         new_width = int( sar * frame.width)
                         new_height = frame.height
                     else:
-                        # stretch height
+                        # stretch the height
                         new_width = frame.width
                         new_height = int(frame.height / sar)
                     stretched_frame = frame.reformat( width=new_width, height=new_height )
                 else:
                     stretched_frame = frame
 
-                # Reduce frame height, if necessary
-                if stretched_frame.height > MAX_STORED_FRAME_HEIGHT:
-                    res_factor = MAX_STORED_FRAME_HEIGHT / stretched_frame.height 
+                # Reduce the size of the image, if necessary
+                if stretched_frame.height > params["max_img_height"]:
+                    res_factor = params["max_img_height"] / stretched_frame.height 
                     new_width = int(stretched_frame.width * res_factor)
-                    res_frame = stretched_frame.reformat( width=new_width, height=MAX_STORED_FRAME_HEIGHT )
+                    res_frame = stretched_frame.reformat( width=new_width, height=params["max_img_height"] )
                 else:
                     res_frame = stretched_frame
 
-                # save frame to memory buffer
+                # Save frame to memory buffer
                 buf = io.BytesIO()
                 res_frame.to_image().save(buf, format="JPEG", quality=75)
 
-                # convert out binary image data to UTF-8 string
+                # convert binary image data to base64 serialized in a UTF-8 string
                 img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
 
+                # add new row to tfsi
                 tfsi.append(tfs_s[next_scene] + [ ftime ] + [ img_str ] )
                 
                 next_scene += 1
                 if next_scene < len(tfs_s):            
                     target_time = tfs_s[next_scene][4]
                 else:
+                    # no need to continue decoding video if we have all our scenes saved
                     break
 
     # Done with the video media itself
@@ -180,12 +190,15 @@ def create_visaid(video_path:str,
     # Get ingredient code strings for inclusion in HTML files
     py_dir = os.path.dirname(__file__)
     ingredients_dir = os.path.join(py_dir, "visaid_ingredients")
+
     css_path = os.path.join(ingredients_dir, "visaid_embedded_styles.css")
     with open(css_path, "r") as css_file:
         css_str = css_file.read()
+
     js_path = os.path.join(ingredients_dir, "visaid_embedded_logic.js")
     with open(js_path, "r") as js_file:
         js_str = js_file.read()
+
     html_path = os.path.join(ingredients_dir, "visaid_structure.html")
     with open(html_path, "r") as html_file:
         structure_str = html_file.read()
@@ -212,14 +225,16 @@ def create_visaid(video_path:str,
     else:
         video_duration = ""
 
-    # create metadata about process and visaid options
+    # serialize metadata about process and visaid options
     visaid_options_str = json.dumps( [proc_swt_params,visaid_params], indent=2 )
 
-    # build HTML strig for main body of visaid -- the collection of visaid scenes
+    # Build HTML strig for main body of visaid -- the collection of visaid scenes
+    # (This is the bulk of the visaid.)
     visaid_body = ""
     if len(tfsi) == 0:
-        html_body += ("<div class=''>(No annotated scenes.)</div>")
+        visaid_body += ("<div class=''>(No annotated scenes.)</div>")
 
+    # Create a new item div for each row in tfsi
     for f in tfsi:
         label = f[1]
         start_str = lilhelp.tconv(f[2], False)
@@ -240,15 +255,19 @@ def create_visaid(video_path:str,
         if label.find("unlabeled sample") != -1:
             div_class += " unsample"
         html_div_open = "<div class='" + div_class + "' data-label='" + label + "'>"
+
         html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br>'
+
         html_img_tag = f'<img src="data:image/jpeg;base64,{f[7]}" >'
         img_fname = f'{item_id}_{media_length:08}_{f[4]:08}_{f[6]:08}' + ".jpg"
         html_img_fname = "<span class='img-fname hidden'>" + img_fname + "<br></span>"
+
         if params["display_image_ms"]:
             html_img_ms = f"<span class='img-ms'>{f[4]:08} {f[6]:08}</span>"
         else:
             html_img_ms = f"<span class='img-ms hidden'><br>{f[4]:08} {f[6]:08}</span>"
 
+        # Add the new div to the growing HTML
         visaid_body += (html_div_open + 
                         html_cap + 
                         html_img_tag + "\n" +
@@ -256,6 +275,7 @@ def create_visaid(video_path:str,
                         html_img_fname +
                         html_img_ms + 
                         "</div></div>" + "\n")
+
 
     # Map values from Python variables into HTML placeholders.
     # (This dictionary provides values for the placeholder fields in the string read
@@ -271,7 +291,6 @@ def create_visaid(video_path:str,
         "visaid_body": visaid_body,
         "MODULE_VERSION": MODULE_VERSION
     }
-
     # Create final HTML string from the structure string and substitution map
     html_str = structure_str.format_map(html_field_map)
 
