@@ -16,6 +16,14 @@ import pandas as pd
 from mmif import Mmif
 from mmif import AnnotationTypes
 
+try:
+    # if being run from higher level module
+    from . import lilhelp
+except ImportError:
+    # if run as stand-alone
+    import lilhelp
+
+
 PROC_SWT_DEFAULTS = { "default_to_none": False,
                       "include_only": None,
                       "exclude": [],
@@ -493,3 +501,15 @@ def adjust_tfs( tfs_in:list,
     tfs.sort(key=lambda f:f[2])
     return tfs
 
+
+def display_tfs(tfs:list):
+    """
+    This function simply prints a simple table of TimeFrame annotations from a tfs table
+    """
+    tfs_pretty = []
+    for f in tfs:
+        tfs_pretty += [[ f"{f[2]:08}", 
+                         lilhelp.tconv(f[2]), 
+                         lilhelp.tconv(f[3]), 
+                         f[1] ]]
+    pprint(tfs_pretty)

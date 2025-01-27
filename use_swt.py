@@ -1,10 +1,14 @@
 """
 use_swt.py
 
-# Overview
-
-This module creates useful data artifacts from the output of the 
+This functions in this module create useful data artifacts from the output of the 
 SWT detection CLAMS app.
+
+The module can be run as a stand-alone program, by passing command-line arguments.
+
+For integration into other Python programs, the easiest option to is to call the 
+`proc_display` function and the `proc_visaid` function.
+
 """
 # %%
 
@@ -22,23 +26,12 @@ import create_visaid
 import lilhelp
 
 
-def display_tfs(tfs:list):
-    """
-    This function simply prints a simple table of TimeFrame annotations from a tfs table
-    """
-    tfs_pretty = []
-    for f in tfs:
-        tfs_pretty += [[ f"{f[2]:08}", 
-                         lilhelp.tconv(f[2]), 
-                         lilhelp.tconv(f[3]), 
-                         f[1] ]]
-    pprint(tfs_pretty)
-
-
 
 def proc_display(mmif_path:str):
     """
-    This function simply prints a simple table of TimeFrame annotations from the MMIF file
+    This function simply prints a simple table of TimeFrame annotations from the MMIF file.
+
+    It is one of the procedures conditionally called by the main() function.
     """
 
     # Load up the MMIF serialization from a MMIF file
@@ -58,13 +51,13 @@ def proc_display(mmif_path:str):
     print(len(tfs), "scenes labeled in")
     print(mmif_path, ":\n")
 
-    display_tfs(tfs)
+    proc_swt.display_tfs(tfs)
 
     print()
 
 
 
-def proc_visual( mmif_path:str, 
+def proc_visaid( mmif_path:str, 
                  video_path:str, 
                  visaid_path:str=None, 
                  stdout:bool=False,
@@ -123,24 +116,29 @@ def proc_visual( mmif_path:str,
                                                         tf_view_id )
 
     # Assign values for other required parameters
+
+    _, video_filename = os.path.split(video_path)
+    video_filename_base, _ = os.path.splitext(video_filename)
+
     if visaid_path:
         output_dirname, hfilename = os.path.split(visaid_path)
     else:
-        output_dirname, hfilename = ".", ""
-
-    _, video_filename = os.path.split(video_path)
+        hfilename = video_filename_base + "_visaid.html"
+        output_dirname = "."
 
 
     if not stdout:
         print("Creating a visual index...")
 
+    # Create visaid
     _, visaid_path = create_visaid.create_visaid( 
         video_path=video_path, 
         tfs=tfs_adj, 
         stdout=stdout, 
         output_dirname=output_dirname,
         hfilename=hfilename,
-        item_id=video_filename,
+        item_id=video_filename_base,
+        item_name=video_filename,
         proc_swt_params=proc_swt_params,
         visaid_params=visaid_params,
         mmif_metadata_str=mmif_metadata_str
@@ -149,7 +147,6 @@ def proc_visual( mmif_path:str,
     if not stdout:
         print("Visual index created at")
         print(visaid_path)
-
 
 
 
@@ -169,14 +166,14 @@ def main():
         help="Path and filename for the video file")
     parser.add_argument("-d", "--display", action="store_true",
         help="Output a summary index of TimeFrames from MMIF")
-    parser.add_argument("-v", "--visual", action="store_true",
-        help="Create an HTML file with a visual index of TimeFrames (requires video file)")
+    parser.add_argument("-v", "--visaid", action="store_true",
+        help="Create an HTML visual index (visaid) of TimeFrames (requires video file)")
     parser.add_argument("-s", "--stdout", action="store_true",
-        help="Outputs the visual index HTML to stdout instead of writing a file.  Implies 'visual'. Implies not 'display'.")
+        help="Outputs the visaid HTML to stdout instead of writing a file.  Implies option 'visaid'. Implies not 'display'.")
     parser.add_argument("-o", "--visaid_path", type=str, default=None,
-        help="File path for visual index HTML file.  Implies 'visual'.")
+        help="File path for visaid HTML file.  Implies 'visaid'.")
     parser.add_argument("-m", "--mmif_only", action="store_true",
-        help="Include only MMIF TimeFrames (do not adjust scenes according to customizations) before creating a visual index")
+        help="Include only MMIF TimeFrames (do not adjust scenes according to customizations) before creating a visaid")
     parser.add_argument("-c", "--customization", type=str, default=None,
         help="Path to a JSON file supplying the values of customization options")
     
@@ -186,11 +183,11 @@ def main():
     stdout = args.stdout
     if stdout:
         display = False
-        visual = True
+        visaid = True
         warn = False
     else:
         display = args.display
-        visual = args.visual
+        visaid = args.visaid
 
     # Validate non-boolean  arguments
     mmif_path = args.mmif_path
@@ -200,9 +197,9 @@ def main():
         sys.exit(1)
 
     video_path = args.video_path
-    if visual:
+    if visaid:
         if video_path is None:
-            print("Error:  Video file path must be provided for 'visual'.")
+            print("Error:  Video file path must be provided for 'visaid'.")
             print("Run with '-h' for help.")
             sys.exit(1)
         elif not os.path.exists(video_path):
@@ -211,7 +208,7 @@ def main():
             sys.exit(1)
 
     visaid_path = args.visaid_path
-    if visual and visaid_path:
+    if visaid and visaid_path:
         output_dirname, hfilename = os.path.split(visaid_path)
         if not os.path.exists(output_dirname):
             print("Error:  No directory exists corresponding to visaid file path.")
@@ -241,7 +238,7 @@ def main():
     if display:
         proc_display(mmif_path)
 
-    if visual:
+    if visaid:
         if cust_path:
             with open(cust_path, "r") as file:
                 cust_params = json.load(file)
@@ -254,7 +251,7 @@ def main():
         else:
             cust_params = {}
 
-        proc_visual( mmif_path, 
+        proc_visaid( mmif_path, 
                      video_path, 
                      visaid_path=visaid_path,
                      stdout=stdout, 

@@ -45,6 +45,7 @@ def create_visaid( video_path:str,
                    job_id:str = None,
                    job_name:str = None,
                    item_id:str = "",
+                   item_name:str = "",
                    proc_swt_params:dict = {},
                    visaid_params:dict = {},
                    mmif_metadata_str: str = ""
@@ -81,8 +82,10 @@ def create_visaid( video_path:str,
             suffix = ""
         hfilename = prefix + "visaid" + suffix + ".html"
 
-    # Construct video identifier string to display in visaid
-    if item_id:
+    # Construct video name/identifier string to display in visaid
+    if item_name:
+        video_identifier = item_name
+    elif item_id:
         video_identifier = item_id
     else:
         video_fname = video_path[video_path.rfind("/")+1:]
