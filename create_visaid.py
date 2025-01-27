@@ -37,18 +37,18 @@ VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
                     "max_img_height": 360 }
 
 
-def create_visaid(video_path:str, 
-                  tfs:list,
-                  stdout:bool = False,
-                  output_dirname:str = ".",
-                  hfilename:str = "",
-                  job_id:str = None,
-                  job_name:str = None,
-                  item_id:str = "",
-                  proc_swt_params:dict = {},
-                  visaid_params:dict = {},
-                  mmif_metadata_str: str = ""
-                  ):                  
+def create_visaid( video_path:str, 
+                   tfs:list,
+                   stdout:bool = False,
+                   output_dirname:str = ".",
+                   hfilename:str = "",
+                   job_id:str = None,
+                   job_name:str = None,
+                   item_id:str = "",
+                   proc_swt_params:dict = {},
+                   visaid_params:dict = {},
+                   mmif_metadata_str: str = ""
+                   ):                  
     """
     Creates an HTML file (with embedded images) as a visual aid, based on the output
     of `list_tfs`.
@@ -58,7 +58,8 @@ def create_visaid(video_path:str,
     # Warn about spurious parameter keys
     for key in visaid_params:
         if key not in VISAID_DEFAULTS:
-            print("Warning: `" + key + "` is not a valid visaid option. Ignoring.")
+            if not stdout:
+                print("Warning: `" + key + "` is not a valid visaid option. Ignoring.")
 
     # Process parameters, using defaults where appropriate
     params = {}
@@ -108,7 +109,8 @@ def create_visaid(video_path:str,
         sar = 1.0
     if abs( 1 - sar ) > 0.03:
         stretch = True
-        print("Sample aspect ratio:", sar, ". Will stretch anamorphic frames.")
+        if not stdout:
+            print("Sample aspect ratio:", sar, ". Will stretch anamorphic frames.")
     else:
         stretch = False
 

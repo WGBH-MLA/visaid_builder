@@ -158,24 +158,26 @@ def run_post( item:dict,
 
     print("Attempting to process MMIF into SWT scene list...")
     
-    # create TimeFrame table from MMIF file
+    # create TimeFrame table from the serialized MMIF
     tfs = proc_swt.tfs_from_mmif( mmif_str, 
                                   tp_view_id=tp_view_id,
                                   tf_view_id=tf_view_id )
 
     print("SWT scene list length:", len(tfs) )
-    # pprint(tfs) # DIAG
 
+    # find the outer temporal boundaries of the TimePoint analysis
     first_time, final_time = proc_swt.first_final_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
     print(f"First TimePoint annotation at {lilhelp.tconv(first_time, frac=False)} ({first_time} ms).")
     print(f"Final TimePoint annotation at {lilhelp.tconv(final_time, frac=False)} ({final_time} ms).")
 
-    # adjust TimeFrame table
+    # Create an adjusted TimeFrame table (with scenes added and/or removed)
     if pp_params["adj_tfs"]:
         tfs_adj = proc_swt.adjust_tfs( tfs, first_time, final_time, proc_swt_params )
         print("Adjusted scene list length:", len(tfs_adj) )
     else:
-        tfs_adj = tfs
+        tfs_adj = tfs[:]
+
+    # pprint(tfs) # DIAG
     # pprint(tfs_adj) # DIAG
 
     # get mmif_metadata_str
