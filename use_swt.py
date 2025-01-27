@@ -122,6 +122,8 @@ def proc_visaid( mmif_path:str,
 
     if visaid_path:
         output_dirname, hfilename = os.path.split(visaid_path)
+        if not output_dirname:
+            output_dirname = "."
     else:
         hfilename = video_filename_base + "_visaid.html"
         output_dirname = "."
@@ -209,11 +211,12 @@ def main():
 
     visaid_path = args.visaid_path
     if visaid and visaid_path:
-        output_dirname, hfilename = os.path.split(visaid_path)
-        if not os.path.exists(output_dirname):
+        output_dirname, _ = os.path.split(visaid_path)
+        if output_dirname and not os.path.exists(output_dirname):
             print("Error:  No directory exists corresponding to visaid file path.")
             print("Run with '-h' for help.")
             sys.exit(1)
+
 
     # Validate customization file
     cust_path = args.customization
