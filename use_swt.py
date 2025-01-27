@@ -65,6 +65,18 @@ def proc_visaid( mmif_path:str,
                  cust_params:dict={} ):
     """
     This performs all the steps to process a MMIF file and create a visaid.
+
+    Args:
+        mmif_path (str): Path to the input MMIF file
+        video_path (str): Path to the input video file
+        visaid_path (str): Path to the output video file
+        stdout (bool): If true, visaid is written to stdout.
+        scene_adj (bool):  If true, visaid scenes (such as scene subamples) are 
+            added and/or removed before visaid creation
+        cust_params (dict):  Dictionary of values for custom parameters
+
+    Returns:
+        (no return value)
     """
 
     #
