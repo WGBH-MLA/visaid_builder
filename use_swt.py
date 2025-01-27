@@ -20,6 +20,9 @@ import warnings
 import json
 from pprint import pprint
 
+from mmif import Mmif
+from mmif import DocumentTypes
+
 # Import local modules
 import proc_swt 
 import create_visaid
@@ -77,6 +80,9 @@ def proc_visaid( mmif_path:str,
 
     Returns:
         (no return value)
+
+    Raises:
+        FileNotFoundError: If the media file is missing.
     """
 
     #
@@ -103,6 +109,42 @@ def proc_visaid( mmif_path:str,
     with open(mmif_path, "r") as usefile:
         mmif_str = usefile.read()
 
+    #
+    # Figure out the path to the media file, if it has not been provided
+    #
+    visaid_video_path = ""
+    visaid_video_dir = ""
+
+    # if a path has been given, figure out what it is
+    if video_path:
+        if os.path.isdir(video_path):
+            visaid_video_dir = video_path
+        else:
+            visaid_video_path = video_path
+
+    # need to get information out of the MMIF file
+    if not visaid_video_path:
+
+        # get the document path from the MMIF file
+        usemmif = Mmif(mmif_str)
+        doc_path = usemmif.get_document_location(DocumentTypes.VideoDocument, path_only=True)
+
+        if visaid_video_dir:
+            # We were given a directory path as input.
+            # Need to take the dir given and append the file name from the MMIF doc.
+            visaid_video_dir = os.path.realpath(visaid_video_dir) # normalize path
+            _, mmif_doc_filename = os.path.split(doc_path)
+            visaid_video_path = visaid_video_dir + "/" + mmif_doc_filename
+        else:
+            visaid_video_path = doc_path
+
+    if not os.path.isfile(visaid_video_path):
+        raise FileNotFoundError(f"No media file found at '{visaid_video_path}'.")
+
+
+    #
+    # Process MMIF and create visaid
+    # 
     if not stdout:
         print("Attempting to process MMIF into a scene list...")
 
@@ -129,7 +171,7 @@ def proc_visaid( mmif_path:str,
 
     # Assign values for other required parameters
 
-    _, video_filename = os.path.split(video_path)
+    _, video_filename = os.path.split(visaid_video_path)
     video_filename_base, _ = os.path.splitext(video_filename)
 
     if visaid_path:
@@ -146,7 +188,7 @@ def proc_visaid( mmif_path:str,
 
     # Create visaid
     _, visaid_path = create_visaid.create_visaid( 
-        video_path=video_path, 
+        video_path=visaid_video_path, 
         tfs=tfs_adj, 
         stdout=stdout, 
         output_dirname=output_dirname,
@@ -175,9 +217,9 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("mmif_path", metavar="MMIF", type=str,
-        help="Path and filename for the MMIF file")
+        help="File path for the MMIF file")
     parser.add_argument("video_path", metavar="VIDEO", type=str, nargs="?",
-        help="Path and filename for the video file")
+        help="File path for the video file.  If this is not passed in, the path will be copied from the location in the MMIF file.  If just a directory path is provided, the full file path will be inferred from that and the MMIF file.")
     parser.add_argument("-d", "--display", action="store_true",
         help="Output a summary index of TimeFrames from MMIF")
     parser.add_argument("-v", "--visaid", action="store_true",
@@ -212,14 +254,11 @@ def main():
 
     video_path = args.video_path
     if visaid:
-        if video_path is None:
-            print("Error:  Video file path must be provided for 'visaid'.")
-            print("Run with '-h' for help.")
-            sys.exit(1)
-        elif not os.path.exists(video_path):
-            print("Error:  Invalid file path for video file.")
-            print("Run with '-h' for help.")
-            sys.exit(1)
+        if video_path is not None:
+            if not os.path.exists(video_path):
+                print("Error:  Invalid file or directory path for the video file.")
+                print("Run with '-h' for help.")
+                sys.exit(1)
 
     visaid_path = args.visaid_path
     if visaid and visaid_path:
