@@ -212,7 +212,7 @@ def tfs_from_mmif( mmif_str:str,
         # If version >= 6.0, use view ID prefix for time point refs
         app = tf_view.metadata.app
         try:
-            app_ver = float(app[app.rfind("/v")+2:])
+            app_ver = float(app[app.rfind("/v")+2:].split('-', 1)[0])
             
             # For SWT v6.0 and above, TimePoints targeted by other frames include
             # a reference to the view from which they came.
