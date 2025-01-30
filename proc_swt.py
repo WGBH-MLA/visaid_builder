@@ -442,10 +442,13 @@ def adjust_tfs( tfs_in:list,
                     subsampling[label] = params["subsampling"][label]
 
         # Check for and remove invalid subsampling threshold values
+        invalid_subsamples = []
         for scenetype in subsampling:
-            if not ( subsampling[scenetype] > 0 and subsampling[scenetype] < final_time ):
+            if not ( subsampling[scenetype] > 0 and subsampling[scenetype] < 9000000 ):
                 print("Ignoring invalid scene sampling:", scenetype, ":", subsampling[scenetype])
-                del subsampling[scenetype]
+                invalid_subsamples.append(scenetype)
+        for scenetype in invalid_subsamples:
+            del subsampling[scenetype]
 
         # collect new rows for the new samples
         new_scenes = []
