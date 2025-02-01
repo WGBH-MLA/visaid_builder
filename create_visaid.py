@@ -110,10 +110,11 @@ def create_visaid( video_path:str,
     else:
         # If SAR cannot be determined, assume it is 1
         sar = 1.0
-    if abs( 1 - sar ) > 0.03:
+
+    if abs( 1 - sar ) > 0.02:
         stretch = True
         if not stdout:
-            print("Sample aspect ratio:", sar, ". Will stretch anamorphic frames.")
+            print(f'Sample aspect ratio: {sar:.3f}. Will stretch anamorphic frames.')
     else:
         stretch = False
 
