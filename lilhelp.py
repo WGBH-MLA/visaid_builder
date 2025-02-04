@@ -10,6 +10,9 @@ import sys
 import os
 import av
 
+IMG_FORMAT = "JPEG"
+IMG_QUALITY = 80
+
 
 # %% 
 # Define time prettification helper functions
@@ -126,7 +129,7 @@ def extract_stills(video_path:str,
         while ( ftime+15 >= target_time ):
             ifilename =  f'{fname}_{length:08}_{target_time:08}_{ftime:08}' + "." + filetype_ext
             ipathname = stills_dir + ifilename
-            frame.to_image().save(ipathname)
+            frame.to_image().save(ipathname, format=IMG_FORMAT, quality=IMG_QUALITY)
             image_list.append(ifilename)
             stills_count += 1
             if ( stills_count >= len(time_points) ):
