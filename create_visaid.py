@@ -16,6 +16,7 @@ import os
 import io
 import base64
 import json
+import logging
 
 import av
 
@@ -52,7 +53,7 @@ def create_visaid( video_path:str,
                    ):                  
     """
     Creates an HTML file (with embedded images) as a visual aid, based on the output
-    of `list_tfs`.
+    of `list_tfs`s.
 
     """
 
@@ -60,7 +61,7 @@ def create_visaid( video_path:str,
     for key in visaid_params:
         if key not in VISAID_DEFAULTS:
             if not stdout:
-                print("Warning: `" + key + "` is not a valid visaid option. Ignoring.")
+                logging.warning("Warning: `" + key + "` is not a valid visaid option. Ignoring.")
 
     # Process parameters, using defaults where appropriate
     params = {}
@@ -114,7 +115,7 @@ def create_visaid( video_path:str,
     if abs( 1 - sar ) > 0.02:
         stretch = True
         if not stdout:
-            print(f'Sample aspect ratio: {sar:.3f}. Will stretch anamorphic frames.')
+            logging.warning(f'Sample aspect ratio: {sar:.3f}. Will stretch anamorphic frames.')
     else:
         stretch = False
 

@@ -17,6 +17,7 @@ import argparse
 import os
 import sys
 import warnings
+import logging
 import json
 from pprint import pprint
 
@@ -28,6 +29,11 @@ import proc_swt
 import create_visaid
 import lilhelp
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s"
+)
 
 
 def proc_display(mmif_path:str):
@@ -41,7 +47,7 @@ def proc_display(mmif_path:str):
     with open(mmif_path, "r") as usefile:
         mmif_str = usefile.read()
 
-    print("Attempting to process MMIF into a scene list...")
+    logging.info("Attempting to process MMIF into a scene list...")
 
     # Get the right views
     tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(mmif_str)
@@ -146,7 +152,7 @@ def proc_visaid( mmif_path:str,
     # Process MMIF and create visaid
     # 
     if not stdout:
-        print("Attempting to process MMIF into a scene list...")
+        logging.info("Attempting to process MMIF into a scene list...")
 
     # Get the right views
     tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(mmif_str)
@@ -184,7 +190,7 @@ def proc_visaid( mmif_path:str,
 
 
     if not stdout:
-        print("Creating a visual index...")
+        logging.info("Creating a visual index...")
 
     # Create visaid
     _, visaid_path = create_visaid.create_visaid( 
@@ -201,8 +207,8 @@ def proc_visaid( mmif_path:str,
         )
 
     if not stdout:
-        print("Visual index created at")
-        print(visaid_path)
+        logging.info("Visual index created at")
+        logging.info(visaid_path)
 
 
 
@@ -301,7 +307,7 @@ def main():
                 for key in cust_params:
                     if key not in { **proc_swt.PROC_SWT_DEFAULTS, 
                                     **create_visaid.VISAID_DEFAULTS } :
-                        print("Warning: `" + key + "` is not a valid config option for this postprocess. Ignoring.")
+                        logging.warning("Warning: `" + key + "` is not a valid config option for this postprocess. Ignoring.")
         else:
             cust_params = {}
 
