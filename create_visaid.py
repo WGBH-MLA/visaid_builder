@@ -28,7 +28,7 @@ except ImportError:
     import lilhelp
 
 
-MODULE_VERSION = "1.80"
+MODULE_VERSION = "1.81"
 
 VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
                     "display_video_duration": True,
@@ -36,6 +36,8 @@ VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
                     "display_image_ms": True,
                     "aapb_timecode_link": False,
                     "max_img_height": 360 }
+
+STRETCH_THRESHOLD = 0.01
 
 
 def create_visaid( video_path:str, 
@@ -56,6 +58,8 @@ def create_visaid( video_path:str,
     of `list_tfs`s.
 
     """
+
+    problems = []
 
     # Warn about spurious parameter keys
     for key in visaid_params:
@@ -84,12 +88,12 @@ def create_visaid( video_path:str,
         hfilename = prefix + "visaid" + suffix + ".html"
 
     # Construct video name/identifier string to display in visaid
+    video_fname = video_path[video_path.rfind("/")+1:]
     if item_name:
         video_identifier = item_name
     elif item_id:
         video_identifier = item_id
     else:
-        video_fname = video_path[video_path.rfind("/")+1:]
         video_identifier = video_fname
 
     # 
@@ -112,7 +116,7 @@ def create_visaid( video_path:str,
         # If SAR cannot be determined, assume it is 1
         sar = 1.0
 
-    if abs( 1 - sar ) > 0.02:
+    if abs( 1 - sar ) > STRETCH_THRESHOLD:
         stretch = True
         if not stdout:
             logging.warning(f'Sample aspect ratio: {sar:.3f}. Will stretch anamorphic frames.')
@@ -139,53 +143,71 @@ def create_visaid( video_path:str,
         # initialize target scene and still 
         next_scene = 0 
         target_time = tfs_s[next_scene][4]
+        last_packet_error = 0
       
-        # loop through video frames to capture targets
-        for frame in container.decode(video_stream):
-            
-            ftime = int(frame.time * 1000)   
+        # looping through packets instead of frames allows exception handling for each
+        # particular decode step.  This main loop originally iterated over frames in
+        # `container.decode(video_stream)`.
+        for packet in container.demux(video_stream):
+            try:
+                for frame in packet.decode():
+                    ftime = int(frame.time * 1000)   
 
-            # look for the frame nearest to the target
-            if ftime+15 >= target_time :
-                
-                # Check for anamorphic and stretch if necessary
-                if stretch:
-                    if sar > 1.0:
-                        # stretch the width
-                        new_width = int( sar * frame.width)
-                        new_height = frame.height
-                    else:
-                        # stretch the height
-                        new_width = frame.width
-                        new_height = int(frame.height / sar)
-                    stretched_frame = frame.reformat( width=new_width, height=new_height )
-                else:
-                    stretched_frame = frame
+                    # look for the frame nearest to the target
+                    if ftime+15 >= target_time :
+                        
+                        # Check for anamorphic and stretch if necessary
+                        if stretch:
+                            if sar > 1.0:
+                                # stretch the width
+                                new_width = int( sar * frame.width)
+                                new_height = frame.height
+                            else:
+                                # stretch the height
+                                new_width = frame.width
+                                new_height = int(frame.height / sar)
+                            stretched_frame = frame.reformat( width=new_width, height=new_height )
+                        else:
+                            stretched_frame = frame
 
-                # Reduce the size of the image, if necessary
-                if stretched_frame.height > params["max_img_height"]:
-                    res_factor = params["max_img_height"] / stretched_frame.height 
-                    new_width = int(stretched_frame.width * res_factor)
-                    res_frame = stretched_frame.reformat( width=new_width, height=params["max_img_height"] )
-                else:
-                    res_frame = stretched_frame
+                        # Reduce the size of the image, if necessary
+                        if stretched_frame.height > params["max_img_height"]:
+                            res_factor = params["max_img_height"] / stretched_frame.height 
+                            new_width = int(stretched_frame.width * res_factor)
+                            res_frame = stretched_frame.reformat( width=new_width, height=params["max_img_height"] )
+                        else:
+                            res_frame = stretched_frame
 
-                # Save frame to memory buffer
-                buf = io.BytesIO()
-                res_frame.to_image().save(buf, format="JPEG", quality=75)
+                        # Save frame to memory buffer
+                        buf = io.BytesIO()
+                        res_frame.to_image().save(buf, format="JPEG", quality=75)
 
-                # convert binary image data to base64 serialized in a UTF-8 string
-                img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
+                        # convert binary image data to base64 serialized in a UTF-8 string
+                        img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
 
-                # add new row to tfsi
-                tfsi.append(tfs_s[next_scene] + [ ftime ] + [ img_str ] )
-                
-                next_scene += 1
-                if next_scene < len(tfs_s):            
-                    target_time = tfs_s[next_scene][4]
-                else:
-                    # no need to continue decoding video if we have all our scenes saved
-                    break
+                        # add new row to tfsi
+                        tfsi.append(tfs_s[next_scene] + [ ftime ] + [ img_str ] )
+                        
+                        next_scene += 1
+                        if next_scene >= len(tfs_s):            
+                            # no need to continue decoding video if we have all our scenes saved
+                            break
+                        else:
+                            target_time = tfs_s[next_scene][4]
+
+            except av.AVError as e:
+                # This exception may get raised many times if there are many packets with problems
+                # However, we'll log only one error per (starting) time stamp of corrupt region.
+                if last_packet_error != ftime:
+                    logging.warning(f"{video_fname} at {ftime} ms: {e}")
+                    last_packet_error = ftime
+                if "decode" not in problems:
+                    problems.append("decode")
+                continue  # Skip this packet and try the next one
+
+            if next_scene >= len(tfs_s):
+                # no need to continue decoding video if we have all our scenes saved
+                break
 
     # Done with the video media itself
     container.close()
@@ -311,5 +333,5 @@ def create_visaid( video_path:str,
         with open(hfilepath, "w") as html_file:
             html_file.write(html_str)
     
-    return (hfilename, hfilepath)
+    return hfilepath, problems
    

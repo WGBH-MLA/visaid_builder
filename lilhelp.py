@@ -9,9 +9,11 @@ import math
 import sys
 import os
 import av
+import logging
 
 IMG_FORMAT = "JPEG"
 IMG_QUALITY = 80
+STRETCH_THRESHOLD = 0.01
 
 
 # %% 
@@ -97,7 +99,19 @@ def extract_stills(video_path:str,
 
     # get technical stats on the video stream; assumes FPS is constant
     fps = video_stream.average_rate.numerator / video_stream.average_rate.denominator
-    
+
+    # determine whether anamorphic stills will need to be stretched
+    if video_stream.sample_aspect_ratio is not None:
+        sar = float(video_stream.sample_aspect_ratio)
+    else:
+        # If SAR cannot be determined, assume it is 1
+        sar = 1.0
+    if abs( 1 - sar ) > STRETCH_THRESHOLD:
+        stretch = True
+        logging.debug(f'Sample aspect ratio: {sar:.3f}. Will stretch anamorphic frames.')
+    else:
+        stretch = False
+
     # calculate duration in ms
     length = int((video_stream.frames / fps) * 1000)
 
@@ -107,37 +121,55 @@ def extract_stills(video_path:str,
 
     # going to loop through every frame in the video stream, starting at the beginning 
     target_time = time_points[stills_count]
-    for frame in container.decode(video_stream):
+    last_packet_error = 0
 
-        # prevent this from running longer than necessary
-        if ( stills_count >= len(time_points) ):
-            break
+    # looping through packets instead of frames allows exception handling for each
+    # particular decode step.  This main loop originally iterated over frames in
+    # `container.decode(video_stream)`.
+    for packet in container.demux(video_stream):
+        try:
+            for frame in packet.decode():
+                # prevent this from running longer than necessary
+                if ( stills_count >= len(time_points) ):
+                    break
 
-        # calculate the time of the frame
-        ftime = int(frame.time * 1000)   
+                # calculate the time of the frame
+                ftime = int(frame.time * 1000)   
 
-        # Grab the first still after the target time index 
-        """
-        if ( ftime >= target_time ):
-            ifilename =  f'{fname}_{length:08}_{target_time:08}_{ftime:08}' + "." + filetype_ext
-            ipathname = stills_dir + ifilename
-            frame.to_image().save(ipathname)
-            image_list.append(ifilename)
-            stills_count += 1
-        """
-        # Grab the still for each target mentioned (even if it's the same still)
-        while ( ftime+15 >= target_time ):
-            ifilename =  f'{fname}_{length:08}_{target_time:08}_{ftime:08}' + "." + filetype_ext
-            ipathname = stills_dir + ifilename
-            frame.to_image().save(ipathname, format=IMG_FORMAT, quality=IMG_QUALITY)
-            image_list.append(ifilename)
-            stills_count += 1
-            if ( stills_count >= len(time_points) ):
-                break
-            else:
-                target_time = time_points[stills_count]
+                # Grab the still for each target mentioned (even if it's the same still)
+                while ( ftime+15 >= target_time ):
 
-        fcount += 1
+                    # Check for anamorphic and stretch if necessary
+                    if stretch:
+                        if sar > 1.0:
+                            # stretch the width
+                            new_width = int( sar * frame.width)
+                            new_height = frame.height
+                        else:
+                            # stretch the height
+                            new_width = frame.width
+                            new_height = int(frame.height / sar)
+                        stretched_frame = frame.reformat( width=new_width, height=new_height )
+                    else:
+                        stretched_frame = frame
+
+                    ifilename =  f'{fname}_{length:08}_{target_time:08}_{ftime:08}' + "." + filetype_ext
+                    ipathname = stills_dir + ifilename
+                    stretched_frame.to_image().save(ipathname, format=IMG_FORMAT, quality=IMG_QUALITY)
+                    image_list.append(ifilename)
+                    stills_count += 1
+                    if ( stills_count >= len(time_points) ):
+                        break
+                    else:
+                        target_time = time_points[stills_count]
+                fcount += 1
+
+        except av.AVError as e:
+            if last_packet_error != ftime:
+                logging.warning(f"{video_fname} at {ftime} ms: {e}")
+                last_packet_error = ftime
+            continue
+
     
     if verbose: print("Extracted", stills_count, "stills out of", fcount, "video frames checked.") 
 

@@ -47,7 +47,7 @@ except ImportError:
 
 
 
-MODULE_VERSION = "0.30"
+MODULE_VERSION = "0.31"
 
 
 # These are the defaults specific to routines defined in this module.
@@ -78,6 +78,7 @@ def run_post( item:dict,
     """
 
     errors = []
+    problems = []
 
     # 
     # Process and validate options passed in
@@ -289,7 +290,7 @@ def run_post( item:dict,
             except Exception as e:
                 print("Extraction of slate frame at", slate_rep ,"failed.")
                 print("Error:", e)
-                errors.append("get_slate")
+                errors.append(pp_params["name"]+":"+"slates")
             
         else:
             print("No slate found.")
@@ -321,7 +322,7 @@ def run_post( item:dict,
             except Exception as e:
                print("Extraction of frame failed.")
                print("Error:", e)  
-               errors.append("get_reps")
+               errors.append(pp_params["name"]+":"+"reps")
                rep_images = []
 
             print("Saved", len(rep_images), "representative stills from", len(tfs_adj), "scenes.")
@@ -384,8 +385,8 @@ def run_post( item:dict,
             
             # check for duplicates and remove them
             full_ksl_tups = set(tuple(r) for r in full_ksl_arr)
-            if len(full_ksl_arr) != len( full_ksl_tups ):
-                print("Warning: Duplicate items in accumulated KSL array.")
+            if len(full_ksl_arr) != len(full_ksl_tups):
+                print("Warning: Duplicate items added to the cumulative KSL array.  Will de-dupe.")
                 full_ksl_arr = [ list(tup) for tup in full_ksl_tups ] 
 
             full_ksl_arr.sort(key=lambda f:f[0])
@@ -426,42 +427,31 @@ def run_post( item:dict,
 
         visaid_filename = visaid_path = None
 
-        visaid_filename, visaid_path = create_visaid.create_visaid( 
-            video_path=item["media_path"], 
-            tfs=tfs_adj, 
-            stdout=False, 
-            output_dirname=visaids_dir,
-            job_id=cf["job_id"],
-            job_name=cf["job_name"], 
-            item_id=item["asset_id"],
-            proc_swt_params=proc_swt_params,
-            visaid_params=visaid_params,
-            mmif_metadata_str=mmif_metadata_str
-            )
+        try:
+            visaid_path, visaid_problems = create_visaid.create_visaid( 
+                video_path=item["media_path"], 
+                tfs=tfs_adj, 
+                stdout=False, 
+                output_dirname=visaids_dir,
+                job_id=cf["job_id"],
+                job_name=cf["job_name"], 
+                item_id=item["asset_id"],
+                proc_swt_params=proc_swt_params,
+                visaid_params=visaid_params,
+                mmif_metadata_str=mmif_metadata_str
+                )
+        except Exception as e:
+            print("Creation of visaid failed.")
+            print("Error:", e)
+            errors.append(pp_params["name"]+":"+"visaids")
 
-        # try:
-        #     visaid_filename, visaid_path = create_visaid.create_visaid( 
-        #         video_path=item["media_path"], 
-        #         tfs=tfs_adj, 
-        #         stdout=False, 
-        #         output_dirname=visaids_dir,
-        #         job_id=cf["job_id"],
-        #         job_name=cf["job_name"], 
-        #         item_id=item["asset_id"],
-        #         proc_swt_params=proc_swt_params,
-        #         visaid_params=visaid_params,
-        #         mmif_metadata_str=mmif_metadata_str
-        #         )
-        # except Exception as e:
-        #     print("Creation of visaid failed.")
-        #     print("Error:", e)
-        #     errors.append("visaid")
+        problems += [ "visaid:"+p for p in visaid_problems ]
 
         if visaid_path:
             print("Visual index created at")
             print(visaid_path)
         else:
             print("Visaid creation procedure completed, but no file path returned.")
-            errors.append("visaid")
+            errors.append(pp_params["name"]+":"+"visaids")
 
-    return errors
+    return errors, problems

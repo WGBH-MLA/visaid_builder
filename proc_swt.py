@@ -9,7 +9,8 @@ function will have values of `None` instead of the values specified in
 """
 
 import json
-from pprint import pprint # DIAG
+import logging
+from pprint import pprint 
 
 import pandas as pd
 
@@ -191,7 +192,7 @@ def tfs_from_mmif( mmif_str:str,
 
     # If there is no view with a TimeFrame, return an empty list.
     if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) == 0:
-        print("Warning: MMIF file contained no TimeFrame annotations.")
+        logging.warning("Warning: MMIF file contained no TimeFrame annotations.")
         tfs = []
     else:
         # Get the correct views for TimePoint and TimeFrame annotations.
@@ -221,9 +222,9 @@ def tfs_from_mmif( mmif_str:str,
             else:
                 ref_prefix = ""
         except Exception as e:
-            print("Error:", e)
-            print("Could not get app version.")
-            print("Assuming version less than 6.0")
+            logging.error("Exception:", e)
+            logging.error("Could not get app version.")
+            logging.error("Assuming version less than 6.0")
             ref_prefix = ""
 
         # Drill down to the annotations we're after, creating generators
@@ -314,7 +315,7 @@ def adjust_tfs( tfs_in:list,
     # Warn about spurious parameters
     for key in params_in:
         if key not in PROC_SWT_DEFAULTS:
-            print("Warning: `" + key + "` is not a valid param for tfs adjustment. Ignoring.")
+            logging.warning("Warning: `" + key + "` is not a valid param for tfs adjustment. Ignoring.")
 
     # Set parameters not passed in to their defaul values
     # If "default_to_none" is True, then parameters not explicitly passed in will be 
@@ -445,7 +446,7 @@ def adjust_tfs( tfs_in:list,
         invalid_subsamples = []
         for scenetype in subsampling:
             if not ( subsampling[scenetype] > 0 and subsampling[scenetype] < 9000000 ):
-                print("Ignoring invalid scene sampling:", scenetype, ":", subsampling[scenetype])
+                logging.warning("Ignoring invalid scene sampling:", scenetype, ":", subsampling[scenetype])
                 invalid_subsamples.append(scenetype)
         for scenetype in invalid_subsamples:
             del subsampling[scenetype]
