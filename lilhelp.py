@@ -72,6 +72,7 @@ def extract_stills(video_path:str,
 
     # Print explanatory messages.
     if verbose: print("Using video from", video_path)
+    video_fname = video_path[video_path.rfind("/")+1:]
 
     # Initialize counters for iteration
     image_list = []
