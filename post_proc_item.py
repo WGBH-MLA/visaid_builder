@@ -419,13 +419,13 @@ def run_post( item:dict,
     # 
     # Note:  Visaid is created from the adjusted TimeFrame table. If this is not 
     # desired, set the adj_tfs parameter to false.
-
     #
     if "visaids" in artifacts:
         print("Attempting to make a visaid...")
         visaids_dir = artifacts_dir + "/visaids"
 
-        visaid_filename = visaid_path = None
+        visaid_path = None
+        visaid_problems = []
 
         try:
             visaid_path, visaid_problems = create_visaid.create_visaid( 
@@ -440,7 +440,7 @@ def run_post( item:dict,
                 visaid_params=visaid_params,
                 mmif_metadata_str=mmif_metadata_str
                 )
-        except Exception as e:
+        except av.error.InvalidDataError as e:
             print("Creation of visaid failed.")
             print("Error:", e)
             errors.append(pp_params["name"]+":"+"visaids")
@@ -454,4 +454,7 @@ def run_post( item:dict,
             print("Visaid creation procedure completed, but no file path returned.")
             errors.append(pp_params["name"]+":"+"visaids")
 
+    # 
+    # Finished with the whole postprocess
+    # 
     return errors, problems

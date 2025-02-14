@@ -195,7 +195,7 @@ def create_visaid( video_path:str,
                         else:
                             target_time = tfs_s[next_scene][4]
 
-            except av.AVError as e:
+            except av.error.InvalidDataError as e:
                 # This exception may get raised many times if there are many packets with problems
                 # However, we'll log only one error per (starting) time stamp of corrupt region.
                 if last_packet_error != ftime:

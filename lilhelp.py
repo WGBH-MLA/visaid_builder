@@ -164,7 +164,7 @@ def extract_stills(video_path:str,
                         target_time = time_points[stills_count]
                 fcount += 1
 
-        except av.AVError as e:
+        except Exception as e:
             if last_packet_error != ftime:
                 logging.warning(f"{video_fname} at {ftime} ms: {e}")
                 last_packet_error = ftime
