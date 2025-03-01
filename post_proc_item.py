@@ -346,6 +346,10 @@ def run_post( item:dict,
             print("Cannot make index because representative stills were not extracted.")
         else:
 
+            # Indicate where (if anywhere) to include labels predicted by SWT
+            # Valid values: "nowhere", "field", "annotation"
+            include_predicted_labels = "nowhere"
+
             # build KSL data for this item
             ksl_arr = []
             for fname in rep_images:
@@ -354,8 +358,7 @@ def run_post( item:dict,
                 tp = int(fname.split("_")[2])
 
                 # lookup label in tfs_adj array
-                #label = [ tf[5] for tf in tfs_adj if tf[4] == tp ][0]
-                label = ""
+                label = [ tf[5] for tf in tfs_adj if tf[4] == tp ][0]
 
                 if label.find(":") != -1:
                     label, sublabel = label.split(":")
@@ -392,7 +395,12 @@ def run_post( item:dict,
             full_ksl_arr.sort(key=lambda f:f[0])
 
             # build JS array file
-            proto_js_arr = [ [r[0], False, r[1], r[2], False, "", ""] for r in full_ksl_arr ]
+            if include_predicted_labels == "field":
+                proto_js_arr = [ [r[0], False, r[1], r[2], False, "", ""] for r in full_ksl_arr ]
+            elif include_predicted_labels == "annotation":
+                proto_js_arr = [ [r[0], False, "", "", False, (f"Predicted label: {r[1]}" if r[1] else ""), ""] for r in full_ksl_arr ]
+            else:
+                proto_js_arr = [ [r[0], False, "", "", False, "", ""] for r in full_ksl_arr ]
 
             # convert array to a JSON string 
             image_array_j = json.dumps(proto_js_arr)
