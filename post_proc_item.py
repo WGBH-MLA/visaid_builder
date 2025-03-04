@@ -216,17 +216,19 @@ def run_post( item:dict,
                         if (tf[1] in SLATE_BINS and tf[3] <= pp_params["prog_start_max"]) ]
         if len(slate_tfs) > 0:
             slate_begin = int(slate_tfs[0][2])
-            proxy_start_ms = max(bars_end, slate_begin)
+            proxy_start = max(bars_end, slate_begin)
         else:
-            proxy_start_ms = bars_end
+            proxy_start = bars_end
         
-        if proxy_start_ms < pp_params["prog_start_min"]:
-            proxy_start_ms = 0
+        if proxy_start < pp_params["prog_start_min"]:
+            proxy_start = 0
 
-        # print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start_ms) # DIAG        
+        # print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start) # DIAG        
 
-        proxy_start = proxy_start_ms // 1000
-        print("Proxy start:", proxy_start)
+        bars_end_sec = bars_end // 1000
+        proxy_start_sec = proxy_start // 1000
+        print("Bars end:", bars_end_sec)
+        print("Proxy start:", proxy_start_sec)
 
         # get app names
         tp_ver, tf_ver = proc_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
@@ -246,7 +248,8 @@ def run_post( item:dict,
                 }
             },
             "data":{
-                "proxy_start_time": proxy_start
+                "bars_end_time": bars_end_sec,
+                "proxy_start_time": proxy_start_sec
             }
         }]
         # print(data_artifact) # DIAG 
