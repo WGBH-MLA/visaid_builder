@@ -46,8 +46,9 @@ except ImportError:
     import create_visaid
 
 
-
-MODULE_VERSION = "0.31"
+# Version notes
+# 0.32 - first version to add `bars_end` to data artifact
+MODULE_VERSION = "0.32"
 
 
 # These are the defaults specific to routines defined in this module.
