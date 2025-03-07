@@ -28,7 +28,7 @@ except ImportError:
     import lilhelp
 
 
-MODULE_VERSION = "1.81"
+MODULE_VERSION = "1.82"
 
 VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
                     "display_video_duration": True,
@@ -60,12 +60,14 @@ def create_visaid( video_path:str,
     """
 
     problems = []
+    infos = []
 
     # Warn about spurious parameter keys
     for key in visaid_params:
         if key not in VISAID_DEFAULTS:
             if not stdout:
                 logging.warning("Warning: `" + key + "` is not a valid visaid option. Ignoring.")
+            problems.append("invalid-visaid_param")
 
     # Process parameters, using defaults where appropriate
     params = {}
@@ -119,7 +121,8 @@ def create_visaid( video_path:str,
     if abs( 1 - sar ) > STRETCH_THRESHOLD:
         stretch = True
         if not stdout:
-            logging.warning(f'Sample aspect ratio: {sar:.3f}. Will stretch anamorphic frames.')
+            logging.info(f'Sample aspect ratio: {sar:.3f}. Will stretch anamorphic frames.')
+        infos.append(f'SAR-{sar:.3f}')
     else:
         stretch = False
 
@@ -199,7 +202,8 @@ def create_visaid( video_path:str,
                 # This exception may get raised many times if there are many packets with problems
                 # However, we'll log only one error per (starting) time stamp of corrupt region.
                 if last_packet_error != ftime:
-                    logging.warning(f"{video_fname} at {ftime} ms: {e}")
+                    if not stdout:
+                        logging.warning(f"{video_fname} at {ftime} ms: {e}")
                     last_packet_error = ftime
                 if "decode" not in problems:
                     problems.append("decode")
@@ -333,5 +337,5 @@ def create_visaid( video_path:str,
         with open(hfilepath, "w") as html_file:
             html_file.write(html_str)
     
-    return hfilepath, problems
+    return hfilepath, problems, infos
    

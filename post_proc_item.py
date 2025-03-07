@@ -80,6 +80,7 @@ def run_post( item:dict,
 
     errors = []
     problems = []
+    infos = []
 
     # 
     # Process and validate options passed in
@@ -438,9 +439,10 @@ def run_post( item:dict,
 
         visaid_path = None
         visaid_problems = []
+        visaid_infos = []
 
         try:
-            visaid_path, visaid_problems = create_visaid.create_visaid( 
+            visaid_path, visaid_problems, visaid_infos = create_visaid.create_visaid( 
                 video_path=item["media_path"], 
                 tfs=tfs_adj, 
                 stdout=False, 
@@ -458,6 +460,7 @@ def run_post( item:dict,
             errors.append(pp_params["name"]+":"+"visaids")
 
         problems += [ "visaid:"+p for p in visaid_problems ]
+        infos += [ "visaid:"+m for m in visaid_infos ]
 
         if visaid_path:
             print("Visual index created at")
@@ -469,4 +472,4 @@ def run_post( item:dict,
     # 
     # Finished with the whole postprocess
     # 
-    return errors, problems
+    return errors, problems, infos
