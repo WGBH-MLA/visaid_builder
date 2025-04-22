@@ -28,7 +28,7 @@ except ImportError:
     import lilhelp
 
 
-MODULE_VERSION = "1.82"
+MODULE_VERSION = "1.83"
 
 VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
                     "display_video_duration": True,
@@ -240,23 +240,21 @@ def create_visaid( video_path:str,
     # Build additional HTML strings to include in visaid HTML structure
     #
 
-    # create job information HTML
-    if params["display_job_info"] and job_id is not None:
-        job_info = "<br><span class='extra-info'>JOB: <span class='identifier' id='job-id'>"
-        job_info += job_id + "</span> "
-        if job_name is not None and job_name != job_id:
-            job_info += ( '("' + job_name + '")' )
-        job_info += "</span>"
-    else:
-        job_info = ""
-
     # create media duration HTML
     if params["display_video_duration"]:
-        video_duration = "<span class='extra-info'>["
-        video_duration += lilhelp.tconv(media_length, frac=False)
-        video_duration += "]</span>"
+        video_duration = "[" + lilhelp.tconv(media_length, frac=False) + "]"
     else:
         video_duration = ""
+
+    # create job information HTML
+    if params["display_job_info"] and job_id is not None:
+        job_info = "[JOB: <span class='identifier' id='job-id'>"
+        job_info += job_id + "</span>"
+        if job_name is not None and job_name != job_id:
+            job_info += ( '("' + job_name + '")' )
+        job_info += "]</span>"
+    else:
+        job_info = ""
 
     # serialize metadata about process and visaid options
     visaid_options_str = json.dumps( [proc_swt_params,visaid_params], indent=2 )

@@ -23,19 +23,20 @@ restyle, enhance, or alter a visaid.
 
 <body>
 <div class='top'>Visual index of 
-<span class='video-id' id='video-id'>{video_identifier}</span> {video_duration}
-{job_info}
+    <span class='video-id' id='video-id'>{video_identifier}</span>
+    <br>
+    <span class='extra-info'>{video_duration} {job_info}</span>
+    <div class='button-container'>
+        <button type='button' class='hidden' id='unsamplesVisButton'>Toggle Unlabeled Samples</button>
+        <button type='button' class='hidden' id='subsamplesVisButton'>Toggle Scene Subsamples</button>
+    </div>
+</div>
 <pre class="metadata hidden" id="visaid-options">
 {visaid_options_str}
 </pre>
 <pre class="metadata hidden" id="mmif-views-metadata">
 {mmif_metadata_str}
 </pre>
-</div>
-<div class='button-container'>
-<button type='button' class='hidden' id='unsamplesVisButton'>Toggle Unlabeled Samples</button>
-<button type='button' class='hidden' id='subsamplesVisButton'>Toggle Scene Subsamples</button>
-</div>
 <div class='container'>
 
 {visaid_body}

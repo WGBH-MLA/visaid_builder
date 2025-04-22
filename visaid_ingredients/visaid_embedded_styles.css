@@ -1,62 +1,53 @@
+html {
+    font-size: 16px;
+}
 body {
     font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
-    font-size: small;
+    font-size: 0.8rem;
     color: black;
     background-color: #f3f3f3;
+    margin: 0;
+    padding-top: 94px;
 }
 .hidden {
     display: none;
 }
 div.top {
-    font-size: large;
-    padding: 8px 8px 4px 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    overflow-y: auto;
+    width: 100%;
+    height: 84px;
+    font-size: 1.2rem;
+    padding: 4px 10px 0px 10px;
     margin-bottom: 8px;
     background-color: white;
+    border-bottom: 1px solid #e2e2e2;
 }
-span.video-id {
-    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
-    color:  #6d57db;
+div.button-container {
+    margin-top: 3px;
+    margin-bottom: 3px;
 }
-span.extra-info {
-    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
-    font-size: small;
-    color: #5e5d5e ; 
-}
-div.version {
-    font-size: x-small;
-    padding: 12px;
-}
-span.identifier {
-    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+button {
+    font-size: 0.8rem;
+    margin-right: 6px;    
 }
 pre.metadata {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
-    font-size: x-small;
-}
-span.label {
-    font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
-}
-div.img-caption {
-    font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
-    font-size: 55%;
-    color: #858585; 
-    padding: 2px;
-    text-align: center;
-}
-div.button-container {
-    margin-top: 5px;
-    margin-bottom: 5px;
+    font-size: 0.7rem;
 }
 div.container {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+    padding: 4px 10px 0px 10px;
 }
 div.item {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     background-color: #bababa;
-    padding: 8px 8px 6px 10px;
-    border-radius: 6px 6px 6px 6px;
+    padding: 4px 8px 4px 10px;
+    border-radius: 8px 8px 8px 8px;
     box-shadow: 2px 2px 2px 0 #858585,
                 -1px -1px 1px 0 #e2e2e2;
 }
@@ -77,15 +68,38 @@ div.unsample {
 div.unsample span.img-caption {
     color: #a3a3a3;
 }
-button {
-    font-size: small;
-    margin-right: 6px;    
+div.img-caption {
+    font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
+    font-size: 0.5rem;
+    color: #858585; 
+    padding: 2px;
+    padding-bottom: 0px;
+    text-align: center;
 }
 img {
     display: block;
     height: 180px;
     border: 2px solid black;
     margin-top: 2px;
+}
+div.version {
+    font-size: 0.7rem;
+    padding: 12px;
+}
+span.video-id {
+    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+    color:  #6d57db;
+}
+span.extra-info {
+    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+    font-size: 0.8rem;
+    color: #5e5d5e ; 
+}
+span.identifier {
+    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+}
+span.label {
+    font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
 }
 a {
     color: inherit;
