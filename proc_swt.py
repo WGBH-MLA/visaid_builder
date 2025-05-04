@@ -1,11 +1,37 @@
 """
-process_swt.py
+proc_swt.py
 
 Defines functions that perform processing on MMIF output from SWT.
 
-The `default_to_none` parameter means that parameters not specified by the calling
-function will have values of `None` instead of the values specified in 
-`PROC_SWT_DEFAULTS`.
+The primary functions here are:
+`tfs_from_mmif` - creates a tfs array from an MMIF file
+`adjust_tfs` - makes adjustments to a tfs array
+
+The `adjust_tfs` function takes a parameter called `params_in` that tell it
+what adjustments to make.  These are the kinds of options specified by the
+parameters for the visaid builder.  
+
+The valid keys for `params_in` are as follows:
+    "default_to_none" (bool) - If True, then parameters not specified when `adjust_tfs` 
+    is called will get the value None instead of the values specified in 
+    `PROC_SWT_DEFAULTS`.  
+
+    "include_only" (list) - A list of postbin categories such that only those bins should
+    be included.  
+
+    "exclude" (list) - A list of postbin categories that shoudl be excluded.
+
+    "max_unsampled_gap" (int) - The maximumn number of milliseconds to go without adding a
+    sample not included in a scene.  Use None to get no unlabeled samples.
+
+    "subsampling" (dict) - Key value pairs indicating the milliseconds sampling rate. The 
+    idea is to create enough subsample scenes so that each is shorter than the subsampling threshold.
+    Example: 36s scene with 10s subsampling -> 4 x 9s subsample scenes
+
+    "include_first_time" (bool) - Whether to add the first video frame
+
+    "include_final_frame" (bool) - Whether to add the final video frame
+
 """
 
 import json
@@ -25,6 +51,9 @@ except ImportError:
     import lilhelp
 
 
+# These defualt values are used only if 
+#   1) the key is not included in `params_in`
+#   2) the value in `params_in` of "default_to_none" is `False`.
 PROC_SWT_DEFAULTS = { "default_to_none": False,
                       "include_only": None,
                       "exclude": [],
@@ -438,7 +467,7 @@ def adjust_tfs( tfs_in:list,
                 # go ahead and set subsampling for all labels to the default value
                 subsampling[label] = params["default_subsampling"]
             if params["subsampling"]:
-                # overwrite the default value for subampling values specified in params dictionary
+                # overwrite the default value for subsampling values specified in params dictionary
                 for label in params["subsampling"]:
                     subsampling[label] = params["subsampling"][label]
 
