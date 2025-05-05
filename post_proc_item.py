@@ -48,7 +48,7 @@ except ImportError:
 
 # Version notes
 # 0.32 - first version to add `bars_end` to data artifact
-MODULE_VERSION = "0.32"
+MODULE_VERSION = "0.33"
 
 
 # These are the defaults specific to routines defined in this module.
@@ -56,6 +56,7 @@ POSTPROC_DEFAULTS = { "name": None,
                       "artifacts": [],
                       "prog_start_min": 3000,
                       "prog_start_max": 150000,
+                      "slate_rep_max": 180000,
                       "adj_tfs": True }
 
 # Names of the artifact types that this module can create
@@ -127,7 +128,7 @@ def run_post( item:dict,
         if key in params:
             pp_params[key] = params[key]
         else:
-            pp_params[key] = POSTPROC_DEFAULTS
+            pp_params[key] = POSTPROC_DEFAULTS[key]
 
     proc_swt_params = {}
     for key in proc_swt.PROC_SWT_DEFAULTS:
@@ -279,23 +280,26 @@ def run_post( item:dict,
         if len(slate_tfs) > 0:
             slate_rep = int(slate_tfs[0][4])
 
-        if slate_rep is not None:
-            try:
-                slates = lilhelp.extract_stills( 
-                           item["media_path"], 
-                           [ slate_rep ], 
-                           item["asset_id"],
-                           slates_dir,
-                           verbose=False )
-                if len(slates) == 1:
-                    print("Slate saved.")
-                else:
-                    print("Warning: Saved", len(slates), "slates.")
+        if slate_rep is not None :
+            if slate_rep > pp_params["slate_rep_max"]:
+                print(f'Detected slate occurs beyond {pp_params["slate_rep_max"]}ms.  Will not save.')
+            else: 
+                try:
+                    slates = lilhelp.extract_stills( 
+                            item["media_path"], 
+                            [ slate_rep ], 
+                            item["asset_id"],
+                            slates_dir,
+                            verbose=False )
+                    if len(slates) == 1:
+                        print("Slate saved.")
+                    else:
+                        print("Warning: Saved", len(slates), "slates.")
 
-            except Exception as e:
-                print("Extraction of slate frame at", slate_rep ,"failed.")
-                print("Error:", e)
-                errors.append(pp_params["name"]+":"+"slates")
+                except Exception as e:
+                    print("Extraction of slate frame at", slate_rep ,"failed.")
+                    print("Error:", e)
+                    errors.append(pp_params["name"]+":"+"slates")
             
         else:
             print("No slate found.")
