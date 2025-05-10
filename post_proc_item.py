@@ -48,7 +48,7 @@ except ImportError:
 
 # Version notes
 # 0.32 - first version to add `bars_end` to data artifact
-MODULE_VERSION = "0.33"
+MODULE_VERSION = "0.34"
 
 
 # These are the defaults specific to routines defined in this module.
@@ -83,18 +83,22 @@ def run_post( item:dict,
     problems = []
     infos = []
 
+    # shorthand item number string for screen output
+    ins = f'[#{item["item_num"]}] '
+
+
     # 
     # Process and validate options passed in
     # 
 
     if "name" in params:
         if params["name"].lower() not in ["swt", "visaid_builder", "visaid-builder", "visaid"]:
-            print("Post-processing error: Tried to run", params["name"],
+            print(ins + "Post-processing error: Tried to run", params["name"],
                   "process with visaid_builder post-processing function.")
             errors.append("post_proc_name")
             return errors
     else:
-        print("Post-processing error: No post-process or name specified.")
+        print(ins + "Post-processing error: No post-process or name specified.")
         errors.append("post_proc_name")
         return errors
 
@@ -103,13 +107,13 @@ def run_post( item:dict,
         artifacts = params["artifacts"]
         artifacts_dir = cf["artifacts_dir"]
     else:
-        print("Warning: No artifacts specified.")  
+        print(ins + "Warning: No artifacts specified.")  
         artifacts = []
 
     for atype in artifacts:
         if atype not in VALID_ARTIFACTS:
-            print("Warning: Invalid artifact type '" + atype + "' will not be created.")
-            print("Valid artifact types:", VALID_ARTIFACTS)
+            print(ins + "Warning: Invalid artifact type '" + atype + "' will not be created.")
+            print(ins + "Valid artifact types:", VALID_ARTIFACTS)
 
 
     # check params for extra params
@@ -117,7 +121,7 @@ def run_post( item:dict,
         if key not in { **POSTPROC_DEFAULTS, 
                         **proc_swt.PROC_SWT_DEFAULTS,
                         **create_visaid.VISAID_DEFAULTS } :
-            print("Warning: `" + key + "` is not a valid config option for this postprocess. Ignoring.")
+            print(ins + "Warning: `" + key + "` is not a valid config option for this postprocess. Ignoring.")
 
 
     # Assign parameter values.
@@ -160,24 +164,24 @@ def run_post( item:dict,
 
     # call SWT MMIF processors to get a table of time frames
 
-    print("Attempting to process MMIF into SWT scene list...")
+    print(ins + "Attempting to process MMIF into SWT scene list...")
     
     # create TimeFrame table from the serialized MMIF
     tfs = proc_swt.tfs_from_mmif( mmif_str, 
                                   tp_view_id=tp_view_id,
                                   tf_view_id=tf_view_id )
 
-    print("SWT scene list length:", len(tfs) )
+    print(ins + "SWT scene list length:", len(tfs) )
 
     # find the outer temporal boundaries of the TimePoint analysis
     first_time, final_time = proc_swt.first_final_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
-    print(f"First TimePoint annotation at {lilhelp.tconv(first_time, frac=False)} ({first_time} ms).")
-    print(f"Final TimePoint annotation at {lilhelp.tconv(final_time, frac=False)} ({final_time} ms).")
+    print(ins + f"First TimePoint annotation at {lilhelp.tconv(first_time, frac=False)} ({first_time} ms).")
+    print(ins + f"Final TimePoint annotation at {lilhelp.tconv(final_time, frac=False)} ({final_time} ms).")
 
     # Create an adjusted TimeFrame table (with scenes added and/or removed)
     if pp_params["adj_tfs"]:
         tfs_adj = proc_swt.adjust_tfs( tfs, first_time, final_time, proc_swt_params )
-        print("Adjusted scene list length:", len(tfs_adj) )
+        print(ins + "Adjusted scene list length:", len(tfs_adj) )
     else:
         tfs_adj = tfs[:]
 
@@ -193,7 +197,7 @@ def run_post( item:dict,
     # Infer metadata
     #
     if "data" in artifacts:
-        print("Attempting to infer data...")
+        print(ins + "Attempting to infer data...")
         data_dir = artifacts_dir + "/data"
 
         # Calculate some significant datapoints based on table of time frames
@@ -230,8 +234,8 @@ def run_post( item:dict,
 
         bars_end_sec = bars_end // 1000
         proxy_start_sec = proxy_start // 1000
-        print("Bars end:", bars_end_sec)
-        print("Proxy start:", proxy_start_sec)
+        print(ins + "Bars end:", bars_end_sec)
+        print(ins + "Proxy start:", proxy_start_sec)
 
         # get app names
         tp_ver, tf_ver = proc_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
@@ -258,19 +262,19 @@ def run_post( item:dict,
         # print(data_artifact) # DIAG 
 
         if (int(proxy_start) == 0):
-            print("Will not create a data artifact for this item.")
+            print(ins + "Will not create a data artifact for this item.")
         else:
             data_artifact_path = data_dir + "/" + item["asset_id"] + "_inferred_data.json"
             with open(data_artifact_path, "w", newline="") as file:
                 json.dump(data_artifact, file, indent=2)
-            print("Data artifact saved.")
+            print(ins + "Data artifact saved.")
 
 
     #
     # Extract the slate
     #
     if "slates" in artifacts:
-        print("Attempting to save a slate...")
+        print(ins + "Attempting to save a slate...")
         slates_dir = artifacts_dir + "/slates"
 
         # The slate rep is the rep timepoint from from the first slate timeframe
@@ -282,7 +286,7 @@ def run_post( item:dict,
 
         if slate_rep is not None :
             if slate_rep > pp_params["slate_rep_max"]:
-                print(f'Detected slate occurs beyond {pp_params["slate_rep_max"]}ms.  Will not save.')
+                print(ins + f'Detected slate occurs beyond {pp_params["slate_rep_max"]}ms.  Will not save.')
             else: 
                 try:
                     slates = lilhelp.extract_stills( 
@@ -292,17 +296,17 @@ def run_post( item:dict,
                             slates_dir,
                             verbose=False )
                     if len(slates) == 1:
-                        print("Slate saved.")
+                        print(ins + "Slate saved.")
                     else:
-                        print("Warning: Saved", len(slates), "slates.")
+                        print(ins + "Warning: Saved", len(slates), "slates.")
 
                 except Exception as e:
-                    print("Extraction of slate frame at", slate_rep ,"failed.")
-                    print("Error:", e)
+                    print(ins + "Extraction of slate frame at", slate_rep ,"failed.")
+                    print(ins + "Error:", e)
                     errors.append(pp_params["name"]+":"+"slates")
             
         else:
-            print("No slate found.")
+            print(ins + "No slate found.")
 
 
     #
@@ -312,7 +316,7 @@ def run_post( item:dict,
     # this is not desired, set the adj_tfs parameter to false.
     #
     if "reps" in artifacts:
-        print("Attempting to save representative stills...")
+        print(ins + "Attempting to save representative stills...")
         reps_dir = artifacts_dir + "/reps"
 
         if len(tfs_adj) > 0:
@@ -329,15 +333,15 @@ def run_post( item:dict,
                   verbose=False )
 
             except Exception as e:
-               print("Extraction of frame failed.")
-               print("Error:", e)  
+               print(ins + "Extraction of frame failed.")
+               print(ins + "Error:", e)  
                errors.append(pp_params["name"]+":"+"reps")
                rep_images = []
 
-            print("Saved", len(rep_images), "representative stills from", len(tfs_adj), "scenes.")
+            print(ins + "Saved", len(rep_images), "representative stills from", len(tfs_adj), "scenes.")
 
         else:
-            print("No scenes from which to extract stills.")
+            print(ins + "No scenes from which to extract stills.")
 
 
     # 
@@ -348,11 +352,11 @@ def run_post( item:dict,
     # re-create the JavaScript file that serves as the KSL index.
     #
     if "ksl" in artifacts:
-        print("Attempting to index representatives in a KSL-style index...")
+        print(ins + "Attempting to index representatives in a KSL-style index...")
         ksl_dir = artifacts_dir + "/ksl"
 
         if not "reps" in artifacts:
-            print("Cannot make index because representative stills were not extracted.")
+            print(ins + "Cannot make index because representative stills were not extracted.")
         else:
 
             # Indicate where (if anywhere) to include labels predicted by SWT
@@ -385,7 +389,7 @@ def run_post( item:dict,
                 writer = csv.writer(csvfile)
                 writer.writerows(ksl_arr)
             
-            print("Appended", len(ksl_arr), "rows to image index CSV.")
+            print(ins + "Appended", len(ksl_arr), "rows to image index CSV.")
 
             # Now, to rewrite the JS file
             # load full array based on updated CSV file
@@ -398,7 +402,7 @@ def run_post( item:dict,
             # check for duplicates and remove them
             full_ksl_tups = set(tuple(r) for r in full_ksl_arr)
             if len(full_ksl_arr) != len(full_ksl_tups):
-                print("Warning: Duplicate items added to the cumulative KSL array.  Will de-dupe.")
+                print(ins + "Warning: Duplicate items added to the cumulative KSL array.  Will de-dupe.")
                 full_ksl_arr = [ list(tup) for tup in full_ksl_tups ] 
 
             full_ksl_arr.sort(key=lambda f:f[0])
@@ -428,7 +432,7 @@ def run_post( item:dict,
             with open(array_pathname, "w") as array_file:
                 array_file.write(image_array_j)
             
-            print("Updated image index JS, now with", len(proto_js_arr), "entries.")
+            print(ins + "Updated image index JS, now with", len(proto_js_arr), "entries.")
 
 
     #
@@ -438,7 +442,7 @@ def run_post( item:dict,
     # desired, set the adj_tfs parameter to false.
     #
     if "visaids" in artifacts:
-        print("Attempting to make a visaid...")
+        print(ins + "Attempting to make a visaid...")
         visaids_dir = artifacts_dir + "/visaids"
 
         visaid_path = None
@@ -459,18 +463,17 @@ def run_post( item:dict,
                 mmif_metadata_str=mmif_metadata_str
                 )
         except av.error.InvalidDataError as e:
-            print("Creation of visaid failed.")
-            print("Error:", e)
+            print(ins + "Creation of visaid failed.")
+            print(ins + "Error:", e)
             errors.append(pp_params["name"]+":"+"visaids")
 
         problems += [ "visaid:"+p for p in visaid_problems ]
         infos += [ "visaid:"+m for m in visaid_infos ]
 
         if visaid_path:
-            print("Visual index created at")
-            print(visaid_path)
+            print(ins + "Visual index created at " + visaid_path)
         else:
-            print("Visaid creation procedure completed, but no file path returned.")
+            print(ins + "Visaid creation procedure completed, but no file path returned.")
             errors.append(pp_params["name"]+":"+"visaids")
 
     # 
