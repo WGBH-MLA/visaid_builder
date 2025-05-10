@@ -221,7 +221,7 @@ def tfs_from_mmif( mmif_str:str,
 
     # If there is no view with a TimeFrame, return an empty list.
     if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) == 0:
-        logging.warning("Warning: MMIF file contained no TimeFrame annotations.")
+        logging.info("MMIF file contained no TimeFrame annotations.")
         tfs = []
     else:
         # Get the correct views for TimePoint and TimeFrame annotations.
