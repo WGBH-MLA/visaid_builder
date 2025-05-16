@@ -341,6 +341,7 @@ def run_post( item:dict,
             print(ins + "Saved", len(rep_images), "representative stills from", len(tfs_adj), "scenes.")
 
         else:
+            rep_images = []
             print(ins + "No scenes from which to extract stills.")
 
 
