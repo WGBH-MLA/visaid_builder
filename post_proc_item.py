@@ -48,7 +48,7 @@ except ImportError:
 
 # Version notes
 # 0.32 - first version to add `bars_end` to data artifact
-MODULE_VERSION = "0.34"
+MODULE_VERSION = "0.35"
 
 
 # These are the defaults specific to routines defined in this module.
@@ -124,30 +124,28 @@ def run_post( item:dict,
             print(ins + "Warning: `" + key + "` is not a valid config option for this postprocess. Ignoring.")
 
 
-    # Assign parameter values.
+    # Assign parameter values for this module
     # For each of the available parameter keys, if that parameter was passed in, then
-    # use that.  Otherwise, use the defaul value.
+    # use that.  Otherwise use default from this module.
     pp_params = {}
     for key in POSTPROC_DEFAULTS:
         if key in params:
             pp_params[key] = params[key]
         else:
+            # use default from this module
             pp_params[key] = POSTPROC_DEFAULTS[key]
 
+    # Assign parameter values for other modules.
+    # For each of the available parameter keys, if that parameter was passed in, then
+    # use that.  Otherwise don't set it.
     proc_swt_params = {}
     for key in proc_swt.PROC_SWT_DEFAULTS:
         if key in params:
             proc_swt_params[key] = params[key]
-        else:
-            proc_swt_params[key] = proc_swt.PROC_SWT_DEFAULTS[key]
-
     visaid_params = {}
     for key in create_visaid.VISAID_DEFAULTS:
         if key in params:
             visaid_params[key] = params[key]
-        else:
-            visaid_params[key] = create_visaid.VISAID_DEFAULTS[key]
-
 
 
     #

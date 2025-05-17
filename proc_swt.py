@@ -51,10 +51,10 @@ except ImportError:
     import lilhelp
 
 
-# These defualt values are used only if 
+# These default values are used only if 
 #   1) the key is not included in `params_in`
-#   2) the value in `params_in` of "default_to_none" is `False`.
-PROC_SWT_DEFAULTS = { "default_to_none": False,
+#   2) the value of "default_to_none" is `False`.
+PROC_SWT_DEFAULTS = { "default_to_none": True,
                       "include_only": None,
                       "exclude": [],
                       "max_unsampled_gap": 120100,
@@ -351,20 +351,25 @@ def adjust_tfs( tfs_in:list,
     # assigned the `None` value.
     params = {}
 
+    # First, set the value for "default_to_none"
     if "default_to_none" in params_in:
         params["default_to_none"] = params_in["default_to_none"]
     elif "default_to_none" in PROC_SWT_DEFAULTS:
         params["default_to_none"] = PROC_SWT_DEFAULTS["default_to_none"]
     else:
-        params["default_to_none"] = False
+        params["default_to_none"] = True
 
+    # Now, set the values for the other keys
     for key in PROC_SWT_DEFAULTS:
-        if key in params_in:
+        if key == "default_to_none":
+            # value should be already set; don't want to re-set it
+            params[key] = params[key]
+        elif key in params_in:
             params[key] = params_in[key]
-        elif params["default_to_none"]:
-            params[key] = None
-        else:
+        elif not params["default_to_none"]:
             params[key] = PROC_SWT_DEFAULTS[key]
+        else:
+            params[key] = None
 
 
     # Make a copy of the input list, so not to alter it
