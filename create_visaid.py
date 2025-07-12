@@ -28,7 +28,7 @@ except ImportError:
     import lilhelp
 
 
-MODULE_VERSION = "1.84"
+MODULE_VERSION = "1.90"
 
 VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
                     "display_video_duration": True,
@@ -240,19 +240,51 @@ def create_visaid( video_path:str,
     # Build additional HTML strings to include in visaid HTML structure
     #
 
-    # create media duration HTML
+    # create media duration HTML snippet
     if params["display_video_duration"]:
         video_duration = "[" + lilhelp.tconv(media_length, frac=False) + "]"
     else:
         video_duration = ""
 
-    # create job information HTML
+
+    # create checkboxes HTML snippet
+    scene_type_checkboxes = ""
+
+    # build up a list scene types, preserving order
+    scene_types = []
+    for f in tfs:
+        if f[1] not in scene_types:
+            scene_types.append(f[1])
+
+    print(scene_types)
+
+    # filter to remove extra samples
+    scene_types = [ t for t in scene_types if 
+                    t.find("unlabeled sample") == -1 and t.find(" subsample") == -1 ]
+
+    print(scene_types)
+
+    # Ideally need to pull this information from elsewhere
+    scene_types_visibility = [ (t, True) for t in scene_types ] 
+
+    print(scene_types_visibility)
+
+    # build up HTML snippet
+    for i, (t, v) in enumerate(scene_types_visibility):
+        line = f"<label><input type='checkbox' id='stcp{i}' {'checked' if v else ''}>{t}</label>\n" 
+        print(i, t, v)
+        print(line)
+        scene_type_checkboxes += line
+
+
+
+    # create job information HTML snippet
     if params["display_job_info"] and job_id is not None:
         job_info = "[JOB: <span class='identifier' id='job-id'>"
         job_info += job_id + "</span>"
         if job_name is not None and job_name != job_id:
             job_info += ( '("' + job_name + '")' )
-        job_info += "]</span>"
+        job_info += "]"
     else:
         job_info = ""
 
@@ -280,12 +312,19 @@ def create_visaid( video_path:str,
         else:
             html_start = start_str
 
-        div_class = "item"
+        div_class = "item" 
         if label.find("subsample") != -1:
             div_class += " subsample"
-        if label.find("unlabeled sample") != -1:
+            scenetype = label[:label.find(" subsample")]
+        elif label.find("unlabeled sample") != -1:
             div_class += " unsample"
-        html_div_open = "<div class='" + div_class + "' data-label='" + label + "'>"
+            scenetype = "-"
+        else:
+            div_class = div_class
+            scenetype = label
+
+        #html_div_open = "<div class='" + div_class + "' data-label='" + label + "'>"
+        html_div_open = f"<div class='{div_class}' data-label='{label}' data-scenetype='{scenetype}'>"
 
         html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br>'
 
@@ -317,6 +356,7 @@ def create_visaid( video_path:str,
         "js_str": js_str,
         "job_info": job_info,
         "video_duration": video_duration,
+        "scene_type_checkboxes": scene_type_checkboxes,
         "visaid_options_str": visaid_options_str,
         "mmif_metadata_str": mmif_metadata_str,
         "visaid_body": visaid_body,

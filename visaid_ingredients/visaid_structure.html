@@ -30,8 +30,19 @@ restyle, enhance, or alter a visaid.
         <span class='job_info'>{job_info}</span>
     </span>
     <div class='button-container'>
-        <button type='button' class='hidden' id='unsamplesVisButton'>Toggle Unlabeled Samples</button>
-        <button type='button' class='hidden' id='subsamplesVisButton'>Toggle Scene Subsamples</button>
+        <div class='checkbox-row'>
+            <span class='checkbox-leader'>Scene types:</span>
+            <span class='checkboxes'>
+                {scene_type_checkboxes}
+            </span>
+        </div>
+        <div class='checkbox-row'>
+            <span class='checkbox-leader'>Additional samples:</span>
+            <span class='checkboxes'>
+                <label><input type='checkbox' id='as1'>Unlabeled samples</label>        
+                <label><input type='checkbox' id='as2'>Scene subsamples</label>        
+            </span>
+        </div>
     </div>
 </div>
 <pre class="metadata hidden" id="visaid-options">

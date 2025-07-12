@@ -1,4 +1,4 @@
-// Code to allow user to toggle visibility of samples
+// Functions that allow the user to toggle visibility of samples
 function hideSamples( className ) {
     const sampleElements = document.querySelectorAll(`.${className}`);
     // Loop through the elements and make invisible
@@ -36,3 +36,8 @@ function initializePage() {
 
 }
 document.addEventListener('DOMContentLoaded', initializePage);
+
+
+function updateVis() {
+
+}
