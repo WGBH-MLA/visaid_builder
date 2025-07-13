@@ -7,58 +7,61 @@ body {
     color: black;
     background-color: #f3f3f3;
     margin: 0;
-    padding-top: 118px;
-}
-.hidden {
-    display: none;
+    padding-top: 130px;
 }
 div.top {
     position: fixed;
     top: 0;
     left: 0;
-    overflow-y: auto;
     width: 100%;
-    height: 112px;
+    height: 121px;
     font-size: 1.2rem;
     padding: 4px 10px 0px 10px;
-    margin-bottom: 8px;
     background-color: white;
-    /* border-bottom: 1px solid #e2e2e2; */
+    white-space: nowrap;      
+    overflow-x: hidden;
+    overflow-y: auto;         
+    text-overflow: ellipsis; 
 }
-div.button-container {
-    margin: 3px 10px 3px 0px;
-    padding-bottom: 5px;
+span.extra-info {
+    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+    font-size: 0.8rem;
+    color: #5e5d5e ; 
+}
+div.checkbox-container {
     background-color: #d9d7db;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    overflow-x: auto;
 }
 button {
     font-size: 0.8rem;
     margin-right: 6px;    
 }
 div.checkbox-row {
+    height: 21px;
     font-size: 0.8rem;
-    padding: 4px 2px 4px 2px;
-    vertical-align: center;
+    padding: 4px 0px 4px 4px;
 }
 span.checkbox-leader {
-    float: left;
-    width: 120px;
-    padding: 2px;
+    display: inline-block;
+    width: 145px;
     font-weight: 600;
+    white-space: nowrap;      
 }
 span.checkboxes {
-    padding: 2px;
-    margin: 5px;
+    display: inline-block;
 }
 input[type="checkbox"] {
     accent-color: #bababa;
 }
 label {
-    margin: 2px 2px 3px 1px;
-    padding: 5px 8px 3px 3px;
-    border-radius: 5px;
-    border: 1px solid #bababa;
     background-color: #f3f3f3;
     color: #5e5d5e;
+    padding: 4px 7px 2px 2px; 
+    border-radius: 5px;
+    border: 1px solid #bababa;
+    margin-right: 5px;
 }
 pre.metadata {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
@@ -83,14 +86,12 @@ div.subsample {
     color: #1d64a1;
     box-shadow: 4px 4px 2px 0px #d3e2f0,
                -2px -2px 1px 0px #e2e2e2;
-
 }
 div.unsample {
     background-color: #d9d7db;
     color: #a3a3a3;
     box-shadow: 2px 2px 2px 0 #e2e2e2,
                 -1px -1px 1px 0 #e2e2e2;
-
 }
 div.unsample span.img-caption {
     color: #a3a3a3;
@@ -117,11 +118,6 @@ span.video-id {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     color:  #6d57db;
 }
-span.extra-info {
-    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
-    font-size: 0.8rem;
-    color: #5e5d5e ; 
-}
 span.identifier {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
 }
@@ -130,4 +126,7 @@ span.label {
 }
 a {
     color: inherit;
+}
+.hidden {
+    display: none;
 }
