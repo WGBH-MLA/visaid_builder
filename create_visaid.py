@@ -247,35 +247,50 @@ def create_visaid( video_path:str,
         video_duration = ""
 
 
-    # create checkboxes HTML snippet
-    scene_type_checkboxes = ""
+    # create strings of HTML snippets for kinds of checkboxes
 
     # build up a list scene types, preserving order
-    scene_types = []
+    all_scene_types = []
     for f in tfs:
-        if f[1] not in scene_types:
-            scene_types.append(f[1])
+        if f[1] not in all_scene_types:
+            all_scene_types.append(f[1])
 
-    print(scene_types)
+    subsamples_present = False
+    for t in all_scene_types:
+        if t.find(" subsample") != -1:
+            subsamples_present = True
+            break
 
-    # filter to remove extra samples
-    scene_types = [ t for t in scene_types if 
-                    t.find("unlabeled sample") == -1 and t.find(" subsample") == -1 ]
+    # filter to get SWT bins and special scene types
+    special_scene_types = ["first frame checked", "last frame checked", "unlabeled sample"] 
 
-    print(scene_types)
+    scene_types = [ t for t in all_scene_types if 
+                    t not in special_scene_types and t.find(" subsample") == -1 ]
 
-    # Ideally need to pull this information from elsewhere
+    sample_types = [ t for t in special_scene_types if 
+                     t in all_scene_types ]
+
+    # Ideally it'd be nice to pull the visibility boolean from elsewhere, like 
+    # the config options for the visaid
     scene_types_visibility = [ (t, True) for t in scene_types ] 
+    sample_types_visibility = [ (t, False) for t in sample_types ] 
 
-    print(scene_types_visibility)
-
-    # build up HTML snippet
+    # build up HTML scene types snippet
+    scene_type_checkboxes = ""
     for i, (t, v) in enumerate(scene_types_visibility):
-        line = f"<label><input type='checkbox' id='stcp{i}' {'checked' if v else ''}>{t}</label>\n" 
-        print(i, t, v)
-        print(line)
+        line = f"<label><input type='checkbox' id='stcp{i}' value='{t}' {'checked' if v else ''}>{t}</label>\n" 
         scene_type_checkboxes += line
 
+    # build up HTML sample types snippet
+    sample_type_checkboxes = ""
+    for i, (t, v) in enumerate(sample_types_visibility):
+        line = f"<label><input type='checkbox' id='sacp{i}' value='{t}' {'checked' if v else ''}>{t}</label>\n" 
+        sample_type_checkboxes += line
+    if subsamples_present:
+        t = "scene subsample"
+        v = False
+        line = f"<label><input type='checkbox' id='sscb' value='{t}' {'checked' if v else ''}>{t}</label>\n" 
+        sample_type_checkboxes += line
 
 
     # create job information HTML snippet
@@ -357,6 +372,7 @@ def create_visaid( video_path:str,
         "job_info": job_info,
         "video_duration": video_duration,
         "scene_type_checkboxes": scene_type_checkboxes,
+        "sample_type_checkboxes": sample_type_checkboxes,
         "visaid_options_str": visaid_options_str,
         "mmif_metadata_str": mmif_metadata_str,
         "visaid_body": visaid_body,

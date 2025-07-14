@@ -45,7 +45,7 @@ div.checkbox-row {
 }
 span.checkbox-leader {
     display: inline-block;
-    width: 145px;
+    width: 120px;
     font-weight: 600;
     white-space: nowrap;      
 }
