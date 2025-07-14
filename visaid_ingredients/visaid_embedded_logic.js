@@ -1,43 +1,34 @@
-// Functions that allow the user to toggle visibility of samples
-function hideSamples( className ) {
-    const sampleElements = document.querySelectorAll(`.${className}`);
-    // Loop through the elements and make invisible
-    for (let el of sampleElements) {
-        el.classList.add('hidden');    // hide
+function updateVis() {
+    // get status of scenes types from checkbox states
+    const sceneVis = {}; 
+    const allInputs = document.getElementsByTagName('input');
+    for (const input of allInputs) { 
+        if (input.type === 'checkbox') {
+            sceneVis[input.value] = input.checked;
+        }
     }
-}
-function toggleVis( className ) {
-    const sampleElements = document.querySelectorAll(`.${className}`);
-    // Loop through the elements and toggle their visibility
-    for (let el of sampleElements) {
-        if (el.classList.contains('hidden')) {
-            el.classList.remove('hidden');  // show 
-        } else {
-            el.classList.add('hidden');    // hide
-        }    
+    // loop through each div of class "item" and set visibility
+    const itemElements = document.querySelectorAll('.item');
+    for (let el of itemElements) {
+        let show = false;
+        if (sceneVis[el.dataset.scenetype]) {
+            if (!el.dataset.label.includes(" subsample") || sceneVis["scene subsample"] ) {
+                 show = true;
+            }
+        }
+        if (show) el.classList.remove('hidden'); 
+        else el.classList.add('hidden');
     }
 }
 function initializePage() {
-    // Hide samples by default
-    hideSamples('subsample');
-    hideSamples('unsample');
-    // Activate and show toggle buttons
-    var myButton;
-    myButton = document.getElementById('subsamplesVisButton');
-    myButton.addEventListener('click', function(){ toggleVis('subsample');});
-    if (myButton.classList.contains('hidden')) {
-        myButton.classList.remove('hidden');  
+    // set visibility to match checkbox values
+    updateVis();
+    // attach listeners to all the checkboxes
+    const allInputs = document.getElementsByTagName('input');
+    for (const input of allInputs) { 
+        if (input.type === 'checkbox') {
+            input.addEventListener('change', updateVis);
+        }
     }
-    myButton = document.getElementById('unsamplesVisButton');
-    myButton.addEventListener('click', function(){ toggleVis('unsample');});
-    if (myButton.classList.contains('hidden')) {
-        myButton.classList.remove('hidden');  
-    }
-
 }
 document.addEventListener('DOMContentLoaded', initializePage);
-
-
-function updateVis() {
-
-}

@@ -39,6 +39,12 @@ VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
 
 STRETCH_THRESHOLD = 0.01
 
+# These are scene types (optionally) created by `proc_swt`, not defined by the 
+# SWT bins.  They are displayed in a different area of the page layout.
+SPECIAL_SCENE_TYPES = [ "first frame checked", 
+                        "last frame checked", 
+                        "unlabeled sample"] 
+
 
 def create_visaid( video_path:str, 
                    tfs:list,
@@ -262,12 +268,10 @@ def create_visaid( video_path:str,
             break
 
     # filter to get SWT bins and special scene types
-    special_scene_types = ["first frame checked", "last frame checked", "unlabeled sample"] 
-
     scene_types = [ t for t in all_scene_types if 
-                    t not in special_scene_types and t.find(" subsample") == -1 ]
+                    t not in SPECIAL_SCENE_TYPES and t.find(" subsample") == -1 ]
 
-    sample_types = [ t for t in special_scene_types if 
+    sample_types = [ t for t in SPECIAL_SCENE_TYPES if 
                      t in all_scene_types ]
 
     # Ideally it'd be nice to pull the visibility boolean from elsewhere, like 
@@ -333,7 +337,7 @@ def create_visaid( video_path:str,
             scenetype = label[:label.find(" subsample")]
         elif label.find("unlabeled sample") != -1:
             div_class += " unsample"
-            scenetype = "-"
+            scenetype = label
         else:
             div_class = div_class
             scenetype = label

@@ -461,7 +461,7 @@ def run_post( item:dict,
                 visaid_params=visaid_params,
                 mmif_metadata_str=mmif_metadata_str
                 )
-        except av.error.InvalidDataError as e:
+        except Exception as e:
             print(ins + "Creation of visaid failed.")
             print(ins + "Error:", e)
             errors.append(pp_params["name"]+":"+"visaids")
