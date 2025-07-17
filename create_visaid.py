@@ -28,7 +28,7 @@ except ImportError:
     import lilhelp
 
 
-MODULE_VERSION = "1.90"
+MODULE_VERSION = "1.90.1"
 
 VISAID_DEFAULTS = { "job_id_in_visaid_filename": False,
                     "display_video_duration": True,
@@ -45,6 +45,8 @@ SPECIAL_SCENE_TYPES = [ "first frame checked",
                         "last frame checked", 
                         "unlabeled sample"] 
 
+# Ideally, we'd like to set this in a config file
+UNCHECKED_SCENE_TYPES = ["filmed text"]
 
 def create_visaid( video_path:str, 
                    tfs:list,
@@ -276,7 +278,8 @@ def create_visaid( video_path:str,
 
     # Ideally it'd be nice to pull the visibility boolean from elsewhere, like 
     # the config options for the visaid
-    scene_types_visibility = [ (t, True) for t in scene_types ] 
+    scene_types_visibility = [ (t, True) for t in scene_types if t not in UNCHECKED_SCENE_TYPES]
+    scene_types_visibility += [ (t, False) for t in scene_types if t in UNCHECKED_SCENE_TYPES]
     sample_types_visibility = [ (t, False) for t in sample_types ] 
 
     # build up HTML scene types snippet
