@@ -241,12 +241,19 @@ def tfs_from_mmif( mmif_str:str,
         # Get information about the app version from the TimeFrame view
         # If version >= 6.0, use view ID prefix for time point refs
         app = tf_view.metadata.app
+
+        # vestigial prefix from when view IDs were not part of annotation IDs
+        ref_prefix = ""
+        """
+        # This step was necessary with older versions of mmif-python circa version 1.0.14
+        # during the transitional period when view IDs were included in some annotation IDs
+        # but not in others.
         try:
             app_ver = float(app[app.rfind("/v")+2:].split('-', 1)[0])
             
             # For SWT v6.0 and above, TimePoints targeted by other frames include
             # a reference to the view from which they came.
-            if app_ver > 5.9999:
+            if app_ver > 5.9999 :
                 ref_prefix = tp_view.id + ":"
             else:
                 ref_prefix = ""
@@ -255,6 +262,7 @@ def tfs_from_mmif( mmif_str:str,
             logging.error("Could not get app version.")
             logging.error("Assuming version less than 6.0")
             ref_prefix = ""
+        """
 
         # Drill down to the annotations we're after, creating generators
         tfanns = tf_view.get_annotations(AnnotationTypes.TimeFrame)
