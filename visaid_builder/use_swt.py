@@ -25,9 +25,9 @@ from mmif import Mmif
 from mmif import DocumentTypes
 
 # Import local modules
-import proc_swt 
-import create_visaid
-import lilhelp
+from . import proc_swt 
+from . import create_visaid
+from . import lilhelp
 
 
 logging.basicConfig(

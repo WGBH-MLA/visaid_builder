@@ -13,22 +13,26 @@ The `post_proc_item` module includes functions called by `run_job.py` from [clam
 
 ## Installation
 
-Clone the repository.  Change to the repository directory and do a `pip install -r requirements.txt`.
+To install the necessary dependencies, navigate to the project's root directory and run:
+
+```bash
+pip install .
+```
 
 ## Usage
 
 ### CLI
 
-For guidance on usage of the stand-alone CLI, run `python use_swt.py -h`.
+For guidance on usage of the stand-alone CLI, run `visswt -h`.
 
-To create a visaid using the sample MMIF file in this repository, download the corresponding [media file](https://drive.google.com/file/d/1-sSZxDUf9ZKCseVL_QBpqwQNAaffXRBu/view?usp=sharing) to the `sample_files` directory.  Then run 
+To create a visaid using the sample MMIF file in this repository, download the corresponding [media file](https://drive.google.com/file/d/1-sSZxDUf9ZKCseVL_QBpqwQNAaffXRBu/view?usp=sharing) to the `sample_files` directory. Then run:
 
-```
-$ python use_swt.py -d -v sample_files/cpb-aacip-4071f72dd46_swt_v72.mmif sample_files/cpb-aacip-4071f72dd46.mp4
+```bash
+visswt -d -v sample_files/cpb-aacip-4071f72dd46_swt_v72.mmif sample_files/cpb-aacip-4071f72dd46.mp4
 ```
 
 ### Integration in Python projects
 
-The easiest way to ingegrate visaid creation into another Python project is by importing `use_swt` and calling the `use_swt.proc_visaid` function.  For an example, see the `integration_example.py` file.
+The easiest way to integrate visaid creation into another Python project is by importing `proc_visaid` directly from the `visaid_builder` package and calling it. For an example, see the `visaid_builder/integration_example.py` file.
 
 

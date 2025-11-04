@@ -34,21 +34,12 @@ from mmif import Mmif
 
 from pprint import pprint # DIAG
 
-try:
-    # if being run from higher level module
-    from . import lilhelp
-    from . import proc_swt
-    from . import create_visaid
-except ImportError:
-    # if run as stand-alone
-    import lilhelp
-    import proc_swt
-    import create_visaid
+from importlib.metadata import version
 
-
-# Version notes
-# 0.32 - first version to add `bars_end` to data artifact
-MODULE_VERSION = "0.35"
+__version__ = version("visaid_builder")
+from . import lilhelp
+from . import proc_swt
+from . import create_visaid
 
 
 # These are the defaults specific to routines defined in this module.
@@ -244,7 +235,7 @@ def run_post( item:dict,
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
                 "job_id": cf["job_id"],
                 "process": "visaid_builder/post_proc_item",
-                "process_version": MODULE_VERSION,
+                "process_version": __version__,
                 "process_details": {
                     "swt-tp_version": tp_ver,
                     "swt-tf_version": tf_ver,

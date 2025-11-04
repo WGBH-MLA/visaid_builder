@@ -4,7 +4,7 @@ integration_example.py
 Example module showing how to integrate this library into other Python projects.
 """
 
-import use_swt
+import visaid_builder
 
 # These values will be set by the calling module.
 mmif_path = "./sample_files/cpb-aacip-4071f72dd46_swt_v72.mmif"
@@ -35,7 +35,7 @@ cust_params = {
     "aapb_timecode_link": False }
 
 # Call to the function that creates a visaid
-use_swt.proc_visaid ( mmif_path, 
+visaid_builder.proc_visaid ( mmif_path, 
                       video_path, 
                       visaid_path=visaid_path, 
                       cust_params=cust_params )

@@ -20,15 +20,10 @@ import logging
 
 import av
 
-try:
-    # if being run from higher level module
-    from . import lilhelp
-except ImportError:
-    # if run as stand-alone
-    import lilhelp
+from importlib.metadata import version
 
-
-MODULE_VERSION = "1.90.2"
+__version__ = version("visaid_builder")
+from . import lilhelp
 
 VISAID_DEFAULTS = { "deselected_scene_types": ["filmed text", "person with extra text"],
                     "job_id_in_visaid_filename": False,
@@ -384,7 +379,7 @@ def create_visaid( video_path:str,
         "visaid_options_str": visaid_options_str,
         "mmif_metadata_str": mmif_metadata_str,
         "visaid_body": visaid_body,
-        "MODULE_VERSION": MODULE_VERSION
+        "MODULE_VERSION": __version__
     }
     # Create final HTML string from the structure string and substitution map
     html_str = structure_str.format_map(html_field_map)
