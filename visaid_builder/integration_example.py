@@ -36,6 +36,7 @@ cust_params = {
 
 # Call to the function that creates a visaid
 visaid_builder.proc_visaid ( mmif_path, 
-                      video_path, 
-                      visaid_path=visaid_path, 
-                      cust_params=cust_params )
+                             video_path, 
+                             visaid_path=visaid_path, 
+                             cust_params=cust_params )
+                             
