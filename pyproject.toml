@@ -16,5 +16,9 @@ dependencies = [
 [project.scripts]
 visswt = "visaid_builder.use_swt:main"
 
+[project.urls]
+"Homepage" = "https://github.com/WGBH-MLA/visaid_builder"
+"Source" = "https://github.com/WGBH-MLA/visaid_builder"
+
 [tool.setuptools.packages.find]
 include = ["visaid_builder"]
