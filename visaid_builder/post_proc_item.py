@@ -183,83 +183,6 @@ def run_post( item:dict,
                                                         tf_view_id )
 
     #
-    # Infer metadata
-    #
-    if "data" in artifacts:
-        print(ins + "Attempting to infer data...")
-        data_dir = artifacts_dir + "/data"
-
-        # Calculate some significant datapoints based on table of time frames
-        #
-        # Note:  For reasons I don't understand, we have to cast some integer
-        # values originally created by Pandas to int from int64
-
-        # The end of the bars is the end of the last bars timeframe
-        # If there is no bars timeframe, then the value is 0
-        bars_end = 0
-        bars_tfs = [ tf for tf in tfs 
-                        if (tf[1] in BARS_BINS and tf[3] <= pp_params["prog_start_max"]) ]
-        if len(bars_tfs) > 0:
-            bars_end = int(bars_tfs[-1][3])
-
-        # Proxy starts at the end of the bars or the beginning of the slate,
-        # whichever is greater
-        # The main way that this can go wrong is if there is a false positive 
-        # for a slate in the first period of the show, after some substantial
-        # content has already begun playing.
-        slate_begin = None
-        slate_tfs = [ tf for tf in tfs 
-                        if (tf[1] in SLATE_BINS and tf[3] <= pp_params["prog_start_max"]) ]
-        if len(slate_tfs) > 0:
-            slate_begin = int(slate_tfs[0][2])
-            proxy_start = max(bars_end, slate_begin)
-        else:
-            proxy_start = bars_end
-        
-        if proxy_start < pp_params["prog_start_min"]:
-            proxy_start = 0
-
-        # print("bars end:", bars_end, "slate begin:", slate_begin, "proxy start:", proxy_start) # DIAG        
-
-        bars_end_sec = bars_end // 1000
-        proxy_start_sec = proxy_start // 1000
-        print(ins + "Bars end:", bars_end_sec)
-        print(ins + "Proxy start:", proxy_start_sec)
-
-        # get app names
-        tp_ver, tf_ver = proc_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
-
-        data_artifact = [{ 
-            "metadata": {
-                "asset_id": item["asset_id"],
-                "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-                "job_id": cf["job_id"],
-                "process": "visaid_builder/post_proc_item",
-                "process_version": __version__,
-                "process_details": {
-                    "swt-tp_version": tp_ver,
-                    "swt-tf_version": tf_ver,
-                    "min_proxy_start_ms": pp_params["prog_start_min"],
-                    "max_proxy_start_ms": pp_params["prog_start_max"]
-                }
-            },
-            "data":{
-                "bars_end_time": bars_end_sec,
-                "proxy_start_time": proxy_start_sec
-            }
-        }]
-        # print(data_artifact) # DIAG 
-
-        if (int(proxy_start) == 0):
-            print(ins + "Will not create a data artifact for this item.")
-        else:
-            data_artifact_path = data_dir + "/" + item["asset_id"] + "_inferred_data.json"
-            with open(data_artifact_path, "w", newline="") as file:
-                json.dump(data_artifact, file, indent=2)
-            print(ins + "Data artifact saved.")
-
-
-    #
     # Extract the slate
     #
     if "slates" in artifacts:
@@ -465,6 +388,102 @@ def run_post( item:dict,
         else:
             print(ins + "Visaid creation procedure completed, but no file path returned.")
             errors.append(pp_params["name"]+":"+"visaids")
+
+
+    #
+    # Infer metadata
+    #
+    if "data" in artifacts:
+        print(ins + "Attempting to infer data...")
+        data_dir = artifacts_dir + "/data"
+
+        # Calculate some significant datapoints based on table of time frames
+        #
+        # Note:  For reasons I don't understand, we have to cast some integer
+        # values originally created by Pandas to int from int64
+
+        # The end of the bars is the end of the last bars timeframe near the prog start
+        bars_end = None
+        bars_tfs = [ tf for tf in tfs 
+                        if (tf[1] in BARS_BINS and tf[3] <= pp_params["prog_start_max"]) ]
+        if len(bars_tfs) > 0:
+            bars_end = int(bars_tfs[-1][3])
+
+        # The beginning of the first slate timeframe near the prog start
+        slate_begin = None
+        slate_tfs = [ tf for tf in tfs 
+                        if (tf[1] in SLATE_BINS and tf[3] <= pp_params["prog_start_max"]) ]
+        if len(slate_tfs) > 0:
+            slate_begin = int(slate_tfs[0][2])
+
+        # Proxy starts at the end of the bars or the beginning of the slate,
+        # whichever is greater.
+        # The main way that this can go wrong is if there is a false positive 
+        # for a slate in the first period of the show, after some substantial
+        # content has already begun playing.        
+        if bars_end and slate_begin:
+            proxy_start = max(bars_end, slate_begin)
+        elif slate_begin:
+            proxy_start = slate_begin
+        elif bars_end:
+            proxy_start = bars_end
+        else:
+            proxy_start = 0
+        
+        # If too close to the beginning, just start at zero
+        if proxy_start < pp_params["prog_start_min"]:
+            proxy_start = 0
+
+        # Convert from msec to sec
+        if bars_end:
+            bars_end_sec = bars_end // 1000
+        else:
+            bars_end_sec = None
+
+        if slate_begin:
+            slate_begin_sec = slate_begin // 1000
+        else:
+            slate_begin_sec = None
+
+        proxy_start_sec = proxy_start // 1000
+
+        print(ins + "Bars end:", bars_end_sec)
+        print(ins + "Slate begin:", slate_begin_sec)
+        print(ins + "Proxy start:", proxy_start_sec)
+
+        # get app names
+        tp_ver, tf_ver = proc_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
+
+        data_artifact = [{ 
+            "metadata": {
+                "asset_id": item["asset_id"],
+                "sonyci_id": item ["sonyci_id"],
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+                "job_id": cf["job_id"],
+                "process": "visaid_builder/post_proc_item",
+                "process_version": __version__,
+                "process_details": {
+                    "swt-tp_version": tp_ver,
+                    "swt-tf_version": tf_ver,
+                    "min_proxy_start_ms": pp_params["prog_start_min"],
+                    "max_proxy_start_ms": pp_params["prog_start_max"],
+                    "MMIF_metadata": json.loads(mmif_metadata_str)
+                }
+            },
+            "data":{
+                "SWT_time_frames": tfs,
+                "bars_end_time": bars_end_sec,
+                "slate_begin_time": slate_begin_sec,
+                "proxy_start_time": proxy_start_sec
+            }
+        }]
+        # print(data_artifact) # DIAG 
+
+        data_artifact_path = data_dir + "/" + item["asset_id"] + "_inferred_data.json"
+        with open(data_artifact_path, "w", newline="") as file:
+            json.dump(data_artifact, file, indent=2)
+        print(ins + "Data artifact saved.")
+
 
     # 
     # Finished with the whole postprocess
