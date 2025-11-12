@@ -148,22 +148,24 @@ def run_post( item:dict,
     with open(mmif_path, "r") as file:
         mmif_str = file.read()
 
+    usemmif = Mmif(mmif_str)
+
     # Get the right views
-    tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(mmif_str)
+    tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(usemmif)
 
     # call SWT MMIF processors to get a table of time frames
 
     print(ins + "Attempting to process MMIF into SWT scene list...")
     
     # create TimeFrame table from the serialized MMIF
-    tfs = proc_swt.tfs_from_mmif( mmif_str, 
+    tfs = proc_swt.tfs_from_mmif( usemmif, 
                                   tp_view_id=tp_view_id,
                                   tf_view_id=tf_view_id )
 
     print(ins + "SWT scene list length:", len(tfs) )
 
     # find the outer temporal boundaries of the TimePoint analysis
-    first_time, final_time = proc_swt.first_final_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
+    first_time, final_time = proc_swt.first_final_time_in_mmif( usemmif, tp_view_id=tp_view_id )
     print(ins + f"First TimePoint annotation at {lilhelp.tconv(first_time, frac=False)} ({first_time} ms).")
     print(ins + f"Final TimePoint annotation at {lilhelp.tconv(final_time, frac=False)} ({final_time} ms).")
 
@@ -178,7 +180,7 @@ def run_post( item:dict,
     # pprint(tfs_adj) # DIAG
 
     # get mmif_metadata_str
-    mmif_metadata_str = proc_swt.get_mmif_metadata_str( mmif_str,
+    mmif_metadata_str = proc_swt.get_mmif_metadata_str( usemmif,
                                                         tp_view_id,
                                                         tf_view_id )
 
@@ -409,7 +411,7 @@ def run_post( item:dict,
                 video_sar = "1.0"
 
         # Try to get the duration
-        
+
 
         # Calculate some significant datapoints based on table of time frames
         #
@@ -466,7 +468,7 @@ def run_post( item:dict,
         print(ins + "Proxy start:", proxy_start_sec)
 
         # get app names
-        tp_ver, tf_ver = proc_swt.get_CLAMS_app_vers(mmif_str, tp_view_id, tf_view_id)
+        tp_ver, tf_ver = proc_swt.get_CLAMS_app_vers(usemmif, tp_view_id, tf_view_id)
 
         data_artifact = [{ 
             "metadata": {

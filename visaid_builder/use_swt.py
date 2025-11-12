@@ -47,13 +47,15 @@ def proc_display(mmif_path:str):
     with open(mmif_path, "r") as usefile:
         mmif_str = usefile.read()
 
+    usemmif = Mmif(mmif_str)
+
     logging.info("Attempting to process MMIF into a scene list...")
 
     # Get the right views
-    tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(mmif_str)
+    tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(usemmif)
 
     # create TimeFrame table from the serialized MMIF
-    tfs = proc_swt.tfs_from_mmif( mmif_str, 
+    tfs = proc_swt.tfs_from_mmif( usemmif, 
                                   tp_view_id=tp_view_id,
                                   tf_view_id=tf_view_id )
 
@@ -115,6 +117,8 @@ def proc_visaid( mmif_path:str,
     with open(mmif_path, "r") as usefile:
         mmif_str = usefile.read()
 
+    usemmif = Mmif(mmif_str)
+
     #
     # Figure out the path to the media file, if it has not been provided
     #
@@ -132,7 +136,6 @@ def proc_visaid( mmif_path:str,
     if not visaid_video_path:
 
         # get the document path from the MMIF file
-        usemmif = Mmif(mmif_str)
         doc_path = usemmif.get_document_location(DocumentTypes.VideoDocument, path_only=True)
 
         if visaid_video_dir:
@@ -155,15 +158,15 @@ def proc_visaid( mmif_path:str,
         logging.info("Attempting to process MMIF into a scene list...")
 
     # Get the right views
-    tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(mmif_str)
+    tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(usemmif)
 
     # create TimeFrame table from the serialized MMIF
-    tfs = proc_swt.tfs_from_mmif( mmif_str, 
+    tfs = proc_swt.tfs_from_mmif( usemmif, 
                                   tp_view_id=tp_view_id,
                                   tf_view_id=tf_view_id )
 
     # find the outer temporal boundaries of the TimePoint analysis
-    first_time, final_time = proc_swt.first_final_time_in_mmif( mmif_str, tp_view_id=tp_view_id )
+    first_time, final_time = proc_swt.first_final_time_in_mmif( usemmif, tp_view_id=tp_view_id )
 
     # Create an adjusted TimeFrame table (with scenes added and/or removed)
     if scene_adj:
@@ -171,7 +174,7 @@ def proc_visaid( mmif_path:str,
     else:
         tfs_adj = tfs[:]
 
-    mmif_metadata_str = proc_swt.get_mmif_metadata_str( mmif_str,
+    mmif_metadata_str = proc_swt.get_mmif_metadata_str( usemmif,
                                                         tp_view_id,
                                                         tf_view_id )
 

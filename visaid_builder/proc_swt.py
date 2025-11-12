@@ -63,7 +63,7 @@ PROC_SWT_DEFAULTS = { "default_to_none": True,
                       "include_final_time": False }
 
 
-def get_swt_view_ids(mmif_str):
+def get_swt_view_ids(usemmif:Mmif):
     """
     Takes a MMIF string and returns the IDs of the TimePoint containg view and the 
     TimeFrame containing view relevant to SWT processing
@@ -74,8 +74,6 @@ def get_swt_view_ids(mmif_str):
     will need to be updated to something smarter to deal with more heavily laden 
     MMIF files with multiple views containing TimePoint and TimeFrame annotations.
     """
-
-    usemmif = Mmif(mmif_str)
 
     tp_views = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)
     if len(tp_views):
@@ -95,7 +93,7 @@ def get_swt_view_ids(mmif_str):
 
 
 
-def get_mmif_metadata_str( mmif_str:str, tp_view_id:str, tf_view_id:str ):
+def get_mmif_metadata_str( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
     """
     Takes the metadata object from the view(s) specified.    
     Returns prettified serialized JSON for that metadata.
@@ -104,8 +102,6 @@ def get_mmif_metadata_str( mmif_str:str, tp_view_id:str, tf_view_id:str ):
     grabbing metadata from MMIF files. It is useful for extracting serialized
     CLAMS metadata for inclusion or display in CLAMS consuming procedures.
     """
-
-    usemmif = Mmif(mmif_str)
 
     if tp_view_id is None:
         tp_str = "{ }"
@@ -125,7 +121,7 @@ def get_mmif_metadata_str( mmif_str:str, tp_view_id:str, tf_view_id:str ):
 
 
 
-def get_CLAMS_app_vers( mmif_str:str, tp_view_id:str, tf_view_id:str ):
+def get_CLAMS_app_vers( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
     """
     Takes the metadata from two the relevant views.  Then looks at the
     app metadata for each to find the version.
@@ -136,8 +132,6 @@ def get_CLAMS_app_vers( mmif_str:str, tp_view_id:str, tf_view_id:str ):
     This is useful for conditional logic, where program execution depends
     on the version(s) of the CLAMS app used.
     """
-
-    usemmif = Mmif(mmif_str)
 
     # get the app version for TimePoint annotations
     if tp_view_id is None:
@@ -165,13 +159,11 @@ def get_CLAMS_app_vers( mmif_str:str, tp_view_id:str, tf_view_id:str ):
 
 
 
-def first_final_time_in_mmif( mmif_str:str, tp_view_id:str="" ):
+def first_final_time_in_mmif( usemmif:Mmif, tp_view_id:str="" ):
     """
     Takes serialized MMIF as a string as input.
     Analyzes MMIF with TimePoints and returns the times of the first and final ones.
     """
-
-    usemmif = Mmif(mmif_str)
 
     # Get the right view.  
     # (If it has not been supplied, make a reasonable assumption about which one.)
@@ -194,7 +186,7 @@ def first_final_time_in_mmif( mmif_str:str, tp_view_id:str="" ):
 
 
 
-def tfs_from_mmif( mmif_str:str, 
+def tfs_from_mmif( usemmif:Mmif, 
                    tp_view_id:str="",
                    tf_view_id:str="" ):
     """
@@ -212,8 +204,6 @@ def tfs_from_mmif( mmif_str:str,
         4: representative still time in milliseconds (int)
         5: representative still point label (string)
     """
-
-    usemmif = Mmif(mmif_str)
 
     # If there is no view with a TimeFrame, return an empty list.
     if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) == 0:

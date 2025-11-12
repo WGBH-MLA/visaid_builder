@@ -1,3 +1,4 @@
 sample_files/*.mp4
 __pycache__
 visaid_builder.egg-info
+build
