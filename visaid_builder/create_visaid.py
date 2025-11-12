@@ -25,7 +25,7 @@ from importlib.metadata import version
 __version__ = version("visaid_builder")
 from . import lilhelp
 
-VISAID_DEFAULTS = { "deselected_scene_types": ["filmed text", "person with extra text"],
+VISAID_DEFAULTS = { "deselected_scene_types": ["filmed text"],
                     "job_id_in_visaid_filename": False,
                     "display_video_duration": True,
                     "display_job_info": True,
@@ -33,7 +33,7 @@ VISAID_DEFAULTS = { "deselected_scene_types": ["filmed text", "person with extra
                     "aapb_timecode_link": False,
                     "max_img_height": 360 }
 
-STRETCH_THRESHOLD = 0.01
+STRETCH_THRESHOLD = 0.005
 
 # These are scene types (optionally) created by `proc_swt`, not defined by the 
 # SWT bins.  They are displayed in a different area of the page layout.

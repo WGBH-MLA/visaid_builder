@@ -387,7 +387,7 @@ def run_post( item:dict,
             print(ins + "Visual index created at " + visaid_path)
         else:
             print(ins + "Visaid creation procedure completed, but no file path returned.")
-            errors.append(pp_params["name"]+":"+"visaids")
+            errors.append(pp_params["name"]+":"+"no_visaid_path")
 
 
     #
@@ -396,6 +396,20 @@ def run_post( item:dict,
     if "data" in artifacts:
         print(ins + "Attempting to infer data...")
         data_dir = artifacts_dir + "/data"
+
+        # Get data from preceding visaids process
+        if "visaids" not in artifacts:
+            video_sar = None
+        else:
+            sar_infos = [ info for info in visaid_infos if info.find("SAR-") == 0 ]
+            if len(sar_infos):
+                if len(sar_infos[0]) > 4:
+                    video_sar = sar_infos[0][4:]
+            else:
+                video_sar = "1.0"
+
+        # Try to get the duration
+        
 
         # Calculate some significant datapoints based on table of time frames
         #
@@ -471,10 +485,11 @@ def run_post( item:dict,
                 }
             },
             "data":{
-                "SWT_time_frames": tfs,
+                "video_SAR": video_sar,
                 "bars_end_time": bars_end_sec,
                 "slate_begin_time": slate_begin_sec,
-                "proxy_start_time": proxy_start_sec
+                "proxy_start_time": proxy_start_sec,
+                "SWT_time_frames": tfs,
             }
         }]
         # print(data_artifact) # DIAG 

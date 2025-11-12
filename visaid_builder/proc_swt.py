@@ -19,7 +19,7 @@ The valid keys for `params_in` are as follows:
     "include_only" (list) - A list of postbin categories such that only those bins should
     be included.  
 
-    "exclude" (list) - A list of postbin categories that shoudl be excluded.
+    "exclude" (list) - A list of postbin categories that should be excluded.
 
     "max_unsampled_gap" (int) - The maximumn number of milliseconds to go without adding a
     sample not included in a scene.  Use None to get no unlabeled samples.
@@ -46,6 +46,7 @@ from mmif import AnnotationTypes
 from . import lilhelp
 
 
+# These paramaters for which there are defaults are used by `adjust_tfs`.
 # These default values are used only if 
 #   1) the key is not included in `params_in`
 #   2) the value of "default_to_none" is `False`.
