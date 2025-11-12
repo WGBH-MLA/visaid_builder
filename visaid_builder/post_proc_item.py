@@ -475,7 +475,8 @@ def run_post( item:dict,
         print(ins + "Proxy start:", proxy_start_sec)
 
         # get app names
-        tp_ver, tf_ver = proc_swt.get_CLAMS_app_vers(usemmif, tp_view_id, tf_view_id)
+        tp_ver = proc_swt.get_CLAMS_app_ver(usemmif, tp_view_id)
+        tf_ver = proc_swt.get_CLAMS_app_ver(usemmif, tf_view_id)
 
         data_artifact = [{ 
             "metadata": {

@@ -124,41 +124,25 @@ def get_mmif_metadata_str( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
 
 
 
-def get_CLAMS_app_vers( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
+def get_CLAMS_app_ver( usemmif:Mmif, view_id:str ):
     """
-    Takes the metadata from two the relevant views.  Then looks at the
-    app metadata for each to find the version.
-    
-    Returns an ordered pair comprising the version numbers used to create
-    the views.
+    Gets the CLAMS version number for a given view
 
     This is useful for conditional logic, where program execution depends
     on the version(s) of the CLAMS app used.
     """
 
-    # get the app version for TimePoint annotations
-    if tp_view_id is None:
-        tp_ver = None
+    if view_id is None:
+        ver = None
     else:
-        tp_view = usemmif.get_view_by_id(tp_view_id)
-        tp_app = tp_view.metadata.app
-        if tp_app.rfind("/v") != -1:
-            tp_ver = tp_app[tp_app.rfind("/v")+1:]
+        view = usemmif.get_view_by_id(view_id)
+        app = view.metadata.app
+        if app.rfind("/v") != -1:
+            ver = app[app.rfind("/v")+1:]
         else:
-            tp_ver = ""
-
-    # get the app version for TimeFrame annotations
-    if tf_view_id is None:
-        tf_ver = None
-    else:
-        tf_view = usemmif.get_view_by_id(tf_view_id)
-        tf_app = tf_view.metadata.app
-        if tf_app.rfind("/v") != -1:
-            tf_ver = tf_app[tf_app.rfind("/v")+1:]
-        else:
-            tf_ver = ""
+            ver = ""
     
-    return (tp_ver, tf_ver)
+    return ver
 
 
 
