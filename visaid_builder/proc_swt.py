@@ -175,9 +175,7 @@ def first_final_time_in_mmif( usemmif:Mmif, tp_view_id:str="" ):
 
 
 
-def tfs_from_mmif( usemmif:Mmif, 
-                   tp_view_id:str="",
-                   tf_view_id:str="" ):
+def tfs_from_mmif( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
     """
     Analyzes MMIF file from SWT, combining  TimeFrame and TimePoint annotations, 
     and returns tabular data.
@@ -195,23 +193,12 @@ def tfs_from_mmif( usemmif:Mmif,
     """
 
     # If there is no view with a TimeFrame, return an empty list.
-    if len(usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)) == 0:
-        logging.info("MMIF file contained no TimeFrame annotations.")
+    if tf_view_id is None:
+        logging.info("MMIF file contained no SWT TimeFrame annotations.")
         tfs = []
     else:
-        # Get the correct views for TimePoint and TimeFrame annotations.
-        # If these have not been supplied, make simple assumptions about which 
-        # views to get, i.e., the last (end of list) view that contains 
-        # annotations of the relevant type.
-        if tp_view_id != "":
-            tp_view = usemmif.get_view_by_id(tp_view_id)
-        else:
-            tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)[-1]         
-
-        if tf_view_id != "":
-            tf_view = usemmif.get_view_by_id(tf_view_id)
-        else:
-            tf_view = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)[-1]
+        tp_view = usemmif.get_view_by_id(tp_view_id)
+        tf_view = usemmif.get_view_by_id(tf_view_id)
 
         # Get information about the app version from the TimeFrame view
         # If version >= 6.0, use view ID prefix for time point refs
