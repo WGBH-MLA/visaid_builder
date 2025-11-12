@@ -72,22 +72,24 @@ def get_swt_view_ids(usemmif:Mmif):
     TimeFrame containing view relevant to SWT processing
     
     NOTE:
-    At this point in time, the implementation of this function is very naive and 
-    assumes that there aren't a bunch of other views in the MMIF.  This function 
-    will need to be updated to something smarter to deal with more heavily laden 
-    MMIF files with multiple views containing TimePoint and TimeFrame annotations.
+    This function assumes that a valid view will have "swt-detection" as a substring 
+    of the view metadata "app" property.
     """
 
     tp_views = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)
-    if len(tp_views):
-        tp_view = tp_views[-1]
+    swt_tp_views = [ view for view in tp_views 
+                     if view.metadata.app.find("swt-detection") > -1 ]
+    if len(swt_tp_views):
+        tp_view = swt_tp_views[-1]
         tp_view_id = tp_view.id
     else:
         tp_view_id= None
     
     tf_views = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)
-    if len(tf_views):
-        tf_view = tf_views[-1]
+    swt_tf_views = [ view for view in tf_views 
+                     if view.metadata.app.find("swt-detection") > -1 ]
+    if len(swt_tf_views):
+        tf_view = swt_tf_views[-1]
         tf_view_id = tf_view.id
     else:
         tf_view_id = None
