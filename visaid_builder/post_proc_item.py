@@ -363,9 +363,10 @@ def run_post( item:dict,
         visaid_path = None
         visaid_problems = []
         visaid_infos = []
+        visaid_extras = {}
 
         try:
-            visaid_path, visaid_problems, visaid_infos = create_visaid.create_visaid( 
+            visaid_path, visaid_problems, visaid_infos, visaid_extras = create_visaid.create_visaid( 
                 video_path=item["media_path"], 
                 tfs=tfs_adj, 
                 stdout=False, 
@@ -402,13 +403,19 @@ def run_post( item:dict,
         # Get data from preceding visaids process
         if "visaids" not in artifacts:
             video_sar = None
+            video_fps = None
+            video_duration = None
         else:
-            sar_infos = [ info for info in visaid_infos if info.find("SAR-") == 0 ]
-            if len(sar_infos):
-                if len(sar_infos[0]) > 4:
-                    video_sar = sar_infos[0][4:]
-            else:
-                video_sar = "1.0"
+            video_sar = visaid_extras["sar"]
+            video_fps = visaid_extras["fps"]
+            video_duration = visaid_extras["media_length"]
+
+            # sar_infos = [ info for info in visaid_infos if info.find("SAR-") == 0 ]
+            # if len(sar_infos):
+            #     if len(sar_infos[0]) > 4:
+            #         video_sar = sar_infos[0][4:]
+            # else:
+            #     video_sar = "1.0"
 
         # Try to get the duration
 
@@ -488,6 +495,8 @@ def run_post( item:dict,
             },
             "data":{
                 "video_SAR": video_sar,
+                "video_duration_ms": video_duration,
+                "video_fps": video_fps,
                 "bars_end_time": bars_end_sec,
                 "slate_begin_time": slate_begin_sec,
                 "proxy_start_time": proxy_start_sec,

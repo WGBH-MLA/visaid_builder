@@ -196,7 +196,7 @@ def proc_visaid( mmif_path:str,
         logging.info("Creating a visual index...")
 
     # Create visaid
-    visaid_path, visaid_problems, visaid_infos = create_visaid.create_visaid( 
+    visaid_path, visaid_problems, visaid_infos, visaid_extras = create_visaid.create_visaid( 
         video_path=visaid_video_path, 
         tfs=tfs_adj, 
         stdout=stdout, 

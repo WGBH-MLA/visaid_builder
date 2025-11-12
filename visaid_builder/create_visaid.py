@@ -63,6 +63,7 @@ def create_visaid( video_path:str,
 
     problems = []
     infos = []
+    extras = {}
 
     # Warn about spurious parameter keys
     for key in visaid_params:
@@ -112,13 +113,17 @@ def create_visaid( video_path:str,
 
     # get technical stats on the video stream; assumes FPS is constant
     fps = video_stream.average_rate.numerator / video_stream.average_rate.denominator
+    extras["fps"] = float(f"{fps:.2f}")
 
     # determine whether anamorphic stills will need to be stretched
     if video_stream.sample_aspect_ratio is not None:
         sar = float(video_stream.sample_aspect_ratio)
+        extras["sar"] = float(f"{sar:.3f}")
     else:
-        # If SAR cannot be determined, assume it is 1
+        # If SAR cannot be determined, assume it is 1 for present purposes
         sar = 1.0
+        # But report it as None
+        extras["sar"] = None
 
     if abs( 1 - sar ) > STRETCH_THRESHOLD:
         stretch = True
@@ -130,6 +135,7 @@ def create_visaid( video_path:str,
 
     # calculate duration in ms
     media_length = int((video_stream.frames / fps) * 1000)
+    extras["media_length"] = media_length
 
     # Table like tfs, but with an extra columns. 
     # Uses rows from the tfs table, but adds additional columns for actual frame 
@@ -394,5 +400,5 @@ def create_visaid( video_path:str,
         with open(hfilepath, "w") as html_file:
             html_file.write(html_str)
     
-    return hfilepath, problems, infos
+    return hfilepath, problems, infos, extras
    
