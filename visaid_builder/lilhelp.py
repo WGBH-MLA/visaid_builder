@@ -74,11 +74,6 @@ def extract_stills(video_path:str,
     if verbose: print("Using video from", video_path)
     video_fname = video_path[video_path.rfind("/")+1:]
 
-    # Initialize counters for iteration
-    image_list = []
-    stills_count = 0
-    fcount = 0
-
     # remove duplicates in time_points
     num_call_points = len(time_points)
     time_points = list(set(time_points))
@@ -90,8 +85,7 @@ def extract_stills(video_path:str,
     # we need to get the stills in order of appearance
     # We also want to remove duplicates
     time_points.sort()
-    # next_target_time = time_points[stills_count]
-
+    
     # find the first video stream
     container = av.open(video_path)
     video_stream = next((s for s in container.streams if s.type == 'video'), None)
@@ -119,6 +113,10 @@ def extract_stills(video_path:str,
     if time_points[-1] > length :
         print("Warning: Some specified time points are beyond video length and will not be extracted.")
 
+    # Initialize counters for iteration
+    image_list = []
+    stills_count = 0
+    fcount = 0
 
     # going to loop through every frame in the video stream, starting at the beginning 
     target_time = time_points[stills_count]
@@ -130,10 +128,6 @@ def extract_stills(video_path:str,
     for packet in container.demux(video_stream):
         try:
             for frame in packet.decode():
-                # prevent this from running longer than necessary
-                if ( stills_count >= len(time_points) ):
-                    break
-
                 # calculate the time of the frame
                 ftime = int(frame.time * 1000)   
 
@@ -170,6 +164,12 @@ def extract_stills(video_path:str,
                 logging.warning(f"{video_fname} at {ftime} ms: {e}")
                 last_packet_error = ftime
             continue
+
+        finally:
+            # prevent this from running longer than necessary
+            if ( stills_count >= len(time_points) ):
+                finished = True
+                break
 
     
     if verbose: print("Extracted", stills_count, "stills out of", fcount, "video frames checked.") 
