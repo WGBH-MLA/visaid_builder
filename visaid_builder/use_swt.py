@@ -19,6 +19,7 @@ import sys
 import warnings
 import logging
 import json
+import importlib.metadata
 from pprint import pprint
 
 from mmif import Mmif
@@ -29,6 +30,8 @@ from . import proc_swt
 from . import create_visaid
 from . import lilhelp
 
+# get version number from `pyproject.toml` file
+__version__ = importlib.metadata.version("visaid_builder")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -216,14 +219,15 @@ def proc_visaid( mmif_path:str,
 
 
 def main():
-    app_desc="""
-    Creates useful data artifacts from the output of the SWT detection CLAMS app.
+    app_desc = f'visswt (visaid_builder version {__version__})\n'
+    app_desc += """
+Creates useful data artifacts from the output of the SWT detection CLAMS app.
     """
 
     parser = argparse.ArgumentParser(
-        prog='python use_swt.py',
+        prog='visswt',
         description=app_desc,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("mmif_path", metavar="MMIF", type=str,
         help="File path for the MMIF file")
