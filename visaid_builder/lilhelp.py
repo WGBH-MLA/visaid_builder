@@ -3,10 +3,8 @@
 Provides helper functions for using data extracted from MMIF files
 """
 
-# %% 
 # Import statements
 import math
-import sys
 import os
 import av
 import logging
@@ -16,7 +14,6 @@ IMG_QUALITY = 80
 STRETCH_THRESHOLD = 0.01
 
 
-# %% 
 # Define time prettification helper functions
 def tconv( msec: int, frac: bool = True ) -> str:
     """ Converts time in integer milliseconds to a nice string
@@ -32,7 +29,6 @@ def tconv( msec: int, frac: bool = True ) -> str:
     return( tstr )
 
 
-# %%
 # Define still extraction function
 def extract_stills(video_path:str, 
             time_points,
@@ -68,7 +64,7 @@ def extract_stills(video_path:str,
     else:
         stills_dir = dest_path + "/"
         if not os.path.exists(stills_dir):
-            raise Exception("Destination directory is undefined.")
+            raise Exception("Destination directory does not exist.")
 
     # Print explanatory messages.
     if verbose: print("Using video from", video_path)
@@ -168,10 +164,8 @@ def extract_stills(video_path:str,
         finally:
             # prevent this from running longer than necessary
             if ( stills_count >= len(time_points) ):
-                finished = True
                 break
 
-    
     if verbose: print("Extracted", stills_count, "stills out of", fcount, "video frames checked.") 
 
     container.close()
