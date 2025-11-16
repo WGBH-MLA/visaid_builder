@@ -40,6 +40,7 @@ __version__ = version("visaid_builder")
 from . import lilhelp
 from . import proc_swt
 from . import create_visaid
+from . import create_cataid
 
 
 # These are the defaults specific to routines defined in this module.
@@ -55,7 +56,9 @@ VALID_ARTIFACTS = [ "data",
                     "slates",
                     "reps",
                     "ksl",
-                    "visaids" ]
+                    "visaids",
+                    "cataids"
+                   ]
 
 # aliases specific to calculating/inferring proxy start time
 BARS_BINS = ['bars', 'Bars']
@@ -111,7 +114,8 @@ def run_post( item:dict,
     for key in params:
         if key not in { **POSTPROC_DEFAULTS, 
                         **proc_swt.PROC_SWT_DEFAULTS,
-                        **create_visaid.VISAID_DEFAULTS } :
+                        **create_visaid.VISAID_DEFAULTS,
+                        **create_cataid.CATAID_DEFAULTS } :
             print(ins + "Warning: `" + key + "` is not a valid config option for this postprocess. Ignoring.")
 
 
@@ -137,6 +141,10 @@ def run_post( item:dict,
     for key in create_visaid.VISAID_DEFAULTS:
         if key in params:
             visaid_params[key] = params[key]
+    cataid_params = {}
+    for key in create_cataid.CATAID_DEFAULTS:
+        if key in params:
+            cataid_params[key] = params[key]
 
 
     #
@@ -184,12 +192,18 @@ def run_post( item:dict,
                                                         tp_view_id,
                                                         tf_view_id )
 
+
+    ########################################################################
+    # CREATE ARTIFACTS
+    ########################################################################
+
     #
     # Extract the slate
     #
-    if "slates" in artifacts:
+    artifact = "slates"
+    if artifact in artifacts:
         print(ins + "Attempting to save a slate...")
-        slates_dir = artifacts_dir + "/slates"
+        slates_dir = artifacts_dir + "/" + artifact
 
         # The slate rep is the rep timepoint from from the first slate timeframe
         # If there is not slate timeframe, then the value is None
@@ -229,9 +243,10 @@ def run_post( item:dict,
     # Note:  Key frames are extracted from the adjusted TimeFrame table. If 
     # this is not desired, set the adj_tfs parameter to false.
     #
-    if "reps" in artifacts:
+    artifact = "reps"
+    if artifact in artifacts:
         print(ins + "Attempting to save representative stills...")
-        reps_dir = artifacts_dir + "/reps"
+        reps_dir = artifacts_dir + "/" + artifact
 
         if len(tfs_adj) > 0:
             tps = [ tf[4] for tf in tfs_adj ] 
@@ -266,9 +281,10 @@ def run_post( item:dict,
     # of this job.  After each item in the job, it uses the running CSV file to 
     # re-create the JavaScript file that serves as the KSL index.
     #
-    if "ksl" in artifacts:
+    artifact = "ksl"
+    if artifact in artifacts:
         print(ins + "Attempting to index representatives in a KSL-style index...")
-        ksl_dir = artifacts_dir + "/ksl"
+        ksl_dir = artifacts_dir + "/" + artifact
 
         if not "reps" in artifacts:
             print(ins + "Cannot make index because representative stills were not extracted.")
@@ -356,9 +372,10 @@ def run_post( item:dict,
     # Note:  Visaid is created from the adjusted TimeFrame table. If this is not 
     # desired, set the adj_tfs parameter to false.
     #
-    if "visaids" in artifacts:
+    artifact = "visaids"
+    if artifact in artifacts:
         print(ins + "Attempting to make a visaid...")
-        visaids_dir = artifacts_dir + "/visaids"
+        visaids_dir = artifacts_dir + "/" + artifact
 
         visaid_path = None
         visaid_problems = []
@@ -381,7 +398,7 @@ def run_post( item:dict,
         except Exception as e:
             print(ins + "Creation of visaid failed.")
             print(ins + "Error:", e)
-            errors.append(pp_params["name"]+":"+"visaids")
+            errors.append(pp_params["name"]+":"+ artifact )
 
         problems += [ "visaid:"+p for p in visaid_problems ]
         infos += [ "visaid:"+m for m in visaid_infos ]
@@ -394,11 +411,56 @@ def run_post( item:dict,
 
 
     #
+    # Save a cataid
+    #
+    artifact = "cataids"
+    if artifact in artifacts:
+        print(ins + "Attempting to create a cataid...")
+        cataids_dir = artifacts_dir + "/" + artifact
+
+        cataid_path = None
+        cataid_problems = []
+        cataid_infos = []
+        cataid_extras = {}
+
+        try:
+            cataid_path, cataid_problems, cataid_infos, cataid_extras = create_cataid.create_cataid( 
+                video_path=item["media_path"], 
+                tfs=tfs_adj, 
+                stdout=False, 
+                output_dirname=cataids_dir,
+                job_id=cf["job_id"],
+                job_name=cf["job_name"], 
+                item_id=item["asset_id"],
+                proc_swt_params=proc_swt_params,
+                cataid_params=cataid_params,
+                mmif_metadata_str=mmif_metadata_str
+                )
+        except Exception as e:
+            print(ins + "Creation of cataid failed.")
+            print(ins + "Error:", e)
+            errors.append(pp_params["name"]+":"+ artifact )
+
+
+        problems += [ "cataid:"+p for p in cataid_problems ]
+        infos += [ "cataid:"+m for m in cataid_infos ]
+
+        if cataid_path:
+            print(ins + "Cataid created at " + cataid_path)
+        else:
+            print(ins + "Cataid creation procedure completed, but no file path returned.")
+            errors.append(pp_params["name"]+":"+"no_cataid_path")
+
+
+
+
+    #
     # Infer metadata
     #
-    if "data" in artifacts:
+    artifact = "data"
+    if artifact in artifacts:
         print(ins + "Attempting to infer data...")
-        data_dir = artifacts_dir + "/data"
+        data_dir = artifacts_dir + "/" + artifact
 
         # Get data from preceding visaids process
         if "visaids" not in artifacts:
