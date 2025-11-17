@@ -453,7 +453,7 @@ def adjust_tfs( tfs_in:list,
                 
                 for _ in range(num_subsamples):
                     subsample_id = tf[0] + "_s_" + str(len(subsamples))
-                    subsample_label = tf[1] + " subsample"
+                    subsample_label = tf[1] + " - - -"
                     subsample_start = next_start
                     subsample_end = next_start + subsample_dur
                     subsample_rep = next_start + ( subsample_dur // 2 )
