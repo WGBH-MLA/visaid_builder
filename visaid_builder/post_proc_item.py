@@ -440,11 +440,11 @@ def run_post( item:dict,
 
         
         
-        """
+        
         try:
             cataid_path, cataid_problems, cataid_infos, cataid_extras = create_cataid.create_cataid( 
                 video_path=item["media_path"], 
-                tfs=tfs_adj, 
+                tfs=tfsd_adj, 
                 stdout=False, 
                 output_dirname=cataids_dir,
                 job_id=cf["job_id"],
@@ -468,9 +468,8 @@ def run_post( item:dict,
         else:
             print(ins + "Cataid creation procedure completed, but no file path returned.")
             errors.append(pp_params["name"]+":"+"no_cataid_path")
-        """
-        pass
-
+        
+        
 
 
     #

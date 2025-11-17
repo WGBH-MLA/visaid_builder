@@ -4,7 +4,7 @@ create_cataid.py
 Defines a function for creating a cataid from a list of scene TimeFrames.
 
 The main required parameters are the path to the video file and a table
-(list of lists) in the style of the `tfs` tables created by the proc_swt module.
+(list of dicts) in the style of the `tfs` tables created by the proc_swt module.
 
 This function reads and depends on the display ingredients in these files:
    visaid_ingredients/visaid_embedded_styles.css
@@ -150,11 +150,11 @@ def create_cataid( video_path:str,
         # Create a new list sorted in order of rep frame times .
         # Because we need to proceed in order of video frames to be extracted
         # (not necessarily the order of the scene start times).
-        tfs_s = sorted(tfs, key=lambda f:f[4])
+        tfs_s = sorted(tfs, key=lambda f:f["tp_time"])
 
         # initialize target scene and still 
         next_scene = 0 
-        target_time = tfs_s[next_scene][4]
+        target_time = tfs_s[next_scene]["tp_time"]
         last_packet_error = 0
       
         # looping through packets instead of frames allows exception handling for each
@@ -198,14 +198,17 @@ def create_cataid( video_path:str,
                         img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
 
                         # add new row to tfsi
-                        tfsi.append(tfs_s[next_scene] + [ ftime ] + [ img_str ] )
+                        new_tf = dict(tfs_s[next_scene])
+                        new_tf["video_frame_time"] = ftime
+                        new_tf["img_str"] = img_str
+                        tfsi.append(new_tf)
                         
                         next_scene += 1
                         if next_scene >= len(tfs_s):            
                             # no need to continue decoding video if we have all our scenes saved
                             break
                         else:
-                            target_time = tfs_s[next_scene][4]
+                            target_time = tfs_s[next_scene]["tp_time"]
 
             except av.error.InvalidDataError as e:
                 # This exception may get raised many times if there are many packets with problems
@@ -227,7 +230,7 @@ def create_cataid( video_path:str,
 
     # Re-sort new array in terms of scene start time, then by TimeFrame id,
     # (so that subsamples come after the scenes from which they've been sampled.)
-    tfsi.sort(key=lambda f:(f[2],f[0]))
+    tfsi.sort(key=lambda f:(f["start"],f["tf_id"]))
 
     # Get ingredient code strings for inclusion in HTML files
     py_dir = os.path.dirname(__file__)
@@ -267,8 +270,8 @@ def create_cataid( video_path:str,
     # build up a list scene types, preserving order
     all_scene_types = []
     for f in tfs:
-        if f[1] not in all_scene_types:
-            all_scene_types.append(f[1])
+        if f["tf_label"] not in all_scene_types:
+            all_scene_types.append(f["tf_label"])
 
     subsamples_present = False
     for t in all_scene_types:
@@ -329,13 +332,13 @@ def create_cataid( video_path:str,
 
     # Create a new item div for each row in tfsi
     for f in tfsi:
-        label = f[1]
-        start_str = lilhelp.tconv(f[2], False)
-        end_str = lilhelp.tconv(f[3], False) 
+        label = f["tf_label"]
+        start_str = lilhelp.tconv(f["start"], False)
+        end_str = lilhelp.tconv(f["end"], False) 
 
         if params["aapb_timecode_link"] and item_id:
             # creating a link to the AAPB
-            start_sec = str(f[2]/1000)
+            start_sec = str(f["start"]/1000)
             html_start = ( "<a href='https://americanarchive.org/catalog/" +
                            item_id + "?proxy_start_time=" + start_sec + "'>" + 
                            start_str + "</a>" )
@@ -358,14 +361,14 @@ def create_cataid( video_path:str,
 
         html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br>'
 
-        html_img_tag = f'<img src="data:image/jpeg;base64,{f[7]}" >'
-        img_fname = f'{item_id}_{media_length:08}_{f[4]:08}_{f[6]:08}' + ".jpg"
+        html_img_tag = f'<img src="data:image/jpeg;base64,{f["img_str"]}" >'
+        img_fname = f'{item_id}_{media_length:08}_{f["tp_time"]:08}_{f["video_frame_time"]:08}' + ".jpg"
         html_img_fname = "<span class='img-fname hidden'>" + img_fname + "<br></span>"
 
         if params["display_image_ms"]:
-            html_img_ms = f"<span class='img-ms'>{f[4]:08} {f[6]:08}</span>"
+            html_img_ms = f"<span class='img-ms'>{f['tp_time']:08} {f['video_frame_time']:08}</span>"
         else:
-            html_img_ms = f"<span class='img-ms hidden'><br>{f[4]:08} {f[6]:08}</span>"
+            html_img_ms = f"<span class='img-ms hidden'><br>{f['tp_time']:08} {f['video_frame_time']:08}</span>"
 
         # Add the new div to the growing HTML
         cataid_body += (html_div_open + 
