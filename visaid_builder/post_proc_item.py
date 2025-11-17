@@ -40,6 +40,7 @@ __version__ = version("visaid_builder")
 from . import lilhelp
 from . import proc_swt
 from . import create_visaid
+from . import proc_swt_td
 from . import create_cataid
 
 
@@ -167,8 +168,8 @@ def run_post( item:dict,
     
     # create TimeFrame table from the serialized MMIF
     tfs = proc_swt.tfs_from_mmif( usemmif, 
-                                  tp_view_id=tp_view_id,
-                                  tf_view_id=tf_view_id )
+                                  tp_view_id,
+                                  tf_view_id )
 
     print(ins + "SWT scene list length:", len(tfs) )
 
@@ -423,6 +424,17 @@ def run_post( item:dict,
         cataid_infos = []
         cataid_extras = {}
 
+        td_view_id = proc_swt_td.get_td_view_id(usemmif)
+        
+        tfsd = proc_swt_td.tfsd_from_mmif( usemmif, 
+                                           tp_view_id,
+                                           tf_view_id,
+                                           td_view_id )
+        proc_swt_td.display_tfsd(tfsd)
+
+        
+        
+        """
         try:
             cataid_path, cataid_problems, cataid_infos, cataid_extras = create_cataid.create_cataid( 
                 video_path=item["media_path"], 
@@ -450,7 +462,8 @@ def run_post( item:dict,
         else:
             print(ins + "Cataid creation procedure completed, but no file path returned.")
             errors.append(pp_params["name"]+":"+"no_cataid_path")
-
+        """
+        pass
 
 
 

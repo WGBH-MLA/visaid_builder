@@ -38,240 +38,180 @@ import json
 import logging
 from pprint import pprint 
 
-import pandas as pd
-
 from mmif import Mmif
 from mmif import AnnotationTypes
+from mmif import DocumentTypes
 
 from . import lilhelp
+from . import proc_swt
 
 
 # These paramaters for which there are defaults are used by `adjust_tfs`.
 # These default values are used only if 
 #   1) the key is not included in `params_in`
 #   2) the value of "default_to_none" is `False`.
-PROC_SWT_DEFAULTS = { "default_to_none": True,
-                      "include_only": None,
-                      "exclude": [],
-                      "max_unsampled_gap": 60000,
-                      "subsampling": { 
-                          "bars": 120100,
-                          "credits": 1900,
-                          "chyron": 15100,
-                          "person & chyron": 15100,
-                          "other text": 4900,
-                          "slate": 9900 },
-                      "default_subsampling": 30100,
-                      "include_first_time": False,
-                      "include_final_time": False }
+PROC_SWT_TD_DEFAULTS = { "default_to_none": True,
+                         "include_only": None,
+                         "exclude": [],
+                         "max_unsampled_gap": 60000,
+                         "subsampling": { 
+                             "bars": 120100,
+                             "credits": 1900,
+                             "chyron": 15100,
+                             "person & chyron": 15100,
+                             "other text": 4900,
+                             "slate": 9900 },
+                         "default_subsampling": 30100,
+                         "include_first_time": False,
+                         "include_final_time": False }
 
 
-def get_swt_view_ids(usemmif:Mmif):
+def get_td_view_id(usemmif:Mmif):
     """
-    Takes a MMIF string and returns the IDs of the TimePoint containg view and the 
-    TimeFrame containing view relevant to SWT processing
+    Takes a MMIF string and returns the ID of a view with TextDocument annotations
+    from a captioner app.
     
     NOTE:
-    This function assumes that a valid view will have "swt-detection" as a substring 
+    This function assumes that a valid view will have "captioner" as a substring 
     of the view metadata "app" property.
 
-    If there are several views fiting the criteria, this function picks the *final*
+    If there are several views fiting the criteria, this function picks the *first*
     such view.
     """
 
-    tp_views = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)
-    swt_tp_views = [ view for view in tp_views 
-                     if view.metadata.app.find("swt-detection") > -1 ]
-    if len(swt_tp_views):
-        tp_view = swt_tp_views[-1]
-        tp_view_id = tp_view.id
+    td_views = usemmif.get_all_views_contain(DocumentTypes.TextDocument)
+    cap_td_views = [ view for view in td_views 
+                     if view.metadata.app.find("captioner") > -1 ]
+
+    if len(cap_td_views):
+        td_view = cap_td_views[0]
+        td_view_id = td_view.id
     else:
-        tp_view_id= None
-    
-    tf_views = usemmif.get_all_views_contain(AnnotationTypes.TimeFrame)
-    swt_tf_views = [ view for view in tf_views 
-                     if view.metadata.app.find("swt-detection") > -1 ]
-    if len(swt_tf_views):
-        tf_view = swt_tf_views[-1]
-        tf_view_id = tf_view.id
-    else:
-        tf_view_id = None
+        td_view_id= None
 
-    return (tp_view_id, tf_view_id)
+    return td_view_id
 
 
-
-def get_mmif_metadata_str( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
-    """
-    Takes the metadata object from the view(s) specified.    
-    Returns prettified serialized JSON for that metadata.
-    
-    This is a helper function for this module, not a general function for
-    grabbing metadata from MMIF files. It is useful for extracting serialized
-    CLAMS metadata for inclusion or display in CLAMS consuming procedures.
-    """
-
-    if tp_view_id is None:
-        tp_str = "{ }"
-    else:
-        tp_view = usemmif.get_view_by_id(tp_view_id)
-        tp_str = str(tp_view.metadata)
-
-    if tf_view_id is None:
-        tf_str = "{ }"
-    else:
-        tf_view = usemmif.get_view_by_id(tf_view_id)
-        tf_str = str(tf_view.metadata)
-
-    mstr = "[ " + tp_str + ", " + tf_str + " ]"
-
-    return json.dumps(json.loads(mstr), indent=2)
-
-
-
-def get_CLAMS_app_ver( usemmif:Mmif, view_id:str ):
-    """
-    Gets the CLAMS version number for a given view
-
-    This is useful for conditional logic, where program execution depends
-    on the version(s) of the CLAMS app used.
-    """
-
-    if view_id is None:
-        ver = None
-    else:
-        view = usemmif.get_view_by_id(view_id)
-        app = view.metadata.app
-        if app.rfind("/v") != -1:
-            ver = app[app.rfind("/v")+1:]
-        else:
-            ver = ""
-    
-    return ver
-
-
-
-def first_final_time_in_mmif( usemmif:Mmif, tp_view_id:str="" ):
-    """
-    Takes serialized MMIF as a string as input.
-    Analyzes MMIF with TimePoints and returns the times of the first and final ones.
-    """
-
-    # Get the right view.  
-    # (If it has not been supplied, make a reasonable assumption about which one.)
-    if tp_view_id != "":
-        tp_view = usemmif.get_view_by_id(tp_view_id)
-    else:
-        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)[-1]
-
-    tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
-
-    first_time = 86400000
-    final_time = 0
-    for ann in tpanns:
-        if ann.get_property("timePoint") < first_time:
-            first_time = ann.get_property("timePoint")
-        if ann.get_property("timePoint") > final_time:
-            final_time = ann.get_property("timePoint")
-
-    return first_time, final_time
-
-
-
-def tfs_from_mmif( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
+def tfsd_from_mmif( usemmif:Mmif, 
+                    tp_view_id:str, 
+                    tf_view_id:str,
+                    td_view_id:str 
+                    ):
     """
     Analyzes MMIF file from SWT, combining  TimeFrame and TimePoint annotations, 
-    and returns tabular data.
+    and returns tabular data (as a dictionary).
+
+    This function is like the original `tfs_from_mmif` function for SWT, except 
+    returning a dictionary (and allowing additional fields).
 
     Takes serialized MMIF as a string as input.
-    Returns a table (list of lists) representing the TimeFrame annotations
+    Returns a dictionary representing the TimeFrame annotations
 
     Columns of returned "tfs" table of scene time frames:
-        0: TimeFrame id (from MMIF file) (string)
-        1: bin label (string)
-        2: start time in milliseconds (int)
-        3: end time in milliseconds (int)
-        4: representative still time in milliseconds (int)
-        5: representative still point label (string)
+      "tf_id": TimeFrame ID (from MMIF file) (string)
+      "tf_label": TimeFrame label (string)
+      "start": start time in milliseconds (int)
+      "end":end time in milliseconds (int)
+      "tp_id": TimePoint ID (from MMIF file) of representative time point
+      "tp_time": representative still time in milliseconds (int)
+      "tp_label": representative still point label (string)
+      "td_id": TextDocument ID (from MMIF file)
+      "text": text from the TextDocument
     """
 
     # If there is no view with a TimeFrame, return an empty list.
     if tf_view_id is None:
         logging.info("MMIF file contained no SWT TimeFrame annotations.")
         tfs = []
+        return tfs
+
+    # Otherwise, get the relevant views
+    tp_view = usemmif.get_view_by_id(tp_view_id)
+    tf_view = usemmif.get_view_by_id(tf_view_id)
+    if td_view_id is not None:
+        td_view = usemmif.get_view_by_id(td_view_id)
     else:
-        tp_view = usemmif.get_view_by_id(tp_view_id)
-        tf_view = usemmif.get_view_by_id(tf_view_id)
+        logging.info("MMIF file contained no captioner TextDocument annotations.")
+        td_view = None
 
-        # Drill down to the annotations we're after, creating generators
-        tfanns = tf_view.get_annotations(AnnotationTypes.TimeFrame)
-        tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
+    # Collect TD annotations 
+    # (list of dictionaries of TDs)
+    tds = []
+    if td_view is not None:
+        # First, get mapping of TD ann to its ource TP ann
+        tas = {}
+        for ann in td_view.get_annotations(AnnotationTypes.Alignment):
+            tas[ann.get_property("target")] = ann.get_property("source") 
 
-        # Go through the TimeFrame annotations
-        # Build two lists, one of TimeFrames and one of TimeFrame + target TimePoints
-        tfs = []
-        tfpts = []   
-        for ann in tfanns:
-            tf_id = ann.get_property("id")
-            tf_frameType = ann.get_property("frameType")
+        # Build a list of TD anns along with source TP
+        for ann in td_view.get_annotations(DocumentTypes.TextDocument):
+            td = {}
+            td["td_id"] = ann.get_property("id")
+            td["tf_id"] = ann.get_property("origin")
+            td["tp_id"] = tas[td["td_id"]]
+            td["text"] = ann.get_property("text").value
+            tds.append(td)
 
-            # Add timeFrames to the main table of scenes.
-            # As of yet, there are no values for the times.  
-            # These will be added later, on the basis of the join between the 
-            # TimeFrames and their target TimePoints.
-            tfs += [[tf_id, tf_frameType, -1, -1, -1, ""]]
+    # Collect TP anns
+    # (dictionary keyed by TP ann ID)
+    tps = {}
+    for ann in tp_view.get_annotations(AnnotationTypes.TimePoint):
+        tps[ann.get_property("id")] = {
+            "time": ann.get_property("timePoint"),
+            "tp_label": ann.get_property("label") }
 
-            # Add target TimePoints of each TimeFrame to a list of their own.
-            for tp_id in ann.get_property("targets"):
-                is_rep = tp_id in ann.get_property("representatives")
-                tfpts += [[ tf_id, tf_frameType, tp_id, is_rep ]]
+    # Build a list of TF anns
+    # (list of dictionaries of TFs)
+    tfs = []
+    for ann in tf_view.get_annotations(AnnotationTypes.TimeFrame):
+        tf = {}
+        tf["tf_id"] = ann.get_property("id")
+        tf["tf_label"] = ann.get_property("frameType")
+        
+        # iterate through target TPs to get start time and end time
+        tf["start"] = 36000000 # 10 hours
+        tf["end"] = -1
+        for tp_id in ann.get_property("targets"):
+            if tps[tp_id]["time"] < tf["start"]:
+                tf["start"] = tps[tp_id]["time"]
+            if tps[tp_id]["time"] > tf["end"]:
+                tf["end"] = tps[tp_id]["time"]
 
-        # Go through the TimePoint annotations
-        # Build a list for pure TimePoints
-        tps = []
-        for ann in tpanns:
-            
-            tpt_id = ann.get_property("id") 
+        # see if we have data from a TD
+        tftds = [ td for td in tds if td["tf_id"] == tf["tf_id"] ]
+        if not len(tftds):
+            tf["td_id"] = None
+            tf["text"] = None
+        else:
+            if len(tftds) > 1:
+                logging.info(f'More than one TextDocument annotation for TimeFrame {tf["tf_id"]}')
+            td = tftds[0]
+            tf["td_id"] = td["td_id"]
+            tf["text"] = td["text"]
+            if td["tp_id"] in ann.get_property("representatives"):
+                # we have a rep chosen by the TextDocumemnt annotator; choose that as the TF rep
+                tf["tp_id"] = td["tp_id"]
 
-            tps += [[ tpt_id, 
-                      ann.get_property("label"), 
-                      ann.get_property("timePoint") ]]  
+        # if we didn't get a rep TP before, then we have to choose one
+        if "tp_id" not in tf:
+            reps = []
+            for tp_id in ann.get_property("representatives"):
+                rep = { "tp_id": tp_id, 
+                        "time": tps[tp_id]["time"] }
+                reps.append(rep)
+            reps.sort(key=lambda f:f["time"])
 
-        #print("Lengths (tfs, tfpts, tps):", (len(tfs), len(tfpts), len(tps))) # DIAG
+            # choose one from the middle
+            tf["tp_id"] = reps[ (len(reps)-1)//2 ]["tp_id"] 
 
-        # Create DataFrames from lists and perform a merge (join)
-        tfpts_df = pd.DataFrame(tfpts, columns=['tf_id','frameType','tp_id','is_rep'])
-        tps_df = pd.DataFrame(tps, columns=['tp_id','label','timePoint'])
-        tfs_tps_df = pd.merge(tfpts_df,tps_df)
+        # Now that we definitely have a rep, set the rep's time and label
+        tf["tp_time"] = tps[tf["tp_id"]]["time"]
+        tf["tp_label"] = tps[tf["tp_id"]]["tp_label"]
 
-        # Iterate through the scenes in tfs and use the merged DataFrame to look up times
-        # (need to cast np.int64 values to ordinary int)
-        for tf in tfs:
+        tfs.append(tf)
 
-            # perform lookup
-            tfrows = tfs_tps_df[ tfs_tps_df["tf_id"] == tf[0] ]
-
-            # within rows for this time frame, find start and end times
-            tf_start_time = int( (tfrows["timePoint"]).min() )
-            tf_end_time = int( (tfrows["timePoint"]).max() )
-
-            # narrow down to rows that are rep time points, and choose one from the middle
-            tfreprows = tfrows[tfrows["is_rep"]]
-            chosen_row_index = (len(tfreprows) - 1) // 2
-            tfreprow = tfreprows.iloc[chosen_row_index]
-            tf_rep_time = int( tfreprow["timePoint"] )
-            tf_rep_label = tfreprow["label"]
-
-            tf[2] = tf_start_time
-            tf[3] = tf_end_time
-            tf[4] = tf_rep_time
-            tf[5] = tf_rep_label 
-
-        # sort list of timeFrames by start time
-        tfs.sort(key=lambda f:f[2])
-
+    # all done
     return tfs
-
 
 
 def adjust_tfs( tfs_in:list, 
@@ -485,14 +425,10 @@ def adjust_tfs( tfs_in:list,
     return tfs
 
 
-def display_tfs(tfs:list):
+def display_tfsd(tfs:list):
     """
     This function simply prints a simple table of TimeFrame annotations from a tfs table
     """
-    tfs_pretty = []
-    for f in tfs:
-        tfs_pretty += [[ f"{f[2]:08}", 
-                         lilhelp.tconv(f[2]), 
-                         lilhelp.tconv(f[3]), 
-                         f[1] ]]
+    tfs_pretty = tfs
+
     pprint(tfs_pretty)
