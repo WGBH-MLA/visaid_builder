@@ -12,7 +12,7 @@ function updateVis() {
     for (let el of itemElements) {
         let show = false;
         if (sceneVis[el.dataset.scenetype]) {
-            if (!el.dataset.label.includes(" subsample") || sceneVis["scene subsample"] ) {
+            if (!el.dataset.label.includes(" - - -") || sceneVis["scene subsample"] ) {
                  show = true;
             }
         }

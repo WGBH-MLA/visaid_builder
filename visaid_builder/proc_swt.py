@@ -74,6 +74,9 @@ def get_swt_view_ids(usemmif:Mmif):
     NOTE:
     This function assumes that a valid view will have "swt-detection" as a substring 
     of the view metadata "app" property.
+
+    If there are several views fiting the criteria, this function picks the *final*
+    such view.
     """
 
     tp_views = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)
@@ -200,10 +203,6 @@ def tfs_from_mmif( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
         tp_view = usemmif.get_view_by_id(tp_view_id)
         tf_view = usemmif.get_view_by_id(tf_view_id)
 
-        # Get information about the app version from the TimeFrame view
-        # If version >= 6.0, use view ID prefix for time point refs
-        app = tf_view.metadata.app
-
         # Drill down to the annotations we're after, creating generators
         tfanns = tf_view.get_annotations(AnnotationTypes.TimeFrame)
         tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
@@ -228,7 +227,7 @@ def tfs_from_mmif( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
                 tfpts += [[ tf_id, tf_frameType, tp_id, is_rep ]]
 
         # Go through the TimePoint annotations
-        # Build a list for putre TimePoints
+        # Build a list for pure TimePoints
         tps = []
         for ann in tpanns:
             
@@ -454,7 +453,7 @@ def adjust_tfs( tfs_in:list,
                 
                 for _ in range(num_subsamples):
                     subsample_id = tf[0] + "_s_" + str(len(subsamples))
-                    subsample_label = tf[1] + " subsample"
+                    subsample_label = tf[1] + " - - -"
                     subsample_start = next_start
                     subsample_end = next_start + subsample_dur
                     subsample_rep = next_start + ( subsample_dur // 2 )

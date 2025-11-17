@@ -75,17 +75,18 @@ div.container {
 }
 div.item {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+    font-size: 0.75rem;
     background-color: #bababa;
-    padding: 4px 8px 4px 10px;
+    padding: 4px 8px 3px 10px;
     border-radius: 8px 8px 8px 8px;
     box-shadow: 2px 2px 2px 0 #858585,
                 -1px -1px 1px 0 #e2e2e2;
 }
 div.subsample {
-    background-color: #bcd1e3;
-    color: #1d64a1;
-    box-shadow: 4px 4px 2px 0px #d3e2f0,
-               -2px -2px 1px 0px #e2e2e2;
+    background-color: #c5d4e2;
+    color: #5d81a1;
+    box-shadow: 2px 2px 2px 0 #b1b2b3,
+                -1px -1px 1px 0 #e2e2e2;
 }
 div.unsample {
     background-color: #d9d7db;
@@ -123,6 +124,7 @@ span.identifier {
 }
 span.label {
     font-family: "Noto Sans", "Roboto", "Liberation Sans", sans-serif; 
+    font-size: 0.8rem;
 }
 a {
     color: inherit;
