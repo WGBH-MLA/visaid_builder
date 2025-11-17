@@ -272,13 +272,13 @@ def create_cataid( video_path:str,
 
     subsamples_present = False
     for t in all_scene_types:
-        if t.find(" subsample") != -1:
+        if t.find(" - - -") != -1:
             subsamples_present = True
             break
 
     # filter to get SWT bins and special scene types
     scene_types = [ t for t in all_scene_types if 
-                    t not in SPECIAL_SCENE_TYPES and t.find(" subsample") == -1 ]
+                    t not in SPECIAL_SCENE_TYPES and t.find(" - - -") == -1 ]
 
     sample_types = [ t for t in SPECIAL_SCENE_TYPES if 
                      t in all_scene_types ]
@@ -343,9 +343,9 @@ def create_cataid( video_path:str,
             html_start = start_str
 
         div_class = "item" 
-        if label.find("subsample") != -1:
+        if label.find(" - - -") != -1:
             div_class += " subsample"
-            scenetype = label[:label.find(" subsample")]
+            scenetype = label[:label.find(" - - -")]
         elif label.find("unlabeled sample") != -1:
             div_class += " unsample"
             scenetype = label
