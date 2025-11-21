@@ -114,9 +114,9 @@ def tfs_from_mmif( usemmif:Mmif,
       (3) "end":      end time in milliseconds (int)
       (4) "tp_time":  representative still time in milliseconds (int)
       (5) "tp_label": representative still point label (string)
-      (6) "tp_id":    TimePoint ID (from MMIF file) of representative time point
-      (7) "td_id":    TextDocument ID (from MMIF file)
-      (8) "text":     text from the TextDocument
+      (-) "tp_id":    TimePoint ID (from MMIF file) of representative time point
+      (-) "td_id":    TextDocument ID (from MMIF file)
+      (-) "text":     text from the TextDocument
     """
 
     # If there is no view with a TimeFrame, return an empty list.

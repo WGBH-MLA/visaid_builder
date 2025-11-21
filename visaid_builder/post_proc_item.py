@@ -436,10 +436,8 @@ def run_post( item:dict,
                                            final_time, 
                                            proc_swt_params )
 
-        proc_swt_td.display_tfsd(tfsd_adj)
+        # proc_swt_td.display_tfsd(tfsd_adj) # DIAG
 
-        
-        
         
         try:
             cataid_path, cataid_problems, cataid_infos, cataid_extras = create_cataid.create_cataid( 

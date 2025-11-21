@@ -2,3 +2,42 @@ span.video-id {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     color:  #2e8812;
 }
+div.item {
+    min-height: 222px;
+    min-width: 244px;
+}
+div.itemrow {
+    flex-wrap: wrap;
+    gap: 2px;
+}
+div.cataid-extra {
+    flex-wrap: wrap;
+    gap: 2px;
+}
+div.item-aid {
+    width: 350px;
+}
+div.item-editor {
+    width: 350px;    
+}
+div.aid-text {
+    background-color: #d9d7db;
+    font-size: 0.9rem;
+    padding: 4px;
+    margin-top: 2px;
+    min-height: 150px;
+}
+div.editor-text {
+    background-color: #ece9cf;
+    color: black;
+    font-size: 0.9rem;
+    padding: 4px;
+    margin-top: 2px;
+    min-height: 150px;
+}
+.shown {
+    display: flex;
+}
+.clickable:hover {
+    cursor: pointer;
+}

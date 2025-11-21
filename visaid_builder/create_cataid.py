@@ -143,7 +143,7 @@ def create_cataid( video_path:str,
     # time and base64 image data.
 
     tfsi = []
-
+    
     # Build up tfsi table by adding rows based on tfs rows.
     if len(tfs) > 0:
 
@@ -161,6 +161,7 @@ def create_cataid( video_path:str,
         # particular decode step.  This main loop originally iterated over frames in
         # `container.decode(video_stream)`.
         for packet in container.demux(video_stream):
+            break # TESTING 
             try:
                 for frame in packet.decode():
                     ftime = int(frame.time * 1000)   
@@ -231,6 +232,7 @@ def create_cataid( video_path:str,
     # Re-sort new array in terms of scene start time, then by TimeFrame id,
     # (so that subsamples come after the scenes from which they've been sampled.)
     tfsi.sort(key=lambda f:(f["start"],f["tf_id"]))
+    tfsi = tfs # TESTING
 
     # Get ingredient code strings for inclusion in HTML files
     py_dir = os.path.dirname(__file__)
@@ -330,54 +332,115 @@ def create_cataid( video_path:str,
     if len(tfsi) == 0:
         cataid_body += ("<div class=''>(No annotated scenes.)</div>")
 
-    # Create a new item div for each row in tfsi
+    # Create new item divs for each row in tfsi
     for f in tfsi:
+
+        # `label` is the displayed label, the value of `data-label` and the value of `data-scenetype`
         label = f["tf_label"]
-        start_str = lilhelp.tconv(f["start"], False)
-        end_str = lilhelp.tconv(f["end"], False) 
 
-        if params["aapb_timecode_link"] and item_id:
-            # creating a link to the AAPB
-            start_sec = str(f["start"]/1000)
-            html_start = ( "<a href='https://americanarchive.org/catalog/" +
-                           item_id + "?proxy_start_time=" + start_sec + "'>" + 
-                           start_str + "</a>" )
-        else:
-            html_start = start_str
+        # information to keep at the top itemrow-level div
+        itemrow_div_class = "itemrow" 
 
-        div_class = "item" 
+        item_div_class = "item"
         if label.find(" - - -") != -1:
-            div_class += " subsample"
+            item_div_class += " subsample"
             scenetype = label[:label.find(" - - -")]
         elif label.find("unlabeled sample") != -1:
-            div_class += " unsample"
+            item_div_class += " unsample"
             scenetype = label
         else:
-            div_class = div_class
+            item_div_class = item_div_class
             scenetype = label
 
-        #html_div_open = "<div class='" + div_class + "' data-label='" + label + "'>"
-        html_div_open = f"<div class='{div_class}' data-label='{label}' data-scenetype='{scenetype}'>"
+        #
+        # Build some strings as inline ingredients
+        #
 
-        html_cap = f'<span>{html_start}-{end_str}: </span><span class="label">{label}</span><br>'
+        # Human-readable time span for the item
+        time_start_str = lilhelp.tconv(f["start"], False)
+        time_end_str = lilhelp.tconv(f["end"], False) 
 
-        html_img_tag = f'<img src="data:image/jpeg;base64,{f["img_str"]}" >'
+        # human-readable time span for the item
+        time_start_str = lilhelp.tconv(f["start"], False)
+        time_end_str = lilhelp.tconv(f["end"], False) 
+
+        # Hyperlinked start time
+        if params["aapb_timecode_link"] and item_id:
+            # creating a link to the AAPB
+            time_start_sec = str(f["start"]/1000)
+            html_time_start = ( "<a href='https://americanarchive.org/catalog/" +
+                           item_id + "?proxy_start_time=" + time_start_sec + "'>" + 
+                           time_start_str + "</a>" )
+        else:
+            html_time_start = time_start_str
+
+        # top row of the item div
+        html_itemcap = f'<span>{html_time_start}-{time_end_str}: </span><span class="label">{label}</span><br>'
+
+        # the image and stuff about it
+        #html_img_tag = f'<img src="data:image/jpeg;base64,{f["img_str"]}" >'
+        html_img_tag = f'<img src="https://aapb-aux.s3.amazonaws.com/slates/cpb-aacip-225-10wpzhs0_slate.jpg" >' # TESTING 
+        f["video_frame_time"] = 0000 # TESTING 
         img_fname = f'{item_id}_{media_length:08}_{f["tp_time"]:08}_{f["video_frame_time"]:08}' + ".jpg"
         html_img_fname = "<span class='img-fname hidden'>" + img_fname + "<br></span>"
-
         if params["display_image_ms"]:
             html_img_ms = f"<span class='img-ms'>{f['tp_time']:08} {f['video_frame_time']:08}</span>"
         else:
             html_img_ms = f"<span class='img-ms hidden'><br>{f['tp_time']:08} {f['video_frame_time']:08}</span>"
 
-        # Add the new div to the growing HTML
-        cataid_body += (html_div_open + 
-                        html_cap + 
-                        html_img_tag + "\n" +
-                        "<div class='img-caption'>" +
-                        html_img_fname +
-                        html_img_ms + 
-                        "</div></div>" + "\n")
+        # extracted text
+        if f["text"]:
+            aid_text = f["text"]
+            editor_text = aid_text
+        else:
+            aid_text = "[NO TEXT EXTRACTED]"
+            editor_text = ""
+
+        #
+        # Build main block ingredients for itemrow
+        #
+
+        # start of the itemrow div
+        html_itemrow_div_open = f"<div class='{itemrow_div_class}' data-label='{label}' data-scenetype='{scenetype}'>"
+
+        # visaid-style div
+        html_itemvis_div = ( f"<div class='{item_div_class}'>" + "\n" +
+                             html_itemcap + "\n" +
+                             html_img_tag + "\n" +
+                             "<div class='img-caption'>" +
+                             html_img_fname + "\n" +
+                             html_img_ms + "\n" + 
+                             "</div>" + "\n" + 
+                             "</div>" + "\n" )
+
+        # extracted text div
+        html_itemaid_div = ( f"<div class='{item_div_class} item-aid'>" + "\n" +
+                             html_itemcap + "\n" +
+                             "<div class='aid-text'>" + "\n" +
+                             aid_text + "\n" +
+                             "</div>" + "\n" + 
+                             "</div>" + "\n" )
+
+        # text editor div
+        html_itemedt_div = ( f"<div class='{item_div_class} item-editor'>" + "\n" +
+                             html_itemcap + "\n" +
+                             "<div class='editor-text' contenteditable='true'>" + "\n" +
+                             editor_text + "\n" +
+                             "</div>" + "\n" + 
+                             "</div>" + "\n" )
+
+        # full itemrow div
+        html_itemrow = ( html_itemrow_div_open + "\n" +
+                         html_itemvis_div + "\n" +
+                         "<div class='cataid-extra'>" + "\n\n" +
+                         html_itemaid_div + "\n" +
+                         html_itemedt_div + "\n" +
+                         "</div><br> <!-- end of cataid portions-->" + "\n" +
+                         "</div>" + "\n" + 
+                         "<!-- end of itemrow-->" + "\n\n\n" )
+
+        # Add the new divs to the growing HTML
+        cataid_body += html_itemrow
 
 
     # Map values from Python variables into HTML placeholders.
