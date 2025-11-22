@@ -6,6 +6,11 @@ div.item {
     min-height: 222px;
     min-width: 244px;
 }
+span.item-top {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
 div.itemrow {
     flex-wrap: wrap;
     gap: 2px;
@@ -14,29 +19,52 @@ div.cataid-extra {
     flex-wrap: wrap;
     gap: 2px;
 }
+div.unsample {
+    color: #818181;    
+}
 div.item-aid {
+    color: black;
     width: 350px;
 }
 div.item-editor {
-    width: 350px;    
+    color: black;
+    width: 350px; 
+    display: none;
 }
-div.aid-text {
-    background-color: #d9d7db;
+div.engaged {
+    display: block;
+}
+pre {
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.aid-text {
+    background-color: #ecebec;
     font-size: 0.9rem;
     padding: 4px;
+    height: 176px;
     margin-top: 2px;
-    min-height: 150px;
+    border: 1px solid #bababa;   
 }
-div.editor-text {
-    background-color: #ece9cf;
+.editor-text {
+    background-color: #f7f3d4;
     color: black;
     font-size: 0.9rem;
     padding: 4px;
+    height: 176px;
     margin-top: 2px;
-    min-height: 150px;
+    border: 1px solid #bababa;   
 }
 .shown {
     display: flex;
+}
+.invisible {
+    visibility: hidden;
+}
+.fullrow {
+    flex-basis: 100%;
 }
 .clickable:hover {
     cursor: pointer;

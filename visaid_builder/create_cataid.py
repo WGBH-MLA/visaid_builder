@@ -19,9 +19,10 @@ import base64
 import json
 import logging
 
-import av
-
 from importlib.metadata import version
+
+import av
+from titlecase import titlecase
 
 __version__ = version("visaid_builder")
 from . import lilhelp
@@ -161,7 +162,7 @@ def create_cataid( video_path:str,
         # particular decode step.  This main loop originally iterated over frames in
         # `container.decode(video_stream)`.
         for packet in container.demux(video_stream):
-            break # TESTING 
+            #break # TESTING 
             try:
                 for frame in packet.decode():
                     ftime = int(frame.time * 1000)   
@@ -232,7 +233,7 @@ def create_cataid( video_path:str,
     # Re-sort new array in terms of scene start time, then by TimeFrame id,
     # (so that subsamples come after the scenes from which they've been sampled.)
     tfsi.sort(key=lambda f:(f["start"],f["tf_id"]))
-    tfsi = tfs # TESTING
+    #tfsi = tfs # TESTING
 
     # Get ingredient code strings for inclusion in HTML files
     py_dir = os.path.dirname(__file__)
@@ -335,22 +336,27 @@ def create_cataid( video_path:str,
     # Create new item divs for each row in tfsi
     for f in tfsi:
 
-        # `label` is the displayed label, the value of `data-label` and the value of `data-scenetype`
-        label = f["tf_label"]
+        # `tf_label` is the displayed label, the value of `data-label`
+        tf_label = f["tf_label"]
+        tp_id = f["tp_id"]
+        tp_time = f["tp_time"]
+        video_frame_time = f["video_frame_time"] 
+        #video_frame_time = 0000 # TESTING 
 
         # information to keep at the top itemrow-level div
         itemrow_div_class = "itemrow" 
-
         item_div_class = "item"
-        if label.find(" - - -") != -1:
+
+        # scenetype is the tf_label without the subsample suffix
+        if tf_label.find(" - - -") != -1:
             item_div_class += " subsample"
-            scenetype = label[:label.find(" - - -")]
-        elif label.find("unlabeled sample") != -1:
+            scenetype = tf_label[:tf_label.find(" - - -")]
+        elif tf_label.find("unlabeled sample") != -1:
             item_div_class += " unsample"
-            scenetype = label
+            scenetype = tf_label
         else:
             item_div_class = item_div_class
-            scenetype = label
+            scenetype = tf_label
 
         #
         # Build some strings as inline ingredients
@@ -374,23 +380,33 @@ def create_cataid( video_path:str,
         else:
             html_time_start = time_start_str
 
-        # top row of the item div
-        html_itemcap = f'<span>{html_time_start}-{time_end_str}: </span><span class="label">{label}</span><br>'
+        # top row of each of the item divs
+        html_vis_itemcap = ( '<span class="item-top">' + 
+                             f'<span>{html_time_start}-{time_end_str}: <span class="label">{tf_label}</span></span>' + 
+                             '</span>' )
+        html_aid_itemcap = ( '<span class="item-top">' + 
+                             '<span class="label">extracted text</span>' + 
+                             f'<span class="engage-toggle label clickable" data-tptime="{tp_time}">&nbsp; &#9703; </span>' + 
+                             '</span>' )
+        html_edt_itemcap = ( '<span class="item-top">' + 
+                             '<span class="label">catalog data</span>' + 
+                             '<span class="label invisible">&nbsp; &#9703; </span>' + 
+                             '</span>' )
 
         # the image and stuff about it
-        #html_img_tag = f'<img src="data:image/jpeg;base64,{f["img_str"]}" >'
-        html_img_tag = f'<img src="https://aapb-aux.s3.amazonaws.com/slates/cpb-aacip-225-10wpzhs0_slate.jpg" >' # TESTING 
-        f["video_frame_time"] = 0000 # TESTING 
-        img_fname = f'{item_id}_{media_length:08}_{f["tp_time"]:08}_{f["video_frame_time"]:08}' + ".jpg"
+        html_img_tag = f'<img src="data:image/jpeg;base64,{f["img_str"]}" >'
+        #html_img_tag = f'<img src="https://aapb-aux.s3.amazonaws.com/slates/cpb-aacip-225-10wpzhs0_slate.jpg" >' # TESTING 
+        
+        img_fname = f'{item_id}_{media_length:08}_{tp_time:08}_{video_frame_time:08}' + ".jpg"
         html_img_fname = "<span class='img-fname hidden'>" + img_fname + "<br></span>"
         if params["display_image_ms"]:
-            html_img_ms = f"<span class='img-ms'>{f['tp_time']:08} {f['video_frame_time']:08}</span>"
+            html_img_ms = f"<span class='img-ms'>{tp_time:08} {video_frame_time:08}</span>"
         else:
-            html_img_ms = f"<span class='img-ms hidden'><br>{f['tp_time']:08} {f['video_frame_time']:08}</span>"
+            html_img_ms = f"<span class='img-ms hidden'><br>{tp_time:08} {video_frame_time:08}</span>"
 
         # extracted text
         if f["text"]:
-            aid_text = f["text"]
+            aid_text = titlecase( f["text"].replace("\\n", "\n").lower() )
             editor_text = aid_text
         else:
             aid_text = "[NO TEXT EXTRACTED]"
@@ -401,11 +417,11 @@ def create_cataid( video_path:str,
         #
 
         # start of the itemrow div
-        html_itemrow_div_open = f"<div class='{itemrow_div_class}' data-label='{label}' data-scenetype='{scenetype}'>"
+        html_itemrow_div_open = f"<div class='{itemrow_div_class}' data-label='{tf_label}' data-scenetype='{scenetype}'>"
 
         # visaid-style div
         html_itemvis_div = ( f"<div class='{item_div_class}'>" + "\n" +
-                             html_itemcap + "\n" +
+                             html_vis_itemcap + "\n" +
                              html_img_tag + "\n" +
                              "<div class='img-caption'>" +
                              html_img_fname + "\n" +
@@ -415,18 +431,18 @@ def create_cataid( video_path:str,
 
         # extracted text div
         html_itemaid_div = ( f"<div class='{item_div_class} item-aid'>" + "\n" +
-                             html_itemcap + "\n" +
-                             "<div class='aid-text'>" + "\n" +
+                             html_aid_itemcap + "\n" +
+                             "<pre class='aid-text'>" + "\n" +
                              aid_text + "\n" +
-                             "</div>" + "\n" + 
+                             "</pre>" + "\n" + 
                              "</div>" + "\n" )
 
         # text editor div
-        html_itemedt_div = ( f"<div class='{item_div_class} item-editor'>" + "\n" +
-                             html_itemcap + "\n" +
-                             "<div class='editor-text' contenteditable='true'>" + "\n" +
+        html_itemedt_div = ( f"<div class='{item_div_class} item-editor' data-scenetype='{scenetype}' data-tptime='{tp_time}'>" + "\n" +
+                             html_edt_itemcap + "\n" +
+                             f"<pre class='editor-text' contenteditable='true' data-tptime='{tp_time}' data-tpid='{tp_id}'>" + "\n" +
                              editor_text + "\n" +
-                             "</div>" + "\n" + 
+                             "</pre>" + "\n" + 
                              "</div>" + "\n" )
 
         # full itemrow div
@@ -435,7 +451,7 @@ def create_cataid( video_path:str,
                          "<div class='cataid-extra'>" + "\n\n" +
                          html_itemaid_div + "\n" +
                          html_itemedt_div + "\n" +
-                         "</div><br> <!-- end of cataid portions-->" + "\n" +
+                         "</div><!-- end of cataid portions-->" + "\n" +
                          "</div>" + "\n" + 
                          "<!-- end of itemrow-->" + "\n\n\n" )
 
