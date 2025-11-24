@@ -19,6 +19,7 @@ import base64
 import json
 import logging
 
+from datetime import datetime
 from importlib.metadata import version
 
 import av
@@ -102,6 +103,9 @@ def create_cataid( video_path:str,
         video_identifier = item_id
     else:
         video_identifier = video_fname
+    
+    # Construct a cataid identifier
+    cataid_identifier = video_identifier + "#" + datetime.now().strftime("%Y%m%d%H%M%S")
 
     # 
     # Begin analyzing video in terms of tfs table
@@ -464,6 +468,7 @@ def create_cataid( video_path:str,
     # from the HTML structure file.)
     html_field_map = {
         "video_identifier": video_identifier,
+        "cataid_identifier": cataid_identifier,
         "css_str": css_str,
         "js_str": js_str,
         "job_info": job_info,

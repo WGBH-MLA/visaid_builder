@@ -22,9 +22,10 @@ restyle, enhance, or alter a cataid.
 
 
 <body>
-<div class='top'>Cataloging aid for
-    <span class='video-id' id='video-id'>{video_identifier}</span>
-    <span class="clickable" id="mode-toggle">&nbsp;&nbsp;&#9707;&nbsp;&nbsp;</span>
+<div class='top' id="cataid-id" data-cataid-id='{cataid_identifier}'>Cataloging aid for
+    <span class='video-id' id='video-id' data-video-id='{video_identifier}'>{video_identifier}</span>
+    <span class="clickable" id="mode-toggle">&nbsp;&nbsp;&nbsp;&nbsp;&#9707;&nbsp;</span>
+    <span class="invisible" id="collect-edits">&nbsp;&nbsp;<!--&#9910;&#9931;-->&#128918;&nbsp;&nbsp;</span>
     <br>
     <span class='extra-info'>
         <span class='video_duration'>{video_duration}</span> 

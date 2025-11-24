@@ -2,15 +2,6 @@ span.video-id {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     color:  #2e8812;
 }
-div.item {
-    min-height: 222px;
-    min-width: 244px;
-}
-span.item-top {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-}
 div.itemrow {
     flex-wrap: wrap;
     gap: 2px;
@@ -19,8 +10,9 @@ div.cataid-extra {
     flex-wrap: wrap;
     gap: 2px;
 }
-div.unsample {
-    color: #818181;    
+div.item {
+    min-height: 222px;
+    min-width: 244px;
 }
 div.item-aid {
     color: black;
@@ -30,6 +22,14 @@ div.item-editor {
     color: black;
     width: 350px; 
     display: none;
+}
+div.unsample {
+    color: #818181;    
+}
+span.item-top {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
 }
 div.engaged {
     display: block;
@@ -42,6 +42,7 @@ pre {
 }
 .aid-text {
     background-color: #ecebec;
+    color: #818181;
     font-size: 0.9rem;
     padding: 4px;
     height: 176px;
