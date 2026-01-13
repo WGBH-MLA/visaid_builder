@@ -78,7 +78,7 @@ function toggleEngagement() {
 
 function collectEdits () {
     const dataExport = {};
-    dataExport["video_id"] = document.getElementById("video-id").dataset["videoId"];
+    dataExport["asset_id"] = document.getElementById("video-id").dataset["videoId"];
     dataExport["cataid_id"] = document.getElementById("cataid-id").dataset["cataidId"];
     dataExport["export_date"] = new Date().toISOString().slice(0,-5) + "Z";
     dataExport["editor_items"] = [];

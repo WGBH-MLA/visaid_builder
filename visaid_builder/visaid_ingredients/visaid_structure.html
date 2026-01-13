@@ -5,6 +5,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{video_identifier} / Visual Index</title>
+<script type="application/json" id="visaid-options">
+{visaid_options_str}
+</script>
+<script type="application/json" id="mmif-views-metadata">
+{mmif_metadata_str}
+</script>
 <style>
 {css_str}
 </style>
@@ -44,12 +50,7 @@ restyle, enhance, or alter a visaid.
         </div>
     </div>
 </div>
-<pre class="metadata hidden" id="visaid-options">
-{visaid_options_str}
-</pre>
-<pre class="metadata hidden" id="mmif-views-metadata">
-{mmif_metadata_str}
-</pre>
+
 <div class='container'>
 
 {visaid_body}
