@@ -4,15 +4,15 @@ proc_swt.py
 Defines functions that perform processing on MMIF output from SWT.
 
 The primary functions here are:
-`tfs_from_mmif` - creates a tfs array from an MMIF file
-`adjust_tfs` - makes adjustments to a tfs array
+`tfsd_from_mmif` - creates a tfsd array from an MMIF file
+`adjust_tfsd` - makes adjustments to a tfsd array
 
-The `adjust_tfs` function takes a parameter called `params_in` that tell it
+The `adjust_tfsd` function takes a parameter called `params_in` that tell it
 what adjustments to make.  These are the kinds of options specified by the
 parameters for the visaid builder.  
 
 The valid keys for `params_in` are as follows:
-    "default_to_none" (bool) - If True, then parameters not specified when `adjust_tfs` 
+    "default_to_none" (bool) - If True, then parameters not specified when `adjust_tfsd` 
     is called will get the value None instead of the values specified in 
     `PROC_SWT_TD_DEFAULTS`.  
 
@@ -46,7 +46,7 @@ from . import lilhelp
 from . import proc_swt
 
 
-# These paramaters for which there are defaults are used by `adjust_tfs`.
+# These paramaters for which there are defaults are used by `adjust_tfsd`.
 # These default values are used only if 
 #   1) the key is not included in `params_in`
 #   2) the value of "default_to_none" is `False`.
@@ -92,22 +92,22 @@ def get_td_view_id(usemmif:Mmif):
     return td_view_id
 
 
-def tfs_from_mmif( usemmif:Mmif, 
-                   tp_view_id:str, 
-                   tf_view_id:str,
-                   td_view_id:str 
-                   ):
+def tfsd_from_mmif( usemmif:Mmif, 
+                    tp_view_id:str, 
+                    tf_view_id:str,
+                    td_view_id:str 
+                    ):
     """
     Analyzes MMIF file from SWT, combining  TimeFrame and TimePoint annotations, 
     and returns tabular data (as a dictionary).
 
     This function is like the original `tfs_from_mmif` function for SWT, except 
-    returning a dictionary (and allowing additional fields).
+    returning a list of dictionaries (and allowing additional fields).
 
     Takes serialized MMIF as a string as input.
-    Returns a dictionary representing the TimeFrame annotations
+    Returns a list of dictionaries representing the TimeFrame annotations
 
-    Columns of returned "tfs" table:
+    Columns of returned "tfsd" table:
       (0) "tf_id":    TimeFrame ID (from MMIF file) (string)
       (1) "tf_label": TimeFrame label (string)
       (2) "start":    start time in milliseconds (int)
@@ -122,8 +122,8 @@ def tfs_from_mmif( usemmif:Mmif,
     # If there is no view with a TimeFrame, return an empty list.
     if tf_view_id is None:
         logging.info("MMIF file contained no SWT TimeFrame annotations.")
-        tfs = []
-        return tfs
+        tfsd = []
+        return tfsd
 
     # Otherwise, get the relevant views
     tp_view = usemmif.get_view_by_id(tp_view_id)
@@ -162,7 +162,7 @@ def tfs_from_mmif( usemmif:Mmif,
 
     # Build a list of TF anns
     # (list of dictionaries of TFs)
-    tfs = []
+    tfsd = []
     for ann in tf_view.get_annotations(AnnotationTypes.TimeFrame):
         tf = {}
         tf["tf_id"] = ann.get_property("id")
@@ -208,21 +208,21 @@ def tfs_from_mmif( usemmif:Mmif,
         tf["tp_time"] = tps[tf["tp_id"]]["time"]
         tf["tp_label"] = tps[tf["tp_id"]]["tp_label"]
 
-        tfs.append(tf)
+        tfsd.append(tf)
 
     # all done; sort and return
-    tfs.sort(key=lambda f:f["start"])
-    return tfs
+    tfsd.sort(key=lambda f:f["start"])
+    return tfsd
 
 
-def adjust_tfs( tfs_in:list, 
-                first_time:int,
-                final_time:int,
-                params_in:dict ):
+def adjust_tfsd( tfsd_in:list, 
+                 first_time:int,
+                 final_time:int,
+                 params_in:dict ):
     """
-    Adds and/or removes rows to the array returned by `tfs_from_mmif()`.  
+    Adds and/or removes rows to the array returned by `tfsd_from_mmif()`.  
 
-    The data structure for the table output is the same as in the input `tfs` table.
+    The data structure for the table output is the same as in the input `tfsd` table.
 
     Ajdustments are made on the basis of the parameter values passed in.
     """
@@ -230,7 +230,7 @@ def adjust_tfs( tfs_in:list,
     # Warn about spurious parameters
     for key in params_in:
         if key not in PROC_SWT_TD_DEFAULTS:
-            logging.warning("Warning: `" + key + "` is not a valid param for tfs adjustment. Ignoring.")
+            logging.warning("Warning: `" + key + "` is not a valid param for tfsd adjustment. Ignoring.")
 
     # Set parameters not passed in to their defaul values
     # If "default_to_none" is True, then parameters not explicitly passed in will be 
@@ -258,17 +258,17 @@ def adjust_tfs( tfs_in:list,
             params[key] = None
 
     # Make a (shallow) copy of the input list, so not to alter it
-    tfs = tfs_in[:]
+    tfsd = tfsd_in[:]
 
     # Go ahead and filter out scene types, according to parameters
     if params["include_only"] is not None:
-        tfs = [ tf for tf in tfs if tf["tf_label"] in params["include_only"] ]
+        tfsd = [ tf for tf in tfsd if tf["tf_label"] in params["include_only"] ]
     
     if params["exclude"] is not None and len(params["exclude"]) > 0:
-        tfs = [ tf for tf in tfs if tf["tf_label"] not in params["exclude"] ]
+        tfsd = [ tf for tf in tfsd if tf["tf_label"] not in params["exclude"] ]
     
     # Sort just in case it was not already sorted
-    tfs.sort(key=lambda f:f["start"])
+    tfsd.sort(key=lambda f:f["start"])
 
     # Add frames for first and final timepoints.
     # These may be removed later, but we add them for now.
@@ -286,7 +286,7 @@ def adjust_tfs( tfs_in:list,
       "tp_id": None,
       "td_id": None,
       "text": None }
-    tfs.insert(0, first)
+    tfsd.insert(0, first)
 
     final = {
       "tf_id": 'f_n',
@@ -298,7 +298,7 @@ def adjust_tfs( tfs_in:list,
       "tp_id": None,
       "td_id": None,
       "text": None }
-    tfs.append(final)
+    tfsd.append(final)
 
     #
     # Gap sampling
@@ -313,7 +313,7 @@ def adjust_tfs( tfs_in:list,
         max_gap = params["max_unsampled_gap"]
 
         # Samples scenes are primarily useful for their central frame, but they need a 
-        # duration to be represented in the tfs data structure.
+        # duration to be represented in the tfsd data structure.
         #
         # As long as the duration is less than the maximum gap, then the choice of sample
         # duration is somewhat arbitrary.
@@ -329,11 +329,11 @@ def adjust_tfs( tfs_in:list,
         # insert samples.  Specifically, for each time frame, after the first,
         # look back to see how much time since the last one.  If that gap is 
         # bigger than the max_gap, then make one or more samples.
-        for rnum in range(1, len(tfs)) :
+        for rnum in range(1, len(tfsd)) :
             
             # calculate the distance between the start of the current frame
             # and the end of the previous
-            full_gap = tfs[rnum]["start"] - tfs[rnum-1]["end"]
+            full_gap = tfsd[rnum]["start"] - tfsd[rnum-1]["end"]
 
             if full_gap > max_gap :
 
@@ -343,12 +343,12 @@ def adjust_tfs( tfs_in:list,
                 # Calculate the size of the gaps within which we'll locate new samples
                 gap_size = full_gap // num_samples
 
-                # collect samples (we'll add them into tfs later)
+                # collect samples (we'll add them into tfsd later)
                 for sample_count in range(num_samples):
 
                     # gap starts from the end of the last main scene, then offset by the
                     # samples we've already made in this full gap
-                    gap_start = tfs[rnum-1]["end"] + ( sample_count * gap_size )
+                    gap_start = tfsd[rnum-1]["end"] + ( sample_count * gap_size )
 
                     sample_id = "s_" + str(next_sample_num)                    
                     sample_label = "unlabeled sample"
@@ -370,8 +370,8 @@ def adjust_tfs( tfs_in:list,
 
                     next_sample_num += 1
 
-        # add all the samples collected to the tfs list 
-        tfs += samples
+        # add all the samples collected to the tfsd list 
+        tfsd += samples
 
     # 
     # Scene subsampling
@@ -386,7 +386,7 @@ def adjust_tfs( tfs_in:list,
             subsampling = params["subsampling"]
         else:
             # assign subsampling for all frame types
-            bin_labels = set( [ tf["tf_label"] for tf in tfs_in ] )
+            bin_labels = set( [ tf["tf_label"] for tf in tfsd_in ] )
             for label in bin_labels:
                 # go ahead and set subsampling for all labels to the default value
                 subsampling[label] = params["default_subsampling"]
@@ -407,8 +407,8 @@ def adjust_tfs( tfs_in:list,
         # collect new rows for the new samples
         new_scenes = []
 
-        # iterate through scene rows of tfs for which the label is subejct to subsampling
-        for tf in [ tf for tf in tfs if tf["tf_label"] in subsampling]:
+        # iterate through scene rows of tfsd for which the label is subejct to subsampling
+        for tf in [ tf for tf in tfsd if tf["tf_label"] in subsampling]:
 
             # duration for the entire scene
             scene_dur = tf["end"] - tf["start"]
@@ -450,7 +450,7 @@ def adjust_tfs( tfs_in:list,
                 new_scenes += subsamples
 
         # Done iterating through labeled scenes.  Add the new scenes the main list.
-        tfs += new_scenes
+        tfsd += new_scenes
 
         
     # If appropriate, remove first frame and final scenes (which were inserted above)
@@ -460,19 +460,19 @@ def adjust_tfs( tfs_in:list,
     if not params["include_final_time"]:
         to_remove.append('f_n')
     if len(to_remove) > 0:
-        tfs = [ tf for tf in tfs if tf["tf_id"] not in to_remove ]
+        tfsd = [ tf for tf in tfsd if tf["tf_id"] not in to_remove ]
 
-    tfs.sort(key=lambda f:f["start"])
-    return tfs
+    tfsd.sort(key=lambda f:f["start"])
+    return tfsd
 
 
-def display_tfsd(tfs:list):
+def display_tfsd(tfsd:list):
     """
-    This function simply prints a simple table of TimeFrame annotations from a tfs table
+    This function simply prints a simple table of TimeFrame annotations from a tfsd table
     """
     key_order = ["start","end","tf_id","tf_label","tp_time","tp_id","tp_label","td_id","text"]
 
-    for tf in tfs:
+    for tf in tfsd:
         line = ""
         for key in key_order:
             line += key 

@@ -426,12 +426,12 @@ def run_post( item:dict,
 
         td_view_id = proc_swt_td.get_td_view_id(usemmif)
         
-        tfsd = proc_swt_td.tfs_from_mmif( usemmif, 
+        tfsd = proc_swt_td.tfsd_from_mmif( usemmif, 
                                           tp_view_id,
                                           tf_view_id,
                                           td_view_id )
 
-        tfsd_adj = proc_swt_td.adjust_tfs( tfsd, 
+        tfsd_adj = proc_swt_td.adjust_tfsd( tfsd, 
                                            first_time, 
                                            final_time, 
                                            proc_swt_params )
