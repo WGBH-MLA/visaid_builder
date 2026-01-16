@@ -40,7 +40,6 @@ __version__ = version("visaid_builder")
 from . import lilhelp
 from . import proc_swt
 from . import create_visaid
-from . import proc_swt_td
 from . import create_cataid
 
 
@@ -184,6 +183,22 @@ def run_post( item:dict,
         print(ins + "Adjusted scene list length:", len(tfs_adj) )
     else:
         tfs_adj = tfs[:]
+
+    """
+    td_view_id = proc_swt.get_td_view_id(usemmif)
+    tfsd = proc_swt.tfsd_from_mmif( usemmif, 
+                                    tp_view_id,
+                                    tf_view_id,
+                                    td_view_id )
+    tfsd_adj = proc_swt.adjust_tfsd( tfsd, 
+                                     first_time, 
+                                     final_time, 
+                                     proc_swt_params )
+
+    print( "tfs equal?", tfs==proc_swt.tfsd_to_tfs(tfsd) )
+
+    print( "tfs_adj equal?", tfs_adj==proc_swt.tfsd_to_tfs(tfsd_adj) )
+    """
 
     # pprint(tfs) # DIAG
     # pprint(tfs_adj) # DIAG
@@ -424,20 +439,19 @@ def run_post( item:dict,
         cataid_infos = []
         cataid_extras = {}
 
-        td_view_id = proc_swt_td.get_td_view_id(usemmif)
+        td_view_id = proc_swt.get_td_view_id(usemmif)
         
-        tfsd = proc_swt_td.tfsd_from_mmif( usemmif, 
-                                          tp_view_id,
-                                          tf_view_id,
-                                          td_view_id )
+        tfsd = proc_swt.tfsd_from_mmif( usemmif, 
+                                        tp_view_id,
+                                        tf_view_id,
+                                        td_view_id )
 
-        tfsd_adj = proc_swt_td.adjust_tfsd( tfsd, 
-                                           first_time, 
-                                           final_time, 
-                                           proc_swt_params )
+        tfsd_adj = proc_swt.adjust_tfsd( tfsd, 
+                                         first_time, 
+                                         final_time, 
+                                         proc_swt_params )
 
-        # proc_swt_td.display_tfsd(tfsd_adj) # DIAG
-
+        # proc_swt.display_tfsd(tfsd_adj) # DIAG
         
         try:
             cataid_path, cataid_problems, cataid_infos, cataid_extras = create_cataid.create_cataid( 
