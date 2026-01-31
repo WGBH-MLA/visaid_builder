@@ -94,7 +94,7 @@ function collectEdits () {
     const outputJSON = JSON.stringify(dataExport, null, 2);
     const filedata = new Blob([outputJSON], {type: "application/json" });
     const url = window.URL.createObjectURL(filedata);
-    const filename = dataExport["video_id"] + "_cataid_data.json"
+    const filename = dataExport["asset_id"] + "_cataid_data.json"
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = filename;
