@@ -899,7 +899,7 @@ def tfsd_to_tfs(tfsd:list):
                tfd["start"],
                tfd["end"],
                tfd["tp_time"],
-               tfd["tp_label"] ]
+               ( tfd["tp_label"] or "" ) ]
         tfs.append(tf)
 
     return tfs

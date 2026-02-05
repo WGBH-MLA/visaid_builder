@@ -195,9 +195,22 @@ def run_post( item:dict,
                                      final_time, 
                                      proc_swt_params )
 
-    print( "tfs equal?", tfs==proc_swt.tfsd_to_tfs(tfsd) )
+    tfs_equal = tfs==proc_swt.tfsd_to_tfs(tfsd)
+    print( "tfs equal?", tfs_equal )
+    if not tfs_equal:
+        proc_swt.display_tfs(tfs)
+        proc_swt.display_tfs(proc_swt.tfsd_to_tfs(tfsd))
 
-    print( "tfs_adj equal?", tfs_adj==proc_swt.tfsd_to_tfs(tfsd_adj) )
+    tfsd_adj_t = proc_swt.tfsd_to_tfs(tfsd_adj)
+    tfs_adj_equal = tfs_adj==tfsd_adj_t
+    print( "tfs_adj equal?", tfs_adj_equal )
+    if not tfs_adj_equal:
+        #proc_swt.display_tfs(tfs_adj)
+        #proc_swt.display_tfs(proc_swt.tfsd_to_tfs(tfsd_adj))
+        for i, row in enumerate(tfs_adj):
+            if tfs_adj[i] != tfsd_adj_t[i]:
+                print(tfs_adj[i])
+                print(tfsd_adj_t[i])
     """
 
     # pprint(tfs) # DIAG
