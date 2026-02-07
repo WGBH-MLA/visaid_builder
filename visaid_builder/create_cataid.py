@@ -4,7 +4,7 @@ create_cataid.py
 Defines a function for creating a cataid from a list of scene TimeFrames.
 
 The main required parameters are the path to the video file and a table
-(list of dicts) in the style of the `tfs` tables created by the proc_swt module.
+(list of dicts) in the style of the `tfsd` tables created by the proc_swt module.
 
 This function reads and depends on the display ingredients in these files:
    visaid_ingredients/visaid_embedded_styles.css
@@ -46,7 +46,7 @@ SPECIAL_SCENE_TYPES = [ "first frame checked",
 
 
 def create_cataid( video_path:str, 
-                   tfs:list,
+                   tfsd:list,
                    stdout:bool = False,
                    output_dirname:str = ".",
                    hfilename:str = "",
@@ -59,8 +59,8 @@ def create_cataid( video_path:str,
                    mmif_metadata_str: str = ""
                    ):                  
     """
-    Creates an HTML file (with embedded images) as a visual aid, based on the output
-    of `list_tfs`s.
+    Creates an HTML file (with embedded images) as a visaid with cataloging features,, 
+    based on MMIF file processed into the tfsd structure.
 
     """
 
@@ -108,7 +108,7 @@ def create_cataid( video_path:str,
     cataid_identifier = video_identifier + "#" + datetime.now().strftime("%Y%m%d%H%M%S")
 
     # 
-    # Begin analyzing video in terms of tfs table
+    # Begin analyzing video in terms of tfsd table
     #
 
     # find the first video stream
@@ -143,23 +143,23 @@ def create_cataid( video_path:str,
     media_length = int((video_stream.frames / fps) * 1000)
     extras["media_length"] = media_length
 
-    # Table like tfs, but with an extra columns. 
-    # Uses rows from the tfs table, but adds additional columns for actual frame 
+    # Table like tfsd, but with an extra columns. 
+    # Uses rows from the tfsd table, but adds additional columns for actual frame 
     # time and base64 image data.
 
-    tfsi = []
+    tfsdi = []
     
-    # Build up tfsi table by adding rows based on tfs rows.
-    if len(tfs) > 0:
+    # Build up tfsdi table by adding rows based on tfsd rows.
+    if len(tfsd) > 0:
 
         # Create a new list sorted in order of rep frame times .
         # Because we need to proceed in order of video frames to be extracted
         # (not necessarily the order of the scene start times).
-        tfs_s = sorted(tfs, key=lambda f:f["tp_time"])
+        tfsd_s = sorted(tfsd, key=lambda f:f["tp_time"])
 
         # initialize target scene and still 
         next_scene = 0 
-        target_time = tfs_s[next_scene]["tp_time"]
+        target_time = tfsd_s[next_scene]["tp_time"]
         last_packet_error = 0
       
         # looping through packets instead of frames allows exception handling for each
@@ -203,18 +203,18 @@ def create_cataid( video_path:str,
                         # convert binary image data to base64 serialized in a UTF-8 string
                         img_str = base64.b64encode(buf.getvalue()).decode('utf-8')
 
-                        # add new row to tfsi
-                        new_tf = dict(tfs_s[next_scene])
+                        # add new row to tfsdi
+                        new_tf = dict(tfsd_s[next_scene])
                         new_tf["video_frame_time"] = ftime
                         new_tf["img_str"] = img_str
-                        tfsi.append(new_tf)
+                        tfsdi.append(new_tf)
                         
                         next_scene += 1
-                        if next_scene >= len(tfs_s):            
+                        if next_scene >= len(tfsd_s):            
                             # no need to continue decoding video if we have all our scenes saved
                             break
                         else:
-                            target_time = tfs_s[next_scene]["tp_time"]
+                            target_time = tfsd_s[next_scene]["tp_time"]
 
             except av.error.InvalidDataError as e:
                 # This exception may get raised many times if there are many packets with problems
@@ -227,7 +227,7 @@ def create_cataid( video_path:str,
                     problems.append("decode")
                 continue  # Skip this packet and try the next one
 
-            if next_scene >= len(tfs_s):
+            if next_scene >= len(tfsd_s):
                 # no need to continue decoding video if we have all our scenes saved
                 break
 
@@ -236,8 +236,8 @@ def create_cataid( video_path:str,
 
     # Re-sort new array in terms of scene start time, then by TimeFrame id,
     # (so that subsamples come after the scenes from which they've been sampled.)
-    tfsi.sort(key=lambda f:(f["start"],f["tf_id"]))
-    #tfsi = tfs # TESTING
+    tfsdi.sort(key=lambda f:(f["start"],f["tf_id"]))
+    #tfsdi = tfsd # TESTING
 
     # Get ingredient code strings for inclusion in HTML files
     py_dir = os.path.dirname(__file__)
@@ -276,7 +276,7 @@ def create_cataid( video_path:str,
 
     # build up a list scene types, preserving order
     all_scene_types = []
-    for f in tfs:
+    for f in tfsd:
         if f["tf_label"] not in all_scene_types:
             all_scene_types.append(f["tf_label"])
 
@@ -334,11 +334,11 @@ def create_cataid( video_path:str,
     # Build HTML strig for main body of cataid -- the collection of cataid scenes, KIE, and annotation
     # (This is the bulk of the cataid.)
     cataid_body = ""
-    if len(tfsi) == 0:
+    if len(tfsdi) == 0:
         cataid_body += ("<div class=''>(No annotated scenes.)</div>")
 
-    # Create new item divs for each row in tfsi
-    for f in tfsi:
+    # Create new item divs for each row in tfsdi
+    for f in tfsdi:
 
         # `tf_label` is the displayed label, the value of `data-label`
         tf_label = f["tf_label"]

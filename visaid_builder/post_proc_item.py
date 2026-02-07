@@ -432,7 +432,7 @@ def run_post( item:dict,
         try:
             cataid_path, cataid_problems, cataid_infos, cataid_extras = create_cataid.create_cataid( 
                 video_path=item["media_path"], 
-                tfs=tfsd_adj, 
+                tfsd=tfsd_adj, 
                 stdout=False, 
                 output_dirname=cataids_dir,
                 job_id=cf["job_id"],

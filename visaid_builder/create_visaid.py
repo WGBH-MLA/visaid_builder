@@ -56,8 +56,8 @@ def create_visaid( video_path:str,
                    mmif_metadata_str: str = ""
                    ):                  
     """
-    Creates an HTML file (with embedded images) as a visual aid, based on the output
-    of `list_tfs`s.
+    Creates an HTML file (with embedded images) as a visual aid, based on MMIF file
+    processed into the tfs structure.
 
     """
 
