@@ -498,25 +498,19 @@ def run_post( item:dict,
         print(ins + "Attempting to infer data...")
         data_dir = artifacts_dir + "/" + artifact
 
-        # Get data from preceding visaids process
-        if "visaids" not in artifacts:
-            video_sar = None
-            video_fps = None
-            video_duration = None
-        else:
+        # Get data from preceding cataids or visaids process
+        if "cataids" in artifacts:
+            video_sar = cataid_extras["sar"]
+            video_fps = cataid_extras["fps"]
+            video_duration = cataid_extras["media_length"]
+        elif "visaids" in artifacts:
             video_sar = visaid_extras["sar"]
             video_fps = visaid_extras["fps"]
             video_duration = visaid_extras["media_length"]
-
-            # sar_infos = [ info for info in visaid_infos if info.find("SAR-") == 0 ]
-            # if len(sar_infos):
-            #     if len(sar_infos[0]) > 4:
-            #         video_sar = sar_infos[0][4:]
-            # else:
-            #     video_sar = "1.0"
-
-        # Try to get the duration
-
+        else:
+            video_sar = None
+            video_fps = None
+            video_duration = None
 
         # Calculate some significant datapoints based on table of time frames
         #
@@ -572,12 +566,8 @@ def run_post( item:dict,
         print(ins + "Slate begin:", slate_begin_sec)
         print(ins + "Proxy start:", proxy_start_sec)
 
-        # get app names
-        tp_ver = proc_swt.get_CLAMS_app_ver(usemmif, tp_view_id)
-        tf_ver = proc_swt.get_CLAMS_app_ver(usemmif, tf_view_id)
-
         data_artifact = [{ 
-            "metadata": {
+            "process_metadata": {
                 "asset_id": item["asset_id"],
                 "sonyci_id": item ["sonyci_id"],
                 "timestamp": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -585,22 +575,20 @@ def run_post( item:dict,
                 "process": "visaid_builder/post_proc_item",
                 "process_version": __version__,
                 "process_details": {
-                    "swt-tp_version": tp_ver,
-                    "swt-tf_version": tf_ver,
                     "min_proxy_start_ms": pp_params["prog_start_min"],
-                    "max_proxy_start_ms": pp_params["prog_start_max"],
-                    "MMIF_metadata": json.loads(mmif_metadata_str)
+                    "max_proxy_start_ms": pp_params["prog_start_max"]
                 }
             },
-            "data":{
+            "MMIF_views_metadata": json.loads(mmif_metadata_str),
+            "video_data": {
                 "video_SAR": video_sar,
                 "video_duration_ms": video_duration,
                 "video_fps": video_fps,
                 "bars_end_time": bars_end_sec,
                 "slate_begin_time": slate_begin_sec,
-                "proxy_start_time": proxy_start_sec,
-                "SWT_time_frames": tfs,
-            }
+                "proxy_start_time": proxy_start_sec
+            },
+            "scene_data": tfsd
         }]
         # print(data_artifact) # DIAG 
 
