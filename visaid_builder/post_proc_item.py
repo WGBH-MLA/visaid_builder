@@ -160,17 +160,18 @@ def run_post( item:dict,
 
     # Get the right views
     tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(usemmif)
+    td_view_id = proc_swt.get_td_view_id(usemmif)
 
     # call SWT MMIF processors to get a table of time frames
 
     print(ins + "Attempting to process MMIF into SWT scene list...")
-    
-    # create TimeFrame table from the serialized MMIF
-    tfs = proc_swt.tfs_from_mmif( usemmif, 
-                                  tp_view_id,
-                                  tf_view_id )
 
-    print(ins + "SWT scene list length:", len(tfs) )
+    tfsd = proc_swt.tfsd_from_mmif( usemmif, 
+                                    tp_view_id,
+                                    tf_view_id,
+                                    td_view_id )
+
+    print(ins + "SWT scene list length:", len(tfsd) )
 
     # find the outer temporal boundaries of the TimePoint analysis
     first_time, final_time = proc_swt.first_final_time_in_mmif( usemmif, tp_view_id=tp_view_id )
@@ -179,42 +180,18 @@ def run_post( item:dict,
 
     # Create an adjusted TimeFrame table (with scenes added and/or removed)
     if pp_params["adj_tfs"]:
-        tfs_adj = proc_swt.adjust_tfs( tfs, first_time, final_time, proc_swt_params )
-        print(ins + "Adjusted scene list length:", len(tfs_adj) )
+        tfsd_adj = proc_swt.adjust_tfsd( tfsd, 
+                                         first_time, 
+                                         final_time, 
+                                         proc_swt_params )        
+        print(ins + "Adjusted scene list length:", len(tfsd_adj) )
     else:
-        tfs_adj = tfs[:]
+        # a shallow copy is enough; tf records won't be edited after this
+        tfsd_adj = tfsd[:]
 
-    """
-    td_view_id = proc_swt.get_td_view_id(usemmif)
-    tfsd = proc_swt.tfsd_from_mmif( usemmif, 
-                                    tp_view_id,
-                                    tf_view_id,
-                                    td_view_id )
-    tfsd_adj = proc_swt.adjust_tfsd( tfsd, 
-                                     first_time, 
-                                     final_time, 
-                                     proc_swt_params )
-
-    tfs_equal = tfs==proc_swt.tfsd_to_tfs(tfsd)
-    print( "tfs equal?", tfs_equal )
-    if not tfs_equal:
-        proc_swt.display_tfs(tfs)
-        proc_swt.display_tfs(proc_swt.tfsd_to_tfs(tfsd))
-
-    tfsd_adj_t = proc_swt.tfsd_to_tfs(tfsd_adj)
-    tfs_adj_equal = tfs_adj==tfsd_adj_t
-    print( "tfs_adj equal?", tfs_adj_equal )
-    if not tfs_adj_equal:
-        #proc_swt.display_tfs(tfs_adj)
-        #proc_swt.display_tfs(proc_swt.tfsd_to_tfs(tfsd_adj))
-        for i, row in enumerate(tfs_adj):
-            if tfs_adj[i] != tfsd_adj_t[i]:
-                print(tfs_adj[i])
-                print(tfsd_adj_t[i])
-    """
-
-    # pprint(tfs) # DIAG
-    # pprint(tfs_adj) # DIAG
+    # create legacy tfs tables from tfsd tables
+    tfs = proc_swt.tfsd_to_tfs(tfsd)
+    tfs_adj = proc_swt.tfsd_to_tfs(tfsd_adj)
 
     # get mmif_metadata_str
     mmif_metadata_str = proc_swt.get_mmif_metadata_str( usemmif,
@@ -452,20 +429,6 @@ def run_post( item:dict,
         cataid_infos = []
         cataid_extras = {}
 
-        td_view_id = proc_swt.get_td_view_id(usemmif)
-        
-        tfsd = proc_swt.tfsd_from_mmif( usemmif, 
-                                        tp_view_id,
-                                        tf_view_id,
-                                        td_view_id )
-
-        tfsd_adj = proc_swt.adjust_tfsd( tfsd, 
-                                         first_time, 
-                                         final_time, 
-                                         proc_swt_params )
-
-        # proc_swt.display_tfsd(tfsd_adj) # DIAG
-        
         try:
             cataid_path, cataid_problems, cataid_infos, cataid_extras = create_cataid.create_cataid( 
                 video_path=item["media_path"], 
@@ -493,7 +456,6 @@ def run_post( item:dict,
         else:
             print(ins + "Cataid creation procedure completed, but no file path returned.")
             errors.append(pp_params["name"]+":"+"no_cataid_path")
-        
         
 
 

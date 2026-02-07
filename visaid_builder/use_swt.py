@@ -56,11 +56,16 @@ def proc_display(mmif_path:str):
 
     # Get the right views
     tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(usemmif)
+    td_view_id = proc_swt.get_td_view_id(usemmif)
 
     # create TimeFrame table from the serialized MMIF
-    tfs = proc_swt.tfs_from_mmif( usemmif, 
-                                  tp_view_id=tp_view_id,
-                                  tf_view_id=tf_view_id )
+    tfsd = proc_swt.tfsd_from_mmif( usemmif, 
+                                    tp_view_id,
+                                    tf_view_id,
+                                    td_view_id )
+    # create legacy table structure
+    tfs = proc_swt.tfsd_to_tfs(tfsd)
+
 
     print(len(tfs), "scenes labeled in")
     print(mmif_path, ":\n")
@@ -162,20 +167,29 @@ def proc_visaid( mmif_path:str,
 
     # Get the right views
     tp_view_id, tf_view_id = proc_swt.get_swt_view_ids(usemmif)
+    td_view_id = proc_swt.get_td_view_id(usemmif)
 
     # create TimeFrame table from the serialized MMIF
-    tfs = proc_swt.tfs_from_mmif( usemmif, 
-                                  tp_view_id=tp_view_id,
-                                  tf_view_id=tf_view_id )
-
+    # create TimeFrame table from the serialized MMIF
+    tfsd = proc_swt.tfsd_from_mmif( usemmif, 
+                                    tp_view_id,
+                                    tf_view_id,
+                                    td_view_id )
     # find the outer temporal boundaries of the TimePoint analysis
     first_time, final_time = proc_swt.first_final_time_in_mmif( usemmif, tp_view_id=tp_view_id )
 
     # Create an adjusted TimeFrame table (with scenes added and/or removed)
     if scene_adj:
-        tfs_adj = proc_swt.adjust_tfs( tfs, first_time, final_time, proc_swt_params )
+        tfsd_adj = proc_swt.adjust_tfsd( tfsd, 
+                                         first_time, 
+                                         final_time, 
+                                         proc_swt_params ) 
     else:
-        tfs_adj = tfs[:]
+        tfsd_adj = tfsd[:]
+
+    # create legacy table structure
+    tfs = proc_swt.tfsd_to_tfs(tfsd)
+    tfs_adj = proc_swt.tfsd_to_tfs(tfsd_adj)
 
     mmif_metadata_str = proc_swt.get_mmif_metadata_str( usemmif,
                                                         tp_view_id,
