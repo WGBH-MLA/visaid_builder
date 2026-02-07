@@ -30,6 +30,8 @@ import csv
 import json
 import datetime
 
+from statistics import mean, median
+
 from mmif import Mmif
 
 from pprint import pprint # DIAG
@@ -171,12 +173,39 @@ def run_post( item:dict,
                                     tf_view_id,
                                     td_view_id )
 
-    print(ins + "SWT scene list length:", len(tfsd) )
-
     # find the outer temporal boundaries of the TimePoint analysis
     first_time, final_time = proc_swt.first_final_time_in_mmif( usemmif, tp_view_id=tp_view_id )
-    print(ins + f"First TimePoint annotation at {lilhelp.tconv(first_time, frac=False)} ({first_time} ms).")
-    print(ins + f"Final TimePoint annotation at {lilhelp.tconv(final_time, frac=False)} ({final_time} ms).")
+
+    # print some stats
+    print(ins + "  * SWT scene list length:", len(tfsd) )
+
+    print(ins + f"  * First TimePoint annotation at {lilhelp.tconv(first_time)} ({first_time} ms).")
+    print(ins + f"  * Final TimePoint annotation at {lilhelp.tconv(final_time)} ({final_time} ms).")
+
+    dur = int( mean( [ t["end"] - t["start"] for t in tfsd ] ) )
+    print(ins + f"  * Mean SWT scene length:   {lilhelp.tconv(dur)} ({dur} ms)" )
+
+    dur = int( median( [ t["end"] - t["start"] for t in tfsd ] ) )
+    print(ins + f"  * Median SWT scene length: {lilhelp.tconv(dur)} ({dur} ms)" )
+
+    dur = max( [ t["end"] - t["start"] for t in tfsd ] )
+    print(ins + f"  * Max SWT scene length:    {lilhelp.tconv(dur)} ({dur} ms)" )
+
+    overlaps = proc_swt.find_overlaps( tfsd )
+    print(ins + "  * Number of scene overlaps: " + str(len(overlaps)) )
+    if overlaps:
+        # dur = int( mean( [ t["dur"] for t in overlaps ] ) )
+        # print(ins + f"  * Mean overlap length:   {lilhelp.tconv(dur)} ({dur} ms)" )
+
+        dur = int( median( [ t["dur"] for t in overlaps ] ) )
+        print(ins + f"  * Median overlap length: {lilhelp.tconv(dur)} ({dur} ms)" )
+
+        # dur = max( [ t["dur"] for t in overlaps ] )
+        # print(ins + f"  * Max overlap length:    {lilhelp.tconv(dur)} ({dur} ms)" )
+
+        movls = sorted(overlaps, key=lambda t:t["dur"], reverse=True)
+        movl = movls[0]
+        print(ins + f'  * Max overlap at {lilhelp.tconv(movl["start"])} ({movl["start"]} ms) for {lilhelp.tconv(movl["dur"])} ({movl["dur"]} ms).')
 
     # Create an adjusted TimeFrame table (with scenes added and/or removed)
     if pp_params["adj_tfs"]:
@@ -184,10 +213,11 @@ def run_post( item:dict,
                                          first_time, 
                                          final_time, 
                                          proc_swt_params )        
-        print(ins + "Adjusted scene list length:", len(tfsd_adj) )
+        print(ins + f"  * Scene list length adjustment: {len(tfsd)} -> {len(tfsd_adj)}")
     else:
         # a shallow copy is enough; tf records won't be edited after this
         tfsd_adj = tfsd[:]
+
 
     # create legacy tfs tables from tfsd tables
     tfs = proc_swt.tfsd_to_tfs(tfsd)

@@ -24,7 +24,8 @@ def tconv( msec: int, frac: bool = True ) -> str:
 
     tstr = str(imin).zfill(2) + ":" + str(isec).zfill(2) 
     if frac:
-        tstr += "." + str(imsec).zfill(3)
+        # display fractional seconds to hundreths place
+        tstr += "." + str(imsec).zfill(3)[:2]
    
     return( tstr )
 

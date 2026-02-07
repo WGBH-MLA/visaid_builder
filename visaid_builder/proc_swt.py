@@ -201,6 +201,7 @@ def first_final_time_in_mmif( usemmif:Mmif, tp_view_id:str="" ):
     return first_time, final_time
 
 
+
 def tfsd_from_mmif( usemmif:Mmif, 
                     tp_view_id:str, 
                     tf_view_id:str,
@@ -601,6 +602,44 @@ def tfsd_to_tfs(tfsd:list):
         tfs.append(tf)
 
     return tfs
+
+
+def find_overlaps( tfsd: list) -> list:
+    """
+    This is a diagnostic function to identify overlapping scenes represented by the
+    tfsd data structure.
+
+    It returns a list of dictionaries describing overlaps.
+    """
+    
+    # make a shallow copy of tfsd, since we'll be re-sorting
+    tfsd = tfsd[:]
+
+    # order time frames by starting ms
+    tfsd.sort( key=lambda f:f["start"] )
+
+    # iterate through timeframes and search for other time frames that start before
+    # the end of the current one.
+    overlaps = []
+    for i in tfsd:
+        for j in tfsd:
+            if ( i["start"] <= j["start"] and
+                 i["end"] >= j["start"] and
+                 i["tf_id"] != j["tf_id"] 
+                ):
+                 overlap = {
+                    "tf_id": i["tf_id"],
+                    "tf_label": i["tf_label"],
+                    "ov_id": j["tf_id"],
+                    "ov_label": j["tf_label"],
+                    "start": j["start"],
+                    "end": min( i["end"], j["end"] ),
+                    "dur": min( i["end"], j["end"] ) - j["start"] 
+                 }
+                 overlaps.append(overlap)
+                    
+    return overlaps
+
 
 
 def display_tfs(tfs:list):
