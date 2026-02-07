@@ -125,7 +125,10 @@ def get_td_view_id(usemmif:Mmif):
     return td_view_id
 
 
-def get_mmif_metadata_str( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
+def get_mmif_metadata_str( usemmif:Mmif, 
+                           tp_view_id:str, 
+                           tf_view_id:str,
+                           td_view_id:str ):
     """
     Takes the metadata object from the view(s) specified.    
     Returns prettified serialized JSON for that metadata.
@@ -136,20 +139,33 @@ def get_mmif_metadata_str( usemmif:Mmif, tp_view_id:str, tf_view_id:str ):
     """
 
     if tp_view_id is None:
-        tp_str = "{ }"
+        tp_d = {}
     else:
         tp_view = usemmif.get_view_by_id(tp_view_id)
         tp_str = str(tp_view.metadata)
+        tp_d = json.loads(tp_str)
 
     if tf_view_id is None:
-        tf_str = "{ }"
+        tf_d = {}
     else:
         tf_view = usemmif.get_view_by_id(tf_view_id)
         tf_str = str(tf_view.metadata)
+        tf_d = json.loads(tf_str)
 
-    mstr = "[ " + tp_str + ", " + tf_str + " ]"
+    if td_view_id is None:
+        td_d = {}
+    else:
+        td_view = usemmif.get_view_by_id(td_view_id)
+        td_str = str(td_view.metadata)
+        td_d = json.loads(td_str)
 
-    return json.dumps(json.loads(mstr), indent=2)
+    md = { "TimePoint_view_metadata": tp_d,
+           "TimeFrame_view_metadata": tf_d,
+           "TextDocument_view_metadata": td_d }
+
+    mstr = json.dumps( md, indent=2 )
+
+    return mstr
 
 
 

@@ -226,7 +226,8 @@ def run_post( item:dict,
     # get mmif_metadata_str
     mmif_metadata_str = proc_swt.get_mmif_metadata_str( usemmif,
                                                         tp_view_id,
-                                                        tf_view_id )
+                                                        tf_view_id,
+                                                        td_view_id )
 
 
     ########################################################################
