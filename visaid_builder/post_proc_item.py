@@ -182,30 +182,33 @@ def run_post( item:dict,
     print(ins + f"  * First TimePoint annotation at {lilhelp.tconv(first_time)} ({first_time} ms).")
     print(ins + f"  * Final TimePoint annotation at {lilhelp.tconv(final_time)} ({final_time} ms).")
 
-    dur = int( mean( [ t["end"] - t["start"] for t in tfsd ] ) )
-    print(ins + f"  * Mean SWT scene length:   {lilhelp.tconv(dur)} ({dur} ms)" )
+    if len(tfsd):
+        # if we have any SWT TimeFrames, print some additional stats
 
-    dur = int( median( [ t["end"] - t["start"] for t in tfsd ] ) )
-    print(ins + f"  * Median SWT scene length: {lilhelp.tconv(dur)} ({dur} ms)" )
+        dur = int( mean( [ t["end"] - t["start"] for t in tfsd ] ) )
+        print(ins + f"  * Mean SWT scene length:   {lilhelp.tconv(dur)} ({dur} ms)" )
 
-    dur = max( [ t["end"] - t["start"] for t in tfsd ] )
-    print(ins + f"  * Max SWT scene length:    {lilhelp.tconv(dur)} ({dur} ms)" )
+        dur = int( median( [ t["end"] - t["start"] for t in tfsd ] ) )
+        print(ins + f"  * Median SWT scene length: {lilhelp.tconv(dur)} ({dur} ms)" )
 
-    overlaps = proc_swt.find_overlaps( tfsd )
-    print(ins + "  * Number of scene overlaps: " + str(len(overlaps)) )
-    if overlaps:
-        # dur = int( mean( [ t["dur"] for t in overlaps ] ) )
-        # print(ins + f"  * Mean overlap length:   {lilhelp.tconv(dur)} ({dur} ms)" )
+        dur = max( [ t["end"] - t["start"] for t in tfsd ] )
+        print(ins + f"  * Max SWT scene length:    {lilhelp.tconv(dur)} ({dur} ms)" )
 
-        dur = int( median( [ t["dur"] for t in overlaps ] ) )
-        print(ins + f"  * Median overlap length: {lilhelp.tconv(dur)} ({dur} ms)" )
+        overlaps = proc_swt.find_overlaps( tfsd )
+        print(ins + "  * Number of scene overlaps: " + str(len(overlaps)) )
+        if overlaps:
+            # dur = int( mean( [ t["dur"] for t in overlaps ] ) )
+            # print(ins + f"  * Mean overlap length:   {lilhelp.tconv(dur)} ({dur} ms)" )
 
-        # dur = max( [ t["dur"] for t in overlaps ] )
-        # print(ins + f"  * Max overlap length:    {lilhelp.tconv(dur)} ({dur} ms)" )
+            dur = int( median( [ t["dur"] for t in overlaps ] ) )
+            print(ins + f"  * Median overlap length: {lilhelp.tconv(dur)} ({dur} ms)" )
 
-        movls = sorted(overlaps, key=lambda t:t["dur"], reverse=True)
-        movl = movls[0]
-        print(ins + f'  * Max overlap at {lilhelp.tconv(movl["start"])} ({movl["start"]} ms) for {lilhelp.tconv(movl["dur"])} ({movl["dur"]} ms).')
+            # dur = max( [ t["dur"] for t in overlaps ] )
+            # print(ins + f"  * Max overlap length:    {lilhelp.tconv(dur)} ({dur} ms)" )
+
+            movls = sorted(overlaps, key=lambda t:t["dur"], reverse=True)
+            movl = movls[0]
+            print(ins + f'  * Max overlap at {lilhelp.tconv(movl["start"])} ({movl["start"]} ms) for {lilhelp.tconv(movl["dur"])} ({movl["dur"]} ms).')
 
     # Create an adjusted TimeFrame table (with scenes added and/or removed)
     if pp_params["adj_tfs"]:
