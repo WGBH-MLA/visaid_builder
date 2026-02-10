@@ -81,6 +81,7 @@ div.item {
     border-radius: 8px 8px 8px 8px;
     box-shadow: 2px 2px 2px 0 #858585,
                 -1px -1px 1px 0 #e2e2e2;
+    break-inside: avoid;
 }
 div.subsample {
     background-color: #c5d4e2;
@@ -131,4 +132,12 @@ a {
 }
 .hidden {
     display: none;
+}
+@media print {
+    div.top {
+        position: static;
+    }
+    body {
+        padding-top: 0;
+    }
 }
