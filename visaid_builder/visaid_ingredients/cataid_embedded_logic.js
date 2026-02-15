@@ -86,9 +86,11 @@ function collectEdits () {
         const editorItem = {};
         editorItem["tp_time"] = tptime = parseInt(itemEl.dataset["tptime"]);
         editorItem["tf_label"] = itemEl.dataset["scenetype"];
+        const aidEl = document.querySelector(`.aid-text[data-tptime='${tptime}']`);
+        editorItem["aid_text"] = aidEl.innerText;                
         const edtEl = document.querySelector(`.editor-text[data-tptime='${tptime}']`);
+        editorItem["etd_text"] = edtEl.innerText.trimEnd();        
         editorItem["tp_id"] = edtEl.dataset["tpid"];
-        editorItem["text"] = edtEl.innerText.trimEnd();
         dataExport["editor_items"].push(editorItem);
     }
     const outputJSON = JSON.stringify(dataExport, null, 2);

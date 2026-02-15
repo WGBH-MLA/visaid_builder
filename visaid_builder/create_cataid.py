@@ -434,9 +434,9 @@ def create_cataid( video_path:str,
                              "</div>" + "\n" )
 
         # extracted text div
-        html_itemaid_div = ( f"<div class='{item_div_class} item-aid'>" + "\n" +
+        html_itemaid_div = ( f"<div class='{item_div_class} item-aid' data-scenetype='{scenetype}' data-tptime='{tp_time}'>" + "\n" +
                              html_aid_itemcap + "\n" +
-                             "<pre class='aid-text'>" + "\n" +
+                             f"<pre class='aid-text' data-tptime='{tp_time}' data-tpid='{tp_id}'>" + "\n" +
                              aid_text + "\n" +
                              "</pre>" + "\n" + 
                              "</div>" + "\n" )
