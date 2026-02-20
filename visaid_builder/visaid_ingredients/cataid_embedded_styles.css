@@ -2,6 +2,20 @@ span.video-id {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     color:  #2e8812;
 }
+.cataloger_form {
+    color: #818181;
+}
+.cataloger_blank {
+    display: inline-block;
+    vertical-align: bottom;
+    width: 100px;
+    font-size: 0.8rem;
+    font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
+    white-space: nowrap;
+    padding: 2px;
+    background-color: #f7f3d4;
+    border: 1px solid #bababa; 
+}
 div.itemrow {
     flex-wrap: wrap;
     gap: 2px;

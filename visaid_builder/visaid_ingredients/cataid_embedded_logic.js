@@ -35,6 +35,7 @@ function cataidMode() {
         el.classList.add('fullrow');
     }
     document.getElementById('collect-edits').classList.remove('invisible')
+    document.getElementById('cataloger_form').classList.remove('invisible')
     document.getElementById('collect-edits').classList.add('clickable')
     CATAID_MODE = true;
 }
@@ -48,6 +49,7 @@ function visaidMode() {
         el.classList.remove('fullrow');
     }
     document.getElementById('collect-edits').classList.add('invisible')
+    document.getElementById('cataloger_form').classList.add('invisible')
     document.getElementById('collect-edits').classList.remove('clickable')
     CATAID_MODE = false;
 }
@@ -80,6 +82,7 @@ function collectEdits () {
     const dataExport = {};
     dataExport["asset_id"] = document.getElementById("video-id").dataset["videoId"];
     dataExport["cataid_id"] = document.getElementById("cataid-id").dataset["cataidId"];
+    dataExport["cataloger"] = document.getElementById("cataloger_blank").innerText.trim();    
     dataExport["export_date"] = new Date().toISOString().slice(0,-5) + "Z";
     dataExport["editor_items"] = [];
     for (const itemEl of document.querySelectorAll(`.item-editor.engaged`)) {
@@ -89,10 +92,12 @@ function collectEdits () {
         const aidEl = document.querySelector(`.aid-text[data-tptime='${tptime}']`);
         editorItem["aid_text"] = aidEl.innerText;                
         const edtEl = document.querySelector(`.editor-text[data-tptime='${tptime}']`);
-        editorItem["etd_text"] = edtEl.innerText.trimEnd();        
+        editorItem["etd_text"] = edtEl.innerText.trim();        
         editorItem["tp_id"] = edtEl.dataset["tpid"];
         dataExport["editor_items"].push(editorItem);
     }
+    const mmifViewsMetadataEl = document.getElementById('mmif-views-metadata');
+    dataExport["MMIF_views_metadata"] = JSON.parse(mmifViewsMetadataEl.textContent);
     const outputJSON = JSON.stringify(dataExport, null, 2);
     const filedata = new Blob([outputJSON], {type: "application/json" });
     const url = window.URL.createObjectURL(filedata);
