@@ -27,6 +27,18 @@ from titlecase import titlecase
 
 __version__ = version("visaid_builder")
 from . import lilhelp
+from .catification_prompts import catprompts
+
+_GBH_AI_HELPER = True
+
+# Import AI helper, if available
+try:
+    import gbh_ai_helper
+except ImportError as e:
+    print("Import error:",e)
+    print("Warning: `gbh_ai_helper` package not found.  Will not use.")
+    _GBH_AI_HELPER = False
+
 
 CATAID_DEFAULTS = { "deselected_scene_types": ["filmed text"],
                     "job_id_in_cataid_filename": False,
@@ -34,7 +46,8 @@ CATAID_DEFAULTS = { "deselected_scene_types": ["filmed text"],
                     "display_job_info": True,
                     "display_image_ms": True,
                     "aapb_timecode_link": False,
-                    "max_img_height": 360 }
+                    "max_img_height": 360,
+                    "use_ai_helper": True }
 
 STRETCH_THRESHOLD = 0.005
 
@@ -43,6 +56,21 @@ STRETCH_THRESHOLD = 0.005
 SPECIAL_SCENE_TYPES = [ "first frame checked", 
                         "last frame checked", 
                         "unlabeled sample"] 
+
+
+def catify_text( raw_text:str, tf_label:str, use_ai:bool=True ) -> str:
+    """
+    Transform raw text as appropriate for cataloging.
+    """
+
+    if use_ai and tf_label in catprompts :
+        new_text = gbh_ai_helper.analyze_sample( catprompts[tf_label]["instr"], raw_text )
+
+    else:
+        new_text = titlecase( raw_text.lower() )
+
+    return new_text
+
 
 
 def create_cataid( video_path:str, 
@@ -410,8 +438,11 @@ def create_cataid( video_path:str,
 
         # extracted text
         if f["text"]:
-            aid_text = titlecase( f["text"].replace("\\n", "\n").lower() )
-            editor_text = aid_text
+            aid_text = f["text"].replace("\\n", "\n")
+
+            editor_text = catify_text( aid_text, 
+                                       f["tf_label"], 
+                                       (params["use_ai_helper"] and _GBH_AI_HELPER) )
         else:
             aid_text = "[NO TEXT EXTRACTED]"
             editor_text = ""
