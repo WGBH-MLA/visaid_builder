@@ -94,6 +94,8 @@ function collectEdits () {
         const edtEl = document.querySelector(`.editor-text[data-tptime='${tptime}']`);
         editorItem["etd_text"] = edtEl.innerText.trim();        
         editorItem["tp_id"] = edtEl.dataset["tpid"];
+        const imgEl = document.querySelector(`img[data-tptime='${tptime}']`);
+        editorItem["img_data_uri"] = imgEl.getAttribute('src');
         dataExport["editor_items"].push(editorItem);
     }
     const mmifViewsMetadataEl = document.getElementById('mmif-views-metadata');

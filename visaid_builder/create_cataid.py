@@ -426,7 +426,7 @@ def create_cataid( video_path:str,
                              '</span>' )
 
         # the image and stuff about it
-        html_img_tag = f'<img src="data:image/jpeg;base64,{f["img_str"]}" >'
+        html_img_tag = f'<img data-tptime="{tp_time}" src="data:image/jpeg;base64,{f["img_str"]}" >'
         #html_img_tag = f'<img src="https://aapb-aux.s3.amazonaws.com/slates/cpb-aacip-225-10wpzhs0_slate.jpg" >' # TESTING 
         
         img_fname = f'{item_id}_{media_length:08}_{tp_time:08}_{video_frame_time:08}' + ".jpg"
