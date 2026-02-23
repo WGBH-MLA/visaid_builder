@@ -82,6 +82,7 @@ function collectEdits () {
     const dataExport = {};
     dataExport["asset_id"] = document.getElementById("video-id").dataset["videoId"];
     dataExport["cataid_id"] = document.getElementById("cataid-id").dataset["cataidId"];
+    dataExport["cataid_ver"] = document.getElementById("cataid-version").innerText.trim();
     dataExport["cataloger"] = document.getElementById("cataloger_blank").innerText.trim();    
     dataExport["export_date"] = new Date().toISOString().slice(0,-5) + "Z";
     dataExport["editor_items"] = [];
@@ -90,7 +91,7 @@ function collectEdits () {
         editorItem["tp_time"] = tptime = parseInt(itemEl.dataset["tptime"]);
         editorItem["tf_label"] = itemEl.dataset["scenetype"];
         const aidEl = document.querySelector(`.aid-text[data-tptime='${tptime}']`);
-        editorItem["aid_text"] = aidEl.innerText;                
+        editorItem["aid_text"] = aidEl.innerText.trimEnd();                
         const edtEl = document.querySelector(`.editor-text[data-tptime='${tptime}']`);
         editorItem["etd_text"] = edtEl.innerText.trim();        
         editorItem["tp_id"] = edtEl.dataset["tpid"];
@@ -103,7 +104,7 @@ function collectEdits () {
     const outputJSON = JSON.stringify(dataExport, null, 2);
     const filedata = new Blob([outputJSON], {type: "application/json" });
     const url = window.URL.createObjectURL(filedata);
-    const filename = dataExport["asset_id"] + "_cataid_data.json"
+    const filename = dataExport["asset_id"] + "_catout.json"
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = filename;
