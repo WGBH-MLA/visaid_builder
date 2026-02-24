@@ -63,10 +63,16 @@ def catify_text( raw_text:str, tf_label:str, use_ai:bool=True ) -> str:
     Transform raw text as appropriate for cataloging.
     """
 
+    fallback = False
+
     if use_ai and tf_label in catprompts :
         new_text = gbh_ai_helper.analyze_sample( catprompts[tf_label]["instr"], raw_text )
-
+        if not new_text:
+            fallback = True
     else:
+        fallback = True
+
+    if fallback:
         new_text = titlecase( raw_text.lower() )
 
     return new_text
@@ -472,7 +478,6 @@ def create_cataid( video_path:str,
                              "</pre>" + "\n" + 
                              "</div>" + "\n" )
 
-        # text editor div
         html_itemedt_div = ( f"<div class='{item_div_class} item-editor' data-scenetype='{scenetype}' data-tptime='{tp_time}'>" + "\n" +
                              html_edt_itemcap + "\n" +
                              f"<pre class='editor-text' contenteditable='true' data-tptime='{tp_time}' data-tpid='{tp_id}'>" + "\n" +

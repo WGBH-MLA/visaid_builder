@@ -29,6 +29,7 @@ start time after this point.)
 import csv
 import json
 import datetime
+# import traceback
 
 from statistics import mean, median
 
@@ -481,6 +482,8 @@ def run_post( item:dict,
             print(ins + "Error:", e)
             errors.append(pp_params["name"]+":"+ artifact )
 
+            # traceback_str = traceback.format_exc()
+            # print(traceback_str)
 
         problems += [ "cataid:"+p for p in cataid_problems ]
         infos += [ "cataid:"+m for m in cataid_infos ]
