@@ -83,6 +83,7 @@ function collectEdits () {
     dataExport["asset_id"] = document.getElementById("video-id").dataset["videoId"];
     dataExport["cataid_id"] = document.getElementById("cataid-id").dataset["cataidId"];
     dataExport["cataid_ver"] = document.getElementById("cataid-version").innerText.trim();
+    dataExport["clams_kitchen_job_id"] = document.getElementById("job-id").textContent.trim();
     dataExport["cataloger"] = document.getElementById("cataloger_blank").innerText.trim();    
     dataExport["export_date"] = new Date().toISOString().slice(0,-5) + "Z";
     dataExport["editor_items"] = [];

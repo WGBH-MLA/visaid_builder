@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "visaid_builder"
-version = "1.97.3"
+version = "1.97.4"
 description = "Routines for processing MMIF files to create visual indexes ('visaids') and other useful output."
 dependencies = [
     "av>=12.0.0",
