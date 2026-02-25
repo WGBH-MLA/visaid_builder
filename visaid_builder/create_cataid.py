@@ -385,16 +385,25 @@ def create_cataid( video_path:str,
         itemrow_div_class = "itemrow" 
         item_div_class = "item"
 
-        # scenetype is the tf_label without the subsample suffix
+        # Set some values used for logic.
+        # `scenetype` is the `tf_label` without the subsample suffix
+        # `cat_item_time` is the sought time point in the case of SWT TimePoints or 
+        #    the found/frame time point in the case of extra frames.
+        # (This disjunctive `cat_item_time` definition prevents collisions of 
+        #  time points for Javascript identification usage, while preserving the 
+        #  ability to dereference SWT TPs.)
         if tf_label.find(" - - -") != -1:
             item_div_class += " subsample"
             scenetype = tf_label[:tf_label.find(" - - -")]
+            cat_item_time = video_frame_time
         elif tf_label.find("unlabeled sample") != -1:
             item_div_class += " unsample"
             scenetype = tf_label
+            cat_item_time = video_frame_time
         else:
             item_div_class = item_div_class
             scenetype = tf_label
+            cat_item_time = tp_time
 
         #
         # Build some strings as inline ingredients
@@ -424,7 +433,7 @@ def create_cataid( video_path:str,
                              '</span>' )
         html_aid_itemcap = ( '<span class="item-top">' + 
                              '<span class="label">extracted text</span>' + 
-                             f'<span class="engage-toggle label clickable" data-tptime="{tp_time}">&nbsp; &#9703; </span>' + 
+                             f'<span class="engage-toggle label clickable" data-tptime="{cat_item_time}">&nbsp; &#9703; </span>' + 
                              '</span>' )
         html_edt_itemcap = ( '<span class="item-top">' + 
                              '<span class="label">catalog data</span>' + 
@@ -432,11 +441,11 @@ def create_cataid( video_path:str,
                              '</span>' )
 
         # the image and stuff about it
-        html_img_tag = f'<img data-tptime="{tp_time}" src="data:image/jpeg;base64,{f["img_str"]}" >'
+        html_img_tag = f'<img data-tptime="{cat_item_time}" src="data:image/jpeg;base64,{f["img_str"]}" >'
         #html_img_tag = f'<img src="https://aapb-aux.s3.amazonaws.com/slates/cpb-aacip-225-10wpzhs0_slate.jpg" >' # TESTING 
         
         img_fname = f'{item_id}_{media_length:08}_{tp_time:08}_{video_frame_time:08}' + ".jpg"
-        html_img_fname = "<span class='img-fname hidden'>" + img_fname + "<br></span>"
+        html_img_fname = f"<span class='img-fname hidden' data-tptime='{cat_item_time}'>" + img_fname + "<br></span>"
         if params["display_image_ms"]:
             html_img_ms = f"<span class='img-ms'>{tp_time:08} {video_frame_time:08}</span>"
         else:
@@ -471,16 +480,16 @@ def create_cataid( video_path:str,
                              "</div>" + "\n" )
 
         # extracted text div
-        html_itemaid_div = ( f"<div class='{item_div_class} item-aid' data-scenetype='{scenetype}' data-tptime='{tp_time}'>" + "\n" +
+        html_itemaid_div = ( f"<div class='{item_div_class} item-aid' data-scenetype='{scenetype}' data-tptime='{cat_item_time}'>" + "\n" +
                              html_aid_itemcap + "\n" +
-                             f"<pre class='aid-text' data-tptime='{tp_time}' data-tpid='{tp_id}'>" + "\n" +
+                             f"<pre class='aid-text' data-tptime='{cat_item_time}' data-tpid='{tp_id}'>" + "\n" +
                              aid_text + "\n" +
                              "</pre>" + "\n" + 
                              "</div>" + "\n" )
 
-        html_itemedt_div = ( f"<div class='{item_div_class} item-editor' data-scenetype='{scenetype}' data-tptime='{tp_time}'>" + "\n" +
+        html_itemedt_div = ( f"<div class='{item_div_class} item-editor' data-scenetype='{scenetype}' data-tptime='{cat_item_time}'>" + "\n" +
                              html_edt_itemcap + "\n" +
-                             f"<pre class='editor-text' contenteditable='true' data-tptime='{tp_time}' data-tpid='{tp_id}'>" + "\n" +
+                             f"<pre class='editor-text' contenteditable='true' data-tptime='{cat_item_time}' data-tpid='{tp_id}'>" + "\n" +
                              editor_text + "\n" +
                              "</pre>" + "\n" + 
                              "</div>" + "\n" )
