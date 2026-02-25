@@ -10,10 +10,10 @@ def tablify_catouts( paths:list ):
 
     for file_path in paths:
 
+        catoutd = None
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 catoutd = json.load(f)
-                catout_table += tablify_catoutd(catoutd)
 
         except json.JSONDecodeError as e:
             print(f"Error: '{file_path.name}' is not valid JSON. {e}")
@@ -22,6 +22,9 @@ def tablify_catouts( paths:list ):
         except Exception as e:
             print(f"An unexpected error occurred with '{file_path.name}': {e}")            
     
+        if catoutd:
+            catout_table += tablify_catoutd(catoutd)
+
     return catout_table
 
 
@@ -61,7 +64,9 @@ def parse_edt( r:dict ):
     r["name_normalized"] = ""
     r["person_attributes_list"] = []
 
-    if r["etd_text"][0] == "*":
+    if not len(r["etd_text"]):
+        pass
+    elif r["etd_text"][0] == "*":
         # KIE data
         pass
     else:
