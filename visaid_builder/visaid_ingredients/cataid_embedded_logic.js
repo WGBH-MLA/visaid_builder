@@ -66,9 +66,9 @@ function toggleMode() {
 }
 
 function toggleEngagement() {
-    const tpTime = this.dataset.tptime;
+    const rid = this.dataset.rid;
     
-    for (const el of document.querySelectorAll(`.item-editor[data-tptime="${tpTime}"]`)) {
+    for (const el of document.querySelectorAll(`.item-editor[data-rid="${rid}"]`)) {
         if (el.classList.contains("engaged")) {
             el.classList.remove('engaged');
         }
@@ -89,17 +89,24 @@ function collectEdits () {
     dataExport["editor_items"] = [];
     for (const itemEl of document.querySelectorAll(`.item-editor.engaged`)) {
         const editorItem = {};
-        editorItem["tp_time"] = tptime = parseInt(itemEl.dataset["tptime"]);
+
+        editorItem["tp_time"] = itemEl.dataset["tptime"];
         editorItem["tf_label"] = itemEl.dataset["scenetype"];
-        const edtEl = document.querySelector(`.editor-text[data-tptime='${tptime}']`);
+        rid = parseInt(itemEl.dataset["rid"]);        
+
+        const edtEl = document.querySelector(`.editor-text[data-rid='${rid}']`);
         editorItem["etd_text"] = edtEl.innerText.trim();        
-        const aidEl = document.querySelector(`.aid-text[data-tptime='${tptime}']`);
-        editorItem["aid_text"] = aidEl.innerText.trimEnd();                
         editorItem["tp_id"] = edtEl.dataset["tpid"];
-        const fnameEl = document.querySelector(`.img-fname[data-tptime='${tptime}']`);
+
+        const aidEl = document.querySelector(`.aid-text[data-rid='${rid}']`);
+        editorItem["aid_text"] = aidEl.innerText.trimEnd();                
+
+        const fnameEl = document.querySelector(`.img-fname[data-rid='${rid}']`);
         editorItem["img_fname"] = fnameEl.textContent.trim();
-        const imgEl = document.querySelector(`img[data-tptime='${tptime}']`);
+
+        const imgEl = document.querySelector(`img[data-rid='${rid}']`);
         editorItem["img_data_uri"] = imgEl.getAttribute('src');
+
         dataExport["editor_items"].push(editorItem);
     }
     const mmifViewsMetadataEl = document.getElementById('mmif-views-metadata');
