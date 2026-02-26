@@ -27,6 +27,8 @@ function updateVis() {
 
 let = CATAID_MODE = false;
 function cataidMode() {
+    document.getElementById('visaid-title-type').classList.add('hidden')
+    document.getElementById('cataid-title-type').classList.remove('hidden')
     for (const el of document.querySelectorAll('.cataid-extra')) {
         el.classList.remove('hidden'); 
         el.classList.add('shown');
@@ -35,12 +37,14 @@ function cataidMode() {
         el.classList.add('fullrow');
     }
     document.getElementById('collect-edits').classList.remove('invisible')
-    document.getElementById('cataloger_form').classList.remove('invisible')
+    document.getElementById('cataloger-form').classList.remove('invisible')
     document.getElementById('collect-edits').classList.add('clickable')
     CATAID_MODE = true;
 }
 
 function visaidMode() {
+    document.getElementById('cataid-title-type').classList.add('hidden')
+    document.getElementById('visaid-title-type').classList.remove('hidden')
     for (const el of document.querySelectorAll('.cataid-extra')) {
         el.classList.remove('shown'); 
         el.classList.add('hidden');
@@ -49,7 +53,7 @@ function visaidMode() {
         el.classList.remove('fullrow');
     }
     document.getElementById('collect-edits').classList.add('invisible')
-    document.getElementById('cataloger_form').classList.add('invisible')
+    document.getElementById('cataloger-form').classList.add('invisible')
     document.getElementById('collect-edits').classList.remove('clickable')
     CATAID_MODE = false;
 }
@@ -79,12 +83,17 @@ function toggleEngagement() {
 }
 
 function collectEdits () {
+    const cataloger = document.getElementById("cataloger-blank").innerText.trim();
+    if (!cataloger) {
+        document.getElementById("cataloger-blank").classList.add('cataloger-blank-unfilled');
+        return;
+    }
     const dataExport = {};
     dataExport["asset_id"] = document.getElementById("video-id").dataset["videoId"];
     dataExport["cataid_id"] = document.getElementById("cataid-id").dataset["cataidId"];
     dataExport["cataid_ver"] = document.getElementById("cataid-version").innerText.trim();
     dataExport["clams_kitchen_job_id"] = document.getElementById("job-id").textContent.trim();
-    dataExport["cataloger"] = document.getElementById("cataloger_blank").innerText.trim();    
+    dataExport["cataloger"] = cataloger
     dataExport["export_date"] = new Date().toISOString().slice(0,-5) + "Z";
     dataExport["editor_items"] = [];
     for (const itemEl of document.querySelectorAll(`.item-editor.engaged`)) {

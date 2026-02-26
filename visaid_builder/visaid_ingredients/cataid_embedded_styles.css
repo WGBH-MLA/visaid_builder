@@ -2,10 +2,14 @@ span.video-id {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 
     color:  #2e8812;
 }
-.cataloger_form {
+.page-title-type {
+    display: inline-block;
+    width: 160px;
+}
+.cataloger-form {
     color: #818181;
 }
-.cataloger_blank {
+.cataloger-blank {
     display: inline-block;
     vertical-align: bottom;
     width: 100px;
@@ -15,6 +19,9 @@ span.video-id {
     padding: 2px;
     background-color: #f7f3d4;
     border: 1px solid #bababa; 
+}
+.cataloger-blank-unfilled {
+    background-color: #ffd9ca;
 }
 div.itemrow {
     flex-wrap: wrap;
@@ -74,6 +81,9 @@ pre {
 }
 .shown {
     display: flex;
+}
+.hidden {
+    display: none;
 }
 .invisible {
     visibility: hidden;

@@ -4,7 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{video_identifier} / Visual Index</title>
+<title>{video_identifier} / Visual Aid</title>
+<link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAQAAEABAAoAQAAFgAAACgAAAAQAAAAIAAAAAEABAAAAAAAgAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAEO0AAP8A5gBmZmYAAAD/AObm5gAA3f8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADMzMzAAESAANVVVMAYRJABVVVVQBhEkAFVVVVAGESQAVVVVUAYRJABVVVVQBhEkAFVVVVAGESQAVVVVUAARIAA1VVUwAAAAADMzMzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//wAA//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP//AAD//wAA" />
 <script type="application/json" id="visaid-options">
 {cataid_options_str}
 </script>
@@ -28,13 +29,15 @@ restyle, enhance, or alter a cataid.
 
 
 <body>
-<div class='top' id="cataid-id" data-cataid-id='{cataid_identifier}'>Cataloging aid for
+<div class='top' id="cataid-id" data-cataid-id='{cataid_identifier}'>
+    <span class="page-title-type" id="visaid-title-type">Visual index for</span>
+    <span class="page-title-type hidden" id="cataid-title-type">Cataloging aid for</span>
     <span class='video-id' id='video-id' data-video-id='{video_identifier}'>{video_identifier}</span>
-    <span class="clickable" id="mode-toggle">&nbsp;&nbsp;&nbsp;&nbsp;&#9707;&nbsp;</span>
-    <span class="invisible" id="collect-edits">&nbsp;&nbsp;<!--&#9910;&#9931;-->&#128918;&nbsp;&nbsp;</span>
-    <span class="cataloger_form invisible" id="cataloger_form">Cataloger:
-        <span class="cataloger_blank" id="cataloger_blank" contenteditable='true' spellcheck="false"> </span>
+    <span class="clickable" id="mode-toggle">&nbsp;&nbsp;&nbsp;&nbsp;&#9707;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+    <span class="cataloger-form invisible" id="cataloger-form">Cataloger:
+        <span class="cataloger-blank" id="cataloger-blank" contenteditable='true' spellcheck="false"> </span>
     </span>
+    <span class="invisible" id="collect-edits"><!--&#9910;&#9931;-->&#128918;&nbsp;&nbsp;</span>
     <br>
     <span class='extra-info'>
         <span class='video_duration'>{video_duration}</span> 
