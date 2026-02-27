@@ -47,7 +47,7 @@ CATAID_DEFAULTS = { "deselected_scene_types": ["filmed text"],
                     "display_image_ms": True,
                     "aapb_timecode_link": False,
                     "max_img_height": 360,
-                    "use_ai_helper": True }
+                    "use_ai_helper": False }
 
 STRETCH_THRESHOLD = 0.005
 
@@ -66,7 +66,9 @@ def catify_text( raw_text:str, tf_label:str, use_ai:bool=True ) -> str:
     fallback = False
 
     if use_ai and tf_label in catprompts :
-        new_text = gbh_ai_helper.analyze_sample( catprompts[tf_label]["instr"], raw_text )
+        new_text = gbh_ai_helper.analyze_sample( catprompts[tf_label]["instr"], 
+                                                 raw_text,
+                                                 system_prompt=catprompts[tf_label]["system"] )
         if not new_text:
             fallback = True
     else:
