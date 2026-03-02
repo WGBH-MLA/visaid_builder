@@ -475,7 +475,8 @@ def run_post( item:dict,
                 item_id=item["asset_id"],
                 proc_swt_params=proc_swt_params,
                 cataid_params=cataid_params,
-                mmif_metadata_str=mmif_metadata_str
+                mmif_metadata_str=mmif_metadata_str,
+                prompts_dir=cf["config_dir"]
                 )
         except Exception as e:
             print(ins + "Creation of cataid failed.")

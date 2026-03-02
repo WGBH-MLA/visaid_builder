@@ -27,13 +27,17 @@ from titlecase import titlecase
 
 __version__ = version("visaid_builder")
 from . import lilhelp
-from .catification_prompts import catprompts
+from . import catification_prompts as cp
 
-_GBH_AI_HELPER = True
+try:
+    import tomllib  # in standard library fo Python 3.11+
+except ImportError:
+    import tomli as tomllib  # for Python < 3.11, requires tomli
 
 # Import AI helper, if available
 try:
-    import gbh_ai_helper
+    import gbh_ai_helper as ai
+    _GBH_AI_HELPER = True
 except ImportError as e:
     print("Import error:",e)
     print("Warning: `gbh_ai_helper` package not found.  Will not use.")
@@ -47,7 +51,8 @@ CATAID_DEFAULTS = { "deselected_scene_types": ["filmed text"],
                     "display_image_ms": True,
                     "aapb_timecode_link": False,
                     "max_img_height": 360,
-                    "use_ai_helper": False }
+                    "use_ai_helper": False,
+                    "custom_prompt_file": None }
 
 STRETCH_THRESHOLD = 0.005
 
@@ -58,17 +63,39 @@ SPECIAL_SCENE_TYPES = [ "first frame checked",
                         "unlabeled sample"] 
 
 
-def catify_text( raw_text:str, tf_label:str, use_ai:bool=True ) -> str:
+def catify_text( raw_text:str, 
+                 tf_label:str, 
+                 use_ai:bool = True, 
+                 custom_prompts = None 
+                 ) -> str:
     """
     Transform raw text as appropriate for cataloging.
     """
+    if custom_prompts:
+        try:
+            system_prompt = custom_prompts["system_prompt"]
+            scene_prompts = custom_prompts["scene_prompts"]
+        except KeyError as e:
+            print("Problem with `custom_prompts` dictionary.")
+            print(e)
+            raise
+    else:
+        system_prompt = cp.system_prompt
+        scene_prompts = cp.scene_prompts
 
+    new_text = None
     fallback = False
+    if use_ai and tf_label in cp.scene_prompts :
+        try:
+            new_text = ai.analyze_sample( scene_prompts[tf_label], 
+                                          raw_text,
+                                          system_prompt=system_prompt )
+        except Exception as e:
+            print("Warning: AI helper failed for `raw text`:")
+            print(raw_text)
+            print(e)
+            fallback = True
 
-    if use_ai and tf_label in catprompts :
-        new_text = gbh_ai_helper.analyze_sample( catprompts[tf_label]["instr"], 
-                                                 raw_text,
-                                                 system_prompt=catprompts[tf_label]["system"] )
         if not new_text:
             fallback = True
     else:
@@ -92,8 +119,9 @@ def create_cataid( video_path:str,
                    item_name:str = "",
                    proc_swt_params:dict = {},
                    cataid_params:dict = {},
-                   mmif_metadata_str: str = ""
-                   ):                  
+                   mmif_metadata_str: str = "",
+                   prompts_dir:str = None
+                   ):       
     """
     Creates an HTML file (with embedded images) as a visaid with cataloging features,, 
     based on MMIF file processed into the tfsd structure.
@@ -445,13 +473,25 @@ def create_cataid( video_path:str,
         else:
             html_img_ms = f"<span class='img-ms hidden'><br>{tp_time:08} {video_frame_time:08}</span>"
 
+
         # extracted text
         if f["text"]:
             aid_text = f["text"].replace("\\n", "\n")
 
+            # See about restructuring text
+            custom_prompts = None
+            if params["use_ai_helper"] and params["custom_prompt_file"]:
+                if not prompts_dir:
+                    raise ValueError("A `custom_prompt_file` was specified by there is no `prompts_dir`.")
+                else:
+                    prompt_file_path = prompts_dir + "/" + params["custom_prompt_file"]
+                    with open(prompt_file_path, "rb") as tomlfile:
+                        custom_prompts = tomllib.load(tomlfile)
+
             editor_text = catify_text( aid_text, 
                                        f["tf_label"], 
-                                       (params["use_ai_helper"] and _GBH_AI_HELPER) )
+                                       (params["use_ai_helper"] and _GBH_AI_HELPER),
+                                       custom_prompts=custom_prompts )
         else:
             aid_text = "[NO TEXT EXTRACTED]"
             editor_text = ""
