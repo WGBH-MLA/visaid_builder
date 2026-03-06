@@ -81,13 +81,13 @@ _chyron_instr_02 = """
 This is text read by OCR from from the Chyron on a TV screen.
 In this text, we need to extract two or three data elements:
 
-**(1) name as written (without attributes)**:  The person's name as it appears in the text.  Exclude attributes and affiliations.  But include honorifics (such as "Miss", "Dr.", "Senator", "Rev.", "Rabbi", "Captain", "Professor", etc.), post-nominal letters (such as "M.D." or "Ph.D."), and generational suffixes (such as "III" or "Jr.").  If the text is all lower case or all upper case, convert to title case, as apropriate.
+**(1) name as written (without description)**:  The person's name as it appears in the text.  Keep any honorific titles (such as "Rep.", "Miss", "Dr.", "Sen.", "Senator", "Rev.", "Rabbi", "Captain", "Professor", etc.), post-nominal letters (such as "M.D." or "Ph.D."), and generational suffixes (such as "III" or "Jr.") that could be considered part of the name.  However, exclude any other attributes, affiliations, or descriptions.  If the text is all lower case or all upper case, convert to title case, as apropriate.
 
 **(2) normalized name**:  The normalized form of the person's name.  Normalize capitalization to title case, and change the order to "Surname, Firstname" or "Surname, Firstname Middlename, Suffix". Be sure to insert a comma between the surname and given names, and between given names and any suffix.  For example: "Murray, Patty" or "King, Martin Luther, Jr." Do not add any names or initials not found in the name as written.
 
 **(3) attributes** (optional, if present):  If present in the text, copy the role, affiliation, location, context, or other characteristics given after the person's name.  Exclude titles, honorifics, or other attributes that appear before the person's name.  Preserve the punctuation, including periods, commas, and parenthesis, such as in "(D)" or "(R)".  Normalize case to title case as appropriate. Use all caps for initials and acronyms. Otherwise copy the attributes verbatim.
 
-Since the text was generated with OCR, you may notice errors.  Correct obvious spelling and typographic errors. 
+Since the text was generated with OCR, you may notice errors.  Correct obvious spelling and typographic errors.  
 
 Output the two or three data elements, one per line.  Make sure to include a blank line between each data element.
 """
