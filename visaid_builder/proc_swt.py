@@ -191,31 +191,37 @@ def get_CLAMS_app_ver( usemmif:Mmif, view_id:str ):
 
 
 
-def first_final_time_in_mmif( usemmif:Mmif, tp_view_id:str="" ):
+def first_final_time_in_mmif( usemmif:Mmif, tp_view_id:str ):
     """
     Takes serialized MMIF as a string as input.
     Analyzes MMIF with TimePoints and returns the times of the first and final ones.
     """
 
-    # Get the right view.  
-    # (If it has not been supplied, make a reasonable assumption about which one.)
-    if tp_view_id != "":
+    # get the view
+    if tp_view_id:
         tp_view = usemmif.get_view_by_id(tp_view_id)
     else:
-        tp_view = usemmif.get_all_views_contain(AnnotationTypes.TimePoint)[-1]
+        tp_view = None
 
-    tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
+    # get the annotations
+    if tp_view:
+        tpanns = tp_view.get_annotations(AnnotationTypes.TimePoint)
+    else:
+        tpanns = None
 
-    first_time = 86400000
-    final_time = 0
-    for ann in tpanns:
-        if ann.get_property("timePoint") < first_time:
-            first_time = ann.get_property("timePoint")
-        if ann.get_property("timePoint") > final_time:
-            final_time = ann.get_property("timePoint")
+    # get the first and last times
+    if tpanns:
+        first_time = 86400000
+        final_time = 0
+        for ann in tpanns:
+            if ann.get_property("timePoint") < first_time:
+                first_time = ann.get_property("timePoint")
+            if ann.get_property("timePoint") > final_time:
+                final_time = ann.get_property("timePoint")
+    else:
+        first_time, final_time = None, None
 
     return first_time, final_time
-
 
 
 def tfsd_from_mmif( usemmif:Mmif, 
@@ -354,6 +360,14 @@ def adjust_tfsd( tfsd_in:list,
     Ajdustments are made on the basis of the parameter values passed in.
     """
 
+    # Make a (shallow) copy of the input list, so not to alter it
+    tfsd = tfsd_in[:]
+
+    # Check for the the values we need
+    if not (first_time and final_time):
+        logging.warning("Warning: `" + key + "` is not a valid param for tfsd adjustment. Ignoring.")
+        return tfsd
+
     # Warn about spurious parameters
     for key in params_in:
         if key not in PROC_SWT_DEFAULTS:
@@ -383,9 +397,6 @@ def adjust_tfsd( tfsd_in:list,
             params[key] = PROC_SWT_DEFAULTS[key]
         else:
             params[key] = None
-
-    # Make a (shallow) copy of the input list, so not to alter it
-    tfsd = tfsd_in[:]
 
     # Go ahead and filter out scene types, according to parameters
     if params["include_only"] is not None:

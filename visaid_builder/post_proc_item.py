@@ -180,8 +180,11 @@ def run_post( item:dict,
     # print some stats
     print(ins + "  * SWT scene list length:", len(tfsd) )
 
-    print(ins + f"  * First TimePoint annotation at {lilhelp.tconv(first_time)} ({first_time} ms).")
-    print(ins + f"  * Final TimePoint annotation at {lilhelp.tconv(final_time)} ({final_time} ms).")
+    if final_time is not None:
+        print(ins + f"  * First TimePoint annotation at {lilhelp.tconv(first_time)} ({first_time} ms).")
+        print(ins + f"  * Final TimePoint annotation at {lilhelp.tconv(final_time)} ({final_time} ms).")
+    else:    
+        print(ins + f"  * No TimePoint annotations.")
 
     if len(tfsd):
         # if we have any SWT TimeFrames, print some additional stats
@@ -212,7 +215,7 @@ def run_post( item:dict,
             print(ins + f'  * Max overlap at {lilhelp.tconv(movl["start"])} ({movl["start"]} ms) for {lilhelp.tconv(movl["dur"])} ({movl["dur"]} ms).')
 
     # Create an adjusted TimeFrame table (with scenes added and/or removed)
-    if pp_params["adj_tfs"]:
+    if pp_params["adj_tfs"] and len(tfsd) and final_time is not None:
         tfsd_adj = proc_swt.adjust_tfsd( tfsd, 
                                          first_time, 
                                          final_time, 
@@ -506,11 +509,11 @@ def run_post( item:dict,
         data_dir = artifacts_dir + "/" + artifact
 
         # Get data from preceding cataids or visaids process
-        if "cataids" in artifacts:
+        if "cataids" in artifacts and cataid_extras:
             video_sar = cataid_extras["sar"]
             video_fps = cataid_extras["fps"]
             video_duration = cataid_extras["media_length"]
-        elif "visaids" in artifacts:
+        elif "visaids" in artifacts and visaid_extras:
             video_sar = visaid_extras["sar"]
             video_fps = visaid_extras["fps"]
             video_duration = visaid_extras["media_length"]
