@@ -29,6 +29,8 @@ span.extra-info {
     color: #5e5d5e ; 
 }
 div.checkbox-container {
+    display: flex;
+    gap: 10px;
     background-color: #d9d7db;
     padding-top: 2px;
     padding-bottom: 2px;
@@ -38,30 +40,39 @@ button {
     font-size: 0.8rem;
     margin-right: 6px;    
 }
+div.button-row,
 div.checkbox-row {
     height: 21px;
     font-size: 0.8rem;
     padding: 4px 0px 4px 4px;
 }
+div.button-row {
+    padding: 4px 0px 2px 4px;
+}
 span.checkbox-leader {
     display: inline-block;
-    width: 120px;
+    width: 100px;
     font-weight: 600;
-    white-space: nowrap;      
-}
-span.checkboxes {
-    display: inline-block;
+    white-space: nowrap;
 }
 input[type="checkbox"] {
     accent-color: #bababa;
 }
-label {
+.checkboxes label {
     background-color: #f3f3f3;
     color: #5e5d5e;
     padding: 4px 7px 2px 2px; 
     border-radius: 5px;
     border: 1px solid #bababa;
-    margin-right: 5px;
+    margin: 0px 3px 0px 0px;
+}
+.btn-ui {
+    background-color: #f3f3f3;
+    color: #5e5d5e;
+    padding: 2px 10px 2px 10px; 
+    border: 2px solid #bababa;
+    border-radius: 12px;
+    margin-right: 24px;
 }
 pre.metadata {
     font-family: "Noto Sans Mono", "Roboto Mono", "Liberation Mono", "Cascadia Mono", "Consolas", monospace; 

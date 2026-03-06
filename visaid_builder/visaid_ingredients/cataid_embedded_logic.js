@@ -24,8 +24,25 @@ function updateVis() {
         }
     }
 }
-
-let = CATAID_MODE = false;
+function showAll() {
+    const allInputs = document.getElementsByTagName('input');
+    for (const input of allInputs) { 
+        if (input.type === 'checkbox') {
+            input.checked = true;
+        }
+    }
+    updateVis();
+}
+function showNone() {
+    const allInputs = document.getElementsByTagName('input');
+    for (const input of allInputs) { 
+        if (input.type === 'checkbox') {
+            input.checked = false;
+        }
+    }
+    updateVis();
+}
+let CATAID_MODE = false;
 function cataidMode() {
     document.getElementById('visaid-title-type').classList.add('hidden')
     document.getElementById('cataid-title-type').classList.remove('hidden')
@@ -145,6 +162,8 @@ function initializePage() {
     for (const el of document.querySelectorAll('.engage-toggle')) {
         el.addEventListener('click', toggleEngagement);
     }
+    document.getElementById('show-all-btn').addEventListener('click', showAll);
+    document.getElementById('show-none-btn').addEventListener('click', showNone);
     visaidMode();  // starting in visaid mode
 }
 

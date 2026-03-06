@@ -20,6 +20,24 @@ function updateVis() {
         else el.classList.add('hidden');
     }
 }
+function showAll() {
+    const allInputs = document.getElementsByTagName('input');
+    for (const input of allInputs) { 
+        if (input.type === 'checkbox') {
+            input.checked = true;
+        }
+    }
+    updateVis();
+}
+function showNone() {
+    const allInputs = document.getElementsByTagName('input');
+    for (const input of allInputs) { 
+        if (input.type === 'checkbox') {
+            input.checked = false;
+        }
+    }
+    updateVis();
+}
 function initializePage() {
     // set visibility to match checkbox values
     updateVis();
@@ -30,5 +48,7 @@ function initializePage() {
             input.addEventListener('change', updateVis);
         }
     }
+    document.getElementById('show-all-btn').addEventListener('click', showAll);
+    document.getElementById('show-none-btn').addEventListener('click', showNone);
 }
 document.addEventListener('DOMContentLoaded', initializePage);

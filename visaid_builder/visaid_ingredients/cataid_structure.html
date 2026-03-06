@@ -44,17 +44,31 @@ restyle, enhance, or alter a cataid.
         <span class='job_info'>{job_info}</span>
     </span>
     <div class='checkbox-container'>
-        <div class='checkbox-row'>
-            <span class='checkbox-leader'>Scene types:</span>
-            <span class='checkboxes'>
-{scene_type_checkboxes}
-            </span>
+        <div>
+            <div class='button-row'>
+                <span class='checkboxes'>
+                    <button type='button' class='btn-ui' id='show-all-btn'>Show all</span>
+                </span>
+            </div>
+            <div class='button-row'>
+                <span class='checkboxes'>
+                    <button type='button' class='btn-ui' id='show-none-btn'>Show none</span>
+                </span>
+            </div>
         </div>
-        <div class='checkbox-row'>
-            <span class='checkbox-leader'>Other samples:</span>
-            <span class='checkboxes'>
+        <div>
+            <div class='checkbox-row'>
+                <span class='checkbox-leader'>Scene types:</span>
+                <span class='checkboxes'>
+{scene_type_checkboxes}
+                </span>
+            </div>
+            <div class='checkbox-row'>
+                <span class='checkbox-leader'>Other samples:</span>
+                <span class='checkboxes'>
 {sample_type_checkboxes}
-            </span>
+                </span>
+            </div>
         </div>
     </div>
 </div>
