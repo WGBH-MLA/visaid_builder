@@ -364,8 +364,8 @@ def adjust_tfsd( tfsd_in:list,
     tfsd = tfsd_in[:]
 
     # Check for the the values we need
-    if not (first_time and final_time):
-        logging.warning("Warning: `" + key + "` is not a valid param for tfsd adjustment. Ignoring.")
+    if first_time is None or final_time is None:
+        logging.warning("Warning: first or final time was not supplied.  Will not adjust tfsd.")
         return tfsd
 
     # Warn about spurious parameters
