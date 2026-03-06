@@ -501,7 +501,7 @@ def create_cataid( video_path:str,
         #
 
         # start of the itemrow div
-        html_itemrow_div_open = f"<div class='{itemrow_div_class}' data-label='{tf_label}' data-scenetype='{scenetype}'>"
+        html_itemrow_div_open = f"<div class='{itemrow_div_class}' data-rid='{edit_row_id}' data-label='{tf_label}' data-scenetype='{scenetype}'>"
 
         # visaid-style div
         html_itemvis_div = ( f"<div class='{item_div_class}'>" + "\n" +

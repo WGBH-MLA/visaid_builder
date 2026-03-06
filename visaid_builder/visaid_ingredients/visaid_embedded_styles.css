@@ -40,8 +40,8 @@ button {
     font-size: 0.8rem;
     margin-right: 6px;    
 }
-div.button-row,
-div.checkbox-row {
+.button-row,
+.checkbox-row {
     height: 21px;
     font-size: 0.8rem;
     padding: 4px 0px 4px 4px;

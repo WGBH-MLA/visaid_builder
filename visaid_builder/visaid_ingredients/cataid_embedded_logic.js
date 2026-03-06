@@ -6,7 +6,7 @@ function updateVis() {
             sceneVis[input.value] = input.checked;
         }
     }
-    // loop through each div of class "item" and set visibility
+    // loop through each div of class "itemrow" and set visibility
     for (const el of document.querySelectorAll('.itemrow')) {
         let show = false;
         if (sceneVis[el.dataset.scenetype]) {
@@ -14,6 +14,13 @@ function updateVis() {
                  show = true;
             }
         }
+        if (sceneVis['engaged-vis']) {
+            const rid = el.dataset.rid;
+            const itemEdtEl = document.querySelector(`.item-editor[data-rid='${rid}']`)
+            if (itemEdtEl.classList.contains("engaged")) {
+                show = true;
+            }
+        }        
         if (show) { 
             el.classList.remove('hidden'); 
             el.classList.add('shown');
@@ -27,7 +34,7 @@ function updateVis() {
 function showAll() {
     const allInputs = document.getElementsByTagName('input');
     for (const input of allInputs) { 
-        if (input.type === 'checkbox') {
+        if (input.type === 'checkbox' && input.id != 'engaged-vis') {
             input.checked = true;
         }
     }
@@ -36,7 +43,7 @@ function showAll() {
 function showNone() {
     const allInputs = document.getElementsByTagName('input');
     for (const input of allInputs) { 
-        if (input.type === 'checkbox') {
+        if (input.type === 'checkbox' && input.id != 'engaged-vis') {
             input.checked = false;
         }
     }
@@ -55,6 +62,7 @@ function cataidMode() {
     }
     document.getElementById('collect-edits').classList.remove('invisible')
     document.getElementById('cataloger-form').classList.remove('invisible')
+    document.getElementById('engaged-vis-row').classList.remove('invisible')    
     document.getElementById('collect-edits').classList.add('clickable')
     CATAID_MODE = true;
 }
@@ -71,6 +79,7 @@ function visaidMode() {
     }
     document.getElementById('collect-edits').classList.add('invisible')
     document.getElementById('cataloger-form').classList.add('invisible')
+    document.getElementById('engaged-vis-row').classList.add('invisible')    
     document.getElementById('collect-edits').classList.remove('clickable')
     CATAID_MODE = false;
 }
@@ -118,7 +127,7 @@ function collectEdits () {
 
         editorItem["tp_time"] = itemEl.dataset["tptime"];
         editorItem["tf_label"] = itemEl.dataset["scenetype"];
-        rid = parseInt(itemEl.dataset["rid"]);        
+        const rid = parseInt(itemEl.dataset["rid"]);        
 
         const edtEl = document.querySelector(`.editor-text[data-rid='${rid}']`);
         editorItem["etd_text"] = edtEl.innerText.trim();        
