@@ -85,7 +85,7 @@ def catify_text( raw_text:str,
 
     new_text = None
     fallback = False
-    if use_ai and tf_label in cp.scene_prompts :
+    if use_ai and tf_label in scene_prompts :
         try:
             new_text = ai.analyze_sample( scene_prompts[tf_label], 
                                           raw_text,
