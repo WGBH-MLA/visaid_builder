@@ -164,9 +164,12 @@ def create_visaid( video_path:str,
                 for frame in packet.decode():
                     ftime = int(frame.time * 1000)   
 
-                    # look for the frame nearest to the target
-                    if ftime+15 >= target_time :
-                        
+                    # Look for the frame nearest to the target.
+                    # (Using `while` instead of `if` to loop through multiple rows
+                    #  in case multiple rows tareget the same frame (which is
+                    #  possible if scenes overlap).
+                    while ftime+15 >= target_time :
+
                         # Check for anamorphic and stretch if necessary
                         if stretch:
                             if sar > 1.0:
