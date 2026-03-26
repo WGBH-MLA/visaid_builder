@@ -4,12 +4,22 @@ from pathlib import Path
 import json
 
 
-def tablify_catouts( paths:list ):
+def tablify_catouts( paths:list ) -> list:
+    """
+    Takes a list of filepaths to catout JSON files.
+
+    Returns a table (list of dictionaries) with all target output fields.
+
+    This function operates at the aggregate level over lots of catouts.  
+    
+    It operates only at the level of explicit data structures.  Parsing of human-entered
+    data happens separately.
+    """
 
     catout_table = []
 
+    # iterate through filepaths, accumulating rows
     for file_path in paths:
-
         catoutd = None
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -23,39 +33,35 @@ def tablify_catouts( paths:list ):
             print(f"An unexpected error occurred with '{file_path.name}': {e}")            
     
         if catoutd:
-            catout_table += tablify_catoutd(catoutd)
+            new_rows = []
+
+            for i in catoutd["editor_items"]:
+                r = {}
+
+                r["asset_id"] = catoutd["asset_id"]
+                r["cataid_id"] = catoutd["cataid_id"]
+                r["cataid_ver"] = catoutd["cataid_ver"]
+                r["cataloger"] = catoutd["cataloger"]
+                r["export_date"] = catoutd["export_date"].split("T")[0]
+                r["tp_time"] = i["tp_time"]
+                r["tf_label"] = i["tf_label"]
+                r["etd_text"] = i["etd_text"]
+                
+                parse_edt(r)
+
+                if "img_fname" in i:
+                    r["img_fname"] = i["img_fname"]
+                else:
+                    r["img_fname"] = f'{r["asset_id"]}_{r["tp_time"]}.jpg'
+
+                r["img_data_uri"] = i["img_data_uri"]
+
+                new_rows.append(r)
+
+            catout_table += new_rows
 
     return catout_table
 
-
-def tablify_catoutd( catoutd:dict ):
-
-    catout_rows = []
-
-    for i in catoutd["editor_items"]:
-        r = {}
-
-        r["asset_id"] = catoutd["asset_id"]
-        r["cataid_id"] = catoutd["cataid_id"]
-        r["cataid_ver"] = catoutd["cataid_ver"]
-        r["cataloger"] = catoutd["cataloger"]
-        r["export_date"] = catoutd["export_date"].split("T")[0]
-        r["tp_time"] = i["tp_time"]
-        r["tf_label"] = i["tf_label"]
-        r["etd_text"] = i["etd_text"]
-        
-        parse_edt(r)
-
-        if "img_fname" in i:
-            r["img_fname"] = i["img_fname"]
-        else:
-            r["img_fname"] = f'{r["asset_id"]}_{r["tp_time"]}.jpg'
-
-        r["img_data_uri"] = i["img_data_uri"]
-
-        catout_rows.append(r)
-    
-    return catout_rows
 
 
 def parse_edt( r:dict ):
