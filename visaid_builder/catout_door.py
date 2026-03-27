@@ -33,31 +33,35 @@ def tablify_catouts( paths:list ) -> list:
             print(f"An unexpected error occurred with '{file_path.name}': {e}")            
     
         if catoutd:
+
+            # each catout has multiple rows, one or more for each editor_item
             new_rows = []
+            for ei in catoutd["editor_items"]:
 
-            for i in catoutd["editor_items"]:
-                r = {}
+                etd_data = parse_etd( ei["etd_text"] )
 
-                r["asset_id"] = catoutd["asset_id"]
-                r["cataid_id"] = catoutd["cataid_id"]
-                r["cataid_ver"] = catoutd["cataid_ver"]
-                r["cataloger"] = catoutd["cataloger"]
-                r["export_date"] = catoutd["export_date"].split("T")[0]
-                r["tp_time"] = i["tp_time"]
-                r["tf_label"] = i["tf_label"]
-                r["tp_id"] = i["tp_id"]
-                r["img_fname"] = i["img_fname"]
-                r["aid_text"] = i["aid_text"]
-                r["etd_text"] = i["etd_text"]
-                
-                etd_data = parse_edt(r["etd_text"])
+                # it is possible to have multiple records for a single editor_item
+                for etd_rec in etd_data:
+                    r = {}
 
-                for etd_key in etd_data:
-                    r[etd_key] = etd_data[etd_key]
+                    r["asset_id"] = catoutd["asset_id"]
+                    r["cataid_id"] = catoutd["cataid_id"]
+                    r["cataid_ver"] = catoutd["cataid_ver"]
+                    r["cataloger"] = catoutd["cataloger"]
+                    r["export_date"] = catoutd["export_date"].split("T")[0]
+                    r["tp_time"] = ei["tp_time"]
+                    r["tf_label"] = ei["tf_label"]
+                    r["tp_id"] = ei["tp_id"]
+                    r["img_fname"] = ei["img_fname"]
+                    r["aid_text"] = ei["aid_text"]
+                    r["etd_text"] = ei["etd_text"]
 
-                r["img_data_uri"] = i["img_data_uri"]
+                    for etd_key in etd_rec:
+                        r[etd_key] = etd_rec[etd_key]
 
-                new_rows.append(r)
+                    r["img_data_uri"] = ei["img_data_uri"]
+
+                    new_rows.append(r)
 
             catout_table += new_rows
 
@@ -65,34 +69,43 @@ def tablify_catouts( paths:list ) -> list:
 
 
 
-def parse_edt( etd_text:str ) -> dict:
+def parse_etd( etd_text:str ) -> list:
     """
     Parsing logic of human edited/entered values.
     Takes a string of raw text and returns a dictionary.
     """
-    r = {}
-    r["name_as_written"] = ""
-    r["name_normalized"] = ""
-    r["person_attributes_list"] = []
 
-    if not len(etd_text):
-        pass
-    elif etd_text[0] == "*":
-        # KIE data
-        pass
-    else:
-        # Parse as Chyron note4
-        n4list = [ i for i in etd_text.split("\n") if i ]
-        if len(n4list) > 0:
-            r["name_as_written"] = n4list[0]
-        if len(n4list) > 1:
-            r["name_normalized"] = n4list[1]
-        if len(n4list) > 2:
-            r["person_attributes_list"] = n4list[2:]
+    # allow multiple records per etd text
+    l = []
 
-    r["person_attributes"] = " ".join(r["person_attributes_list"])
+    # divide multiplexed editor text and strip surrounding whitespace
+    etd_recs = [ s.strip() for s in etd_text.split("\n+++") if s.strip() ]
 
-    return r
+    for etd_rec in etd_recs:
+        r = {}
+        r["name_as_written"] = ""
+        r["name_normalized"] = ""
+        r["person_attributes_list"] = []
+
+        if not len(etd_rec):
+            pass
+        elif etd_rec[0] == "*":
+            # KIE data
+            pass
+        else:
+            # Parse as Chyron note4
+            n4list = [ i for i in etd_rec.split("\n") if i ]
+            if len(n4list) > 0:
+                r["name_as_written"] = n4list[0]
+            if len(n4list) > 1:
+                r["name_normalized"] = n4list[1]
+            if len(n4list) > 2:
+                r["person_attributes_list"] = n4list[2:]
+
+        r["person_attributes"] = " ".join(r["person_attributes_list"])
+        l.append(r)
+
+    return l
 
 
 def make_html_table( outtable ):
