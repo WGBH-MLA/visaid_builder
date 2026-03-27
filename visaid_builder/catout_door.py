@@ -45,14 +45,15 @@ def tablify_catouts( paths:list ) -> list:
                 r["export_date"] = catoutd["export_date"].split("T")[0]
                 r["tp_time"] = i["tp_time"]
                 r["tf_label"] = i["tf_label"]
+                r["tp_id"] = i["tp_id"]
+                r["img_fname"] = i["img_fname"]
+                r["aid_text"] = i["aid_text"]
                 r["etd_text"] = i["etd_text"]
                 
-                parse_edt(r)
+                etd_data = parse_edt(r["etd_text"])
 
-                if "img_fname" in i:
-                    r["img_fname"] = i["img_fname"]
-                else:
-                    r["img_fname"] = f'{r["asset_id"]}_{r["tp_time"]}.jpg'
+                for etd_key in etd_data:
+                    r[etd_key] = etd_data[etd_key]
 
                 r["img_data_uri"] = i["img_data_uri"]
 
@@ -64,20 +65,24 @@ def tablify_catouts( paths:list ) -> list:
 
 
 
-def parse_edt( r:dict ):
-
+def parse_edt( etd_text:str ) -> dict:
+    """
+    Parsing logic of human edited/entered values.
+    Takes a string of raw text and returns a dictionary.
+    """
+    r = {}
     r["name_as_written"] = ""
     r["name_normalized"] = ""
     r["person_attributes_list"] = []
 
-    if not len(r["etd_text"]):
+    if not len(etd_text):
         pass
-    elif r["etd_text"][0] == "*":
+    elif etd_text[0] == "*":
         # KIE data
         pass
     else:
         # Parse as Chyron note4
-        n4list = [ i for i in r["etd_text"].split("\n") if i ]
+        n4list = [ i for i in etd_text.split("\n") if i ]
         if len(n4list) > 0:
             r["name_as_written"] = n4list[0]
         if len(n4list) > 1:
@@ -86,6 +91,8 @@ def parse_edt( r:dict ):
             r["person_attributes_list"] = n4list[2:]
 
     r["person_attributes"] = " ".join(r["person_attributes_list"])
+
+    return r
 
 
 def make_html_table( outtable ):
@@ -182,6 +189,7 @@ def make_html_table( outtable ):
     html_str = html_start + html_table_start + rows + html_table_end + html_scripts + html_end
 
     return html_str
+
 
 
 def main():
