@@ -38,10 +38,10 @@ def tablify_catouts( paths:list ) -> list:
             new_rows = []
             for ei in catoutd["editor_items"]:
 
-                etd_data = parse_etd( ei["etd_text"] )
+                etd_recs = parse_etd( ei["etd_text"] )
 
                 # it is possible to have multiple records for a single editor_item
-                for etd_rec in etd_data:
+                for etd_rec in etd_recs:
                     r = {}
 
                     r["asset_id"] = catoutd["asset_id"]
@@ -56,8 +56,7 @@ def tablify_catouts( paths:list ) -> list:
                     r["aid_text"] = ei["aid_text"]
                     r["etd_text"] = ei["etd_text"]
 
-                    for etd_key in etd_rec:
-                        r[etd_key] = etd_rec[etd_key]
+                    r["etd_data"] = etd_rec
 
                     r["img_data_uri"] = ei["img_data_uri"]
 
@@ -72,40 +71,94 @@ def tablify_catouts( paths:list ) -> list:
 def parse_etd( etd_text:str ) -> list:
     """
     Parsing logic of human edited/entered values.
-    Takes a string of raw text and returns a dictionary.
+    Takes a string of raw text and returns a list of dictionaries.
     """
 
     # allow multiple records per etd text
-    l = []
+    edt_recs = []
 
     # divide multiplexed editor text and strip surrounding whitespace
-    etd_recs = [ s.strip() for s in etd_text.split("\n+++") if s.strip() ]
+    etd_secs = [ s.strip() for s in etd_text.split("\n+++") if s.strip() ]
 
-    for etd_rec in etd_recs:
-        r = {}
-        r["name_as_written"] = ""
-        r["name_normalized"] = ""
-        r["person_attributes_list"] = []
+    for sec in etd_secs:
 
-        if not len(etd_rec):
-            pass
-        elif etd_rec[0] == "*":
-            # KIE data
-            pass
+        lines = [ s.strip() for s in sec.split("\n") if s.strip() ]
+        ears_lines = [ l for l in lines if l[:2] == "^^" ]
+
+        if not len(sec):
+            # empty section
+            r = parse_keyed_sec(sec)
+        elif sec[0] == "*":
+            # starts with asterisk -> keyed data section
+            r = parse_keyed_sec(sec)
+        elif ( len(lines) - len(ears_lines) )  >= 2:
+            # at least two non-catears lines -> chyron data section
+            r = parse_chyron_sec(sec)
         else:
-            # Parse as Chyron note4
-            n4list = [ i for i in etd_rec.split("\n") if i ]
-            if len(n4list) > 0:
-                r["name_as_written"] = n4list[0]
-            if len(n4list) > 1:
-                r["name_normalized"] = n4list[1]
-            if len(n4list) > 2:
-                r["person_attributes_list"] = n4list[2:]
+            # other etd value
+            r = parse_other_sec(sec)
 
-        r["person_attributes"] = " ".join(r["person_attributes_list"])
-        l.append(r)
+        edt_recs.append(r)
 
-    return l
+    return edt_recs
+
+
+
+def parse_empty_sec( sec:str ) -> dict:
+    r = {}
+    r["etd_type"] = "empty"
+    return r
+
+
+def parse_keyed_sec( sec:str ) -> dict:
+    """
+    Parse as keyed/bullet list of values
+    """
+    r = {}
+    r["etd_type"] = "keyed"
+
+    return r
+
+
+def parse_chyron_sec( sec:str ) -> dict:
+    """
+    Parse as chyron data
+    (i.e., KSL Chyron note-4 conventions)
+    """
+    r = {}
+    r["etd_type"] = "chyron"
+
+    lines = [ s.strip() for s in sec.split("\n") if s.strip() ]
+    ears_lines = [ l for l in lines if l[:2] == "^^" ]
+    n4lines = [ l for l in lines if l not in ears_lines ]
+
+    assert len(n4lines) >= 2, "Must have at least 2 note4-style lines for chyron sec"
+
+    r["name_as_written"] = n4lines[0]
+    r["name_normalized"] = n4lines[1]
+
+    if len(n4lines) > 2:
+        r["person_attributes"] = "; ".join(n4lines[2:])
+    else:
+        r["person_attributes"] = ""
+
+    catear_data = parse_catears(ears_lines)
+    for key in catear_data:
+        r[key] = catear_data[key]
+
+    return r
+
+
+def parse_other_sec( sec:str ) -> dict:
+    r = {}
+    r["etd_type"] = "other"
+    return r
+
+
+def parse_catears ( lines:list ) -> dict:
+    d = {}
+
+    return d
 
 
 def make_html_table( outtable ):
@@ -145,14 +198,16 @@ def make_html_table( outtable ):
 
     rows = ""
 
-    for r in outtable:
+    chy_outtable = [ r for r in outtable if r["etd_data"]["etd_type"] == "chyron" ]
+
+    for r in chy_outtable:
         tr = "\n<tr>\n"
         for f in fields1:
             tr += f"<td>{r[f]}</td>"
         #tr += f"<td>X</td>"
         tr += f"<td><img src='{r['img_data_uri']}'></td>"
         for f in fields2:
-            tr += f"<td>{r[f]}</td>"
+            tr += f"<td>{r["etd_data"][f]}</td>"
         tr += "\n</tr>\n"
         rows += tr
     
