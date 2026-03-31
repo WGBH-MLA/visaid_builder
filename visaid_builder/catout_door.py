@@ -5,6 +5,15 @@ import json
 
 import catout_tables
 
+VALID_CATEARS = [
+    "home",
+    "away",
+    "miss",
+    "sens",
+    "cw",
+    "note",
+    "np" ]
+
 
 def tablify_catouts( paths:list ) -> list:
     """
@@ -119,6 +128,23 @@ def parse_keyed_sec( sec:str ) -> dict:
     r = {}
     r["etd_type"] = "keyed"
 
+    lines = [ s.strip() for s in sec.split("\n") if s.strip() ]
+    ears_lines = [ l for l in lines if l[:2] == "^^" ]
+    key_lines = [ l for l in lines if 
+                  ( l[:1] == "*" and 
+                    l.find(":") >= 2 and
+                    ( l.find(" ") > l.find(":") or l.find(" ") == -1 ) ) ]
+
+    d = {}
+    for l in key_lines:
+        k = l[1:l.find(":")]
+        v = l[l.find(":")+1:].strip()
+        d.setdefault(k, []).append(v)
+    
+    r["keyed_data"] = d
+    
+    r["catear_data"] = parse_catears(ears_lines)
+
     return r
 
 
@@ -152,14 +178,52 @@ def parse_chyron_sec( sec:str ) -> dict:
 def parse_other_sec( sec:str ) -> dict:
     r = {}
     r["etd_type"] = "other"
+
+    lines = [ s.strip() for s in sec.split("\n") if s.strip() ]
+    ears_lines = [ l for l in lines if l[:2] == "^^" ]
+    r["catear_data"] = parse_catears(ears_lines)
+
     return r
 
 
 def parse_catears ( lines:list ) -> dict:
     d = {}
 
-    #stub
-    d["ears"] = "\n".join(lines)
+    for l in lines:
+        assert l[:2] == "^^", "Cat ear line must begin with '^^'"
+
+        # potentially allow more than one catear per line
+        catears = [ c.strip() for c in l.split("^^") if c.strip() ]
+
+        for c in catears:
+            invalid_catear = False
+
+            # look for key-value catears
+            if c.find(":") == 0:
+                invalid_catear = True
+
+            elif c.find(":") > 0:
+                # key is substring up to colon
+                k = c[:c.find(":")]
+                # value is everything after
+                v = c[c.find(":")+1:].strip()
+            
+            elif c.find(" ") != -1:
+                # key is substring up to first space
+                k = c[:c.find(" ")]
+                # value is everything after
+                v = c[c.find(" ")+1:].strip()
+
+            else:
+                # non-key-value catear
+                k = c
+                v = True
+            
+            if not k.isalnum():
+                invalid_catear = True
+
+            if not invalid_catear:
+                d[k] = v
 
     return d
 
@@ -179,6 +243,19 @@ def main():
         metavar="CATOUTPATH",
         nargs="+",
         help="Path to a single catout JSON file or a directory with many")
+
+    parser.add_argument(
+        "-o", "--output",
+        type=str,
+        default="catout_table.html",
+        help="Path to the output file")
+
+    parser.add_argument(
+        "-t", "--type",
+        type=str,
+        default="html-etd",
+        help="Type of output to write")
+
 
     args = parser.parse_args()
     pattern = "*_catout*.json"
@@ -212,14 +289,21 @@ def main():
         print("No valid catout files specified.  Exiting.")
         return
 
-    html_str = catout_tables.make_contrib_review_table(catout_table)
+    # Choose the output type
+    if args.type == "html-etd":
+        out_str = catout_tables.make_etd_table(catout_table)
+    elif args.type == "html-chy":
+        out_str = catout_tables.make_chyron_review_table(catout_table)
+    elif args.type == "html-exp":
+        out_str = catout_tables.make_exp_table(catout_table)
+    elif args.type == "html-key":
+        out_str = catout_tables.make_keyed_data_table(catout_table)
 
-    html_fname = "catout_table.html"
+    out_fname = args.output
 
-    with open(html_fname, "w") as f:
-        f.write(html_str)
-        print(f"Wrote HTML table to {html_fname}")
-
+    with open(out_fname, "w") as f:
+        f.write(out_str)
+        print(f"Wrote output file to to {out_fname}")
 
 
 if __name__ == "__main__":
