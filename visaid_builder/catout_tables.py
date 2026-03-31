@@ -65,7 +65,7 @@ def make_our_first_table( outtable ):
         #tr += f"<td>X</td>"
         tr += f"<td><img src='{r['img_data_uri']}'></td>"
         for f in fields2:
-            tr += f"<td>{r['etd_data'][f]}</td>"
+            tr += f"<td>{r['etd_data']['chyron_data'][f]}</td>"
         tr += "\n</tr>\n"
         rows += tr
 
@@ -166,7 +166,7 @@ def make_chyron_review_table( outtable ):
         #tr += f"<td>X</td>"
         tr += f"<td><img src='{r['img_data_uri']}'></td>"
         for f in fields2:
-            tr += f"<td>{r['etd_data'][f]}</td>"
+            tr += f"<td>{r['etd_data']['chyron_data'][f]}</td>"
         tr += f"<td>{stringify_catear_data(r['etd_data']['catear_data'])}</td>"
         tr += "\n</tr>\n"
         rows += tr

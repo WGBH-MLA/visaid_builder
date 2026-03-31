@@ -4,7 +4,9 @@ from pathlib import Path
 import json
 
 import catout_tables
+import catout_ingests
 
+# not used yet
 VALID_CATEARS = [
     "home",
     "away",
@@ -98,16 +100,16 @@ def parse_etd( etd_text:str ) -> list:
 
         if not len(sec):
             # empty section
-            r = parse_keyed_sec(sec)
+            r = parse_sec_empty(sec)
         elif sec[0] == "*":
             # starts with asterisk -> keyed data section
-            r = parse_keyed_sec(sec)
+            r = parse_sec_keyed(sec)
         elif ( len(lines) - len(ears_lines) )  >= 2:
             # at least two non-catears lines -> chyron data section
-            r = parse_chyron_sec(sec)
+            r = parse_sec_chyron(sec)
         else:
             # other etd value
-            r = parse_other_sec(sec)
+            r = parse_sec_other(sec)
 
         edt_recs.append(r)
 
@@ -115,18 +117,19 @@ def parse_etd( etd_text:str ) -> list:
 
 
 
-def parse_empty_sec( sec:str ) -> dict:
+def parse_sec_empty( sec:str ) -> dict:
     r = {}
     r["etd_type"] = "empty"
+    r["chyron_data"] = {}
+    r["keyed_data"] = {}
+    r["catear_data"] = {}
     return r
 
 
-def parse_keyed_sec( sec:str ) -> dict:
+def parse_sec_keyed( sec:str ) -> dict:
     """
     Parse as keyed/bullet list of values
     """
-    r = {}
-    r["etd_type"] = "keyed"
 
     lines = [ s.strip() for s in sec.split("\n") if s.strip() ]
     ears_lines = [ l for l in lines if l[:2] == "^^" ]
@@ -140,21 +143,20 @@ def parse_keyed_sec( sec:str ) -> dict:
         k = l[1:l.find(":")]
         v = l[l.find(":")+1:].strip()
         d.setdefault(k, []).append(v)
-    
-    r["keyed_data"] = d
-    
-    r["catear_data"] = parse_catears(ears_lines)
 
+    r = {}
+    r["etd_type"] = "keyed"
+    r["chyron_data"] = {}
+    r["keyed_data"] = d
+    r["catear_data"] = parse_catears(ears_lines)
     return r
 
 
-def parse_chyron_sec( sec:str ) -> dict:
+def parse_sec_chyron( sec:str ) -> dict:
     """
     Parse as chyron data
     (i.e., KSL Chyron note-4 conventions)
     """
-    r = {}
-    r["etd_type"] = "chyron"
 
     lines = [ s.strip() for s in sec.split("\n") if s.strip() ]
     ears_lines = [ l for l in lines if l[:2] == "^^" ]
@@ -162,27 +164,33 @@ def parse_chyron_sec( sec:str ) -> dict:
 
     assert len(n4lines) >= 2, "Must have at least 2 note4-style lines for chyron sec"
 
-    r["name_as_written"] = n4lines[0]
-    r["name_normalized"] = n4lines[1]
+    d = {}
+    d["name_as_written"] = n4lines[0]
+    d["name_normalized"] = n4lines[1]
 
     if len(n4lines) > 2:
-        r["person_attributes"] = "; ".join(n4lines[2:])
+        d["person_attributes"] = "; ".join(n4lines[2:])
     else:
-        r["person_attributes"] = ""
+        d["person_attributes"] = ""
 
+    r = {}
+    r["etd_type"] = "chyron"
+    r["chyron_data"] = d
+    r["keyed_data"] = {}
     r["catear_data"] = parse_catears(ears_lines)
-
     return r
 
 
-def parse_other_sec( sec:str ) -> dict:
-    r = {}
-    r["etd_type"] = "other"
+def parse_sec_other( sec:str ) -> dict:
 
     lines = [ s.strip() for s in sec.split("\n") if s.strip() ]
     ears_lines = [ l for l in lines if l[:2] == "^^" ]
-    r["catear_data"] = parse_catears(ears_lines)
 
+    r = {}
+    r["etd_type"] = "other"
+    r["chyron_data"] = {}
+    r["keyed_data"] = {}
+    r["catear_data"] = parse_catears(ears_lines)
     return r
 
 
@@ -247,7 +255,6 @@ def main():
     parser.add_argument(
         "-o", "--output",
         type=str,
-        default="catout_table.html",
         help="Path to the output file")
 
     parser.add_argument(
@@ -298,12 +305,27 @@ def main():
         out_str = catout_tables.make_exp_table(catout_table)
     elif args.type == "html-key":
         out_str = catout_tables.make_keyed_data_table(catout_table)
+    elif args.type[:7] == "csv-con":
+        out_str = catout_ingests.make_contrib_ingest(catout_table)
 
-    out_fname = args.output
+    if args.output:
+        out_fname = args.output
+    else:
+        base = "catout_table"
+        if args.type[:4] == "html":
+            ext = ".html"
+        elif args.type[:3] == "csv":
+            ext = ".csv"
+        else:
+            ext = "txt"
+        out_fname = base + ext
 
-    with open(out_fname, "w") as f:
-        f.write(out_str)
-        print(f"Wrote output file to to {out_fname}")
+    if out_str:
+        with open(out_fname, "w") as f:
+            f.write(out_str)
+            print(f"Wrote output file to to {out_fname}")
+    else:
+        print("No content to output.")
 
 
 if __name__ == "__main__":
