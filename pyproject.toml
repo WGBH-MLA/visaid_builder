@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "visaid_builder"
-version = "1.97.12"
+version = "1.98"
 description = "Routines for processing MMIF files to create visual indexes ('visaids') and other useful output."
 dependencies = [
     "av>=12.0.0",
@@ -16,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 visswt = "visaid_builder.use_swt:main"
+catdoor = "visaid_builder.catout_door:main"
 
 [project.urls]
 "Homepage" = "https://github.com/WGBH-MLA/visaid_builder"

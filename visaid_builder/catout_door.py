@@ -3,8 +3,8 @@ import argparse
 from pathlib import Path
 import json
 
-import catout_tables
-import catout_ingests
+from . import catout_tables
+from . import catout_ingests
 
 # not used yet
 VALID_CATEARS = [
