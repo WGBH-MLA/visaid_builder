@@ -168,7 +168,10 @@ def create_visaid( video_path:str,
                     # (Using `while` instead of `if` to loop through multiple rows
                     #  in case multiple rows tareget the same frame (which is
                     #  possible if scenes overlap).
-                    while ftime+15 >= target_time :
+                    #while ftime+15 >= target_time :
+                    
+                    # Look for first frame after the target
+                    while ftime >= target_time :
 
                         # Check for anamorphic and stretch if necessary
                         if stretch:
