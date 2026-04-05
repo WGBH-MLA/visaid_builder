@@ -114,10 +114,18 @@ function collectEdits () {
         document.getElementById("cataloger-blank").classList.add('cataloger-blank-unfilled');
         return;
     }
+    document.getElementById('engaged-vis').checked = true;
+    updateVis();
     const dataExport = {};
     dataExport["asset_id"] = document.getElementById("video-id").dataset["videoId"];
     dataExport["cataid_id"] = document.getElementById("cataid-id").dataset["cataidId"];
     dataExport["cataid_ver"] = document.getElementById("cataid-version").innerText.trim();
+    if ( document.getElementById("job-id") ) {
+        dataExport["clams_kitchen_job_id"] = document.getElementById("job-id").textContent.trim();
+    }
+    else {
+        dataExport["clams_kitchen_job_id"] = null;
+    }    
     dataExport["clams_kitchen_job_id"] = document.getElementById("job-id").textContent.trim();
     dataExport["cataloger"] = cataloger
     dataExport["export_date"] = new Date().toISOString().slice(0,-5) + "Z";
