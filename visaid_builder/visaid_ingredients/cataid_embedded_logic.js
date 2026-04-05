@@ -109,7 +109,7 @@ function toggleEngagement() {
 }
 
 function collectEdits () {
-    const cataloger = document.getElementById("cataloger-blank").innerText.trim();
+    const cataloger = document.getElementById("cataloger-blank").textContent.trim();
     if (!cataloger) {
         document.getElementById("cataloger-blank").classList.add('cataloger-blank-unfilled');
         return;
@@ -119,13 +119,8 @@ function collectEdits () {
     const dataExport = {};
     dataExport["asset_id"] = document.getElementById("video-id").dataset["videoId"];
     dataExport["cataid_id"] = document.getElementById("cataid-id").dataset["cataidId"];
-    dataExport["cataid_ver"] = document.getElementById("cataid-version").innerText.trim();
-    if ( document.getElementById("job-id") ) {
-        dataExport["clams_kitchen_job_id"] = document.getElementById("job-id").textContent.trim();
-    }
-    else {
-        dataExport["clams_kitchen_job_id"] = null;
-    }    
+    dataExport["cataid_ver"] = document.getElementById("cataid-version").textContent.trim();
+    dataExport["clams_kitchen_job_id"] = document.getElementById("job-id").textContent.trim();
     dataExport["cataloger"] = cataloger
     dataExport["export_date"] = new Date().toISOString().slice(0,-5) + "Z";
     dataExport["editor_items"] = [];
@@ -137,11 +132,11 @@ function collectEdits () {
         const rid = parseInt(itemEl.dataset["rid"]);        
 
         const edtEl = document.querySelector(`.editor-text[data-rid='${rid}']`);
-        editorItem["etd_text"] = edtEl.innerText.trim();        
+        editorItem["etd_text"] = edtEl.textContent.trim();        
         editorItem["tp_id"] = edtEl.dataset["tpid"];
 
         const aidEl = document.querySelector(`.aid-text[data-rid='${rid}']`);
-        editorItem["aid_text"] = aidEl.innerText.trimEnd();                
+        editorItem["aid_text"] = aidEl.textContent.trimEnd();                
 
         const fnameEl = document.querySelector(`.img-fname[data-rid='${rid}']`);
         editorItem["img_fname"] = fnameEl.textContent.trim();

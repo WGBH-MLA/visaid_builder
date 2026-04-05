@@ -309,14 +309,15 @@ def create_visaid( video_path:str,
 
 
     # create job information HTML snippet
-    if params["display_job_info"] and job_id is not None:
-        job_info = "[JOB: <span class='identifier' id='job-id'>"
-        job_info += job_id + "</span>"
-        if job_name is not None and job_name != job_id:
-            job_info += ( '("' + job_name + '")' )
-        job_info += "]"
+    if not params["display_job_info"]:
+        disp_class = "hidden"
     else:
-        job_info = ""
+        disp_class = ""
+    job_info = f"<span class='{disp_class}'>[JOB: "
+    job_info += f"<span class='identifier' id='job-id'>{str(job_id or '')}</span>"
+    if job_name is not None and job_name != job_id:
+        job_info += f" ({job_name})"
+    job_info += "]</span>"
 
     # serialize metadata about process and visaid options
     visaid_options_str = json.dumps( [proc_swt_params,visaid_params], indent=2 )
