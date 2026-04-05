@@ -126,7 +126,6 @@ function collectEdits () {
     else {
         dataExport["clams_kitchen_job_id"] = null;
     }    
-    dataExport["clams_kitchen_job_id"] = document.getElementById("job-id").textContent.trim();
     dataExport["cataloger"] = cataloger
     dataExport["export_date"] = new Date().toISOString().slice(0,-5) + "Z";
     dataExport["editor_items"] = [];
