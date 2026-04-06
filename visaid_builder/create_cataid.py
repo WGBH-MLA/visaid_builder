@@ -501,7 +501,7 @@ def create_cataid( video_path:str,
                                        (params["use_ai_helper"] and _GBH_AI_HELPER),
                                        custom_prompts=custom_prompts )
         else:
-            aid_text = "[NO TEXT EXTRACTED]"
+            aid_text = ""
             editor_text = ""
 
         #
